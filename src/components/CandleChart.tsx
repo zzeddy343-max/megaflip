@@ -9,7 +9,7 @@ interface Props {
 /** Compact OHLC candlestick chart. Pure SVG, no deps. */
 export function CandleChart({ candles, livePrice, className }: Props) {
   if (!candles.length) {
-    return <div className={"flex items-center justify-center text-xs text-muted-foreground " + (className ?? "")}>Loading candles…</div>;
+    return <div className={"flex items-center justify-center text-xs text-muted-foreground " + (className ?? "")}>Loading candles...</div>;
   }
 
   // Use live tip if provided

@@ -77,7 +77,7 @@ export function ForexPanel() {
             </div>
           </div>
         </div>
-        <span className="text-[10px] text-muted-foreground">change ▾</span>
+        <span className="text-[10px] text-muted-foreground">change</span>
       </button>
 
       {pickerOpen && (
@@ -92,9 +92,9 @@ export function ForexPanel() {
         </div>
       )}
 
-      {false && (
+      {candleRes && !candleRes.ok && (
         <div className="bg-bear/10 border border-bear/30 text-bear text-[10px] rounded-lg p-1.5 text-center">
-          Live data unavailable — Finnhub key not configured.
+          Live chart source unavailable. Try again in a moment.
         </div>
       )}
 

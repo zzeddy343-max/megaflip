@@ -15,29 +15,61 @@ function seedFromSymbol(symbol: string) {
   return symbol.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
 }
 
-function syntheticCandles(
+function yahooSymbol(symbol: string) {
+  const { base, quote } = splitPair(symbol);
+  return `${base}${quote}=X`;
+}
+
+async function fetchYahooCandles(
   symbol: string,
-  price: number,
   resolution: "1" | "5" | "15" | "60" | "D",
   count: number,
 ) {
-  const resSecs: Record<string, number> = { "1": 60, "5": 300, "15": 900, "60": 3600, D: 86400 };
-  const step = resSecs[resolution];
-  const now = Math.floor(Date.now() / 1000);
-  const seed = seedFromSymbol(symbol);
-  const pip = symbol.includes("JPY") ? 0.01 : 0.0001;
-  const volatility = pip * 10;
-
-  return Array.from({ length: count }, (_, i) => {
-    const t = now - (count - i) * step;
-    const wave = Math.sin((i + seed) / 4) * volatility;
-    const drift = (i - count) * pip * 0.015;
-    const c = Math.max(pip, price + wave + drift);
-    const o = Math.max(pip, c - Math.sin((i + seed) / 3) * volatility * 0.35);
-    const h = Math.max(o, c) + volatility * (0.25 + ((i + seed) % 5) / 20);
-    const l = Math.min(o, c) - volatility * (0.25 + ((i + seed) % 7) / 24);
-    return { t, o, h, l: Math.max(pip, l), c };
+  const interval = resolution === "D" ? "1d" : `${resolution}m`;
+  const range = resolution === "1" ? "1d" : resolution === "D" ? "6mo" : "5d";
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(yahooSymbol(symbol))}?range=${range}&interval=${interval}&includePrePost=false`;
+  const res = await fetch(url, {
+    headers: {
+      accept: "application/json",
+      "user-agent": "Mozilla/5.0 TRONIXOPTION market chart",
+    },
   });
+  if (!res.ok) return { ok: false as const, reason: "upstream" as const, status: res.status };
+
+  const json = (await res.json()) as {
+    chart?: {
+      result?: Array<{
+        timestamp?: number[];
+        indicators?: {
+          quote?: Array<{
+            open?: Array<number | null>;
+            high?: Array<number | null>;
+            low?: Array<number | null>;
+            close?: Array<number | null>;
+          }>;
+        };
+      }>;
+    };
+  };
+  const result = json.chart?.result?.[0];
+  const timestamps = result?.timestamp ?? [];
+  const quote = result?.indicators?.quote?.[0];
+  if (!result || !quote || timestamps.length === 0) return { ok: false as const, reason: "no_data" as const };
+
+  const candles = timestamps
+    .map((t, i) => {
+      const o = quote.open?.[i];
+      const h = quote.high?.[i];
+      const l = quote.low?.[i];
+      const c = quote.close?.[i];
+      if (o == null || h == null || l == null || c == null) return null;
+      return { t, o, h, l, c };
+    })
+    .filter((c): c is { t: number; o: number; h: number; l: number; c: number } => Boolean(c))
+    .slice(-count);
+
+  if (!candles.length) return { ok: false as const, reason: "no_data" as const };
+  return { ok: true as const, candles };
 }
 
 async function fetchRate(symbol: string) {
@@ -93,13 +125,14 @@ export const getForexCandles = createServerFn({ method: "GET" })
   .inputValidator((d: unknown) => CandleInput.parse(d))
   .handler(async ({ data }) => {
     try {
-      const rate = await fetchRate(data.symbol);
-      if (!rate.ok) return rate;
+      const candleRes = await fetchYahooCandles(data.symbol, data.resolution, data.count);
+      if (!candleRes.ok) return candleRes;
 
       return {
         ok: true as const,
         symbol: data.symbol,
-        candles: syntheticCandles(data.symbol, rate.price, data.resolution, data.count),
+        candles: candleRes.candles,
+        source: "Yahoo Finance",
       };
     } catch (e) {
       return { ok: false as const, reason: "error" as const, message: e instanceof Error ? e.message : String(e) };

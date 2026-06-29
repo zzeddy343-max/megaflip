@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface Props {
   basePrice?: number;
@@ -24,10 +24,25 @@ export function LiveChart({
   badge,
   badgeTone = "neutral",
 }: Props) {
-  const [points, setPoints] = useState<number[]>(() =>
-    Array.from({ length: 90 }, (_, i) => basePrice + Math.sin(i / 9) * basePrice * volatility * 3)
-  );
+  const buildInitialPoints = useCallback(() => {
+    const nowStep = Math.floor(Date.now() / tickMs);
+    let drift = Math.sin(nowStep / 19) * basePrice * volatility * 0.8;
+    return Array.from({ length: 90 }, (_, i) => {
+      const t = nowStep - (89 - i);
+      drift = drift * 0.86 + Math.sin(t / 7) * basePrice * volatility * 0.18;
+      const wave = Math.sin(t / 11) * basePrice * volatility * 3;
+      const pulse = Math.cos(t / 5) * basePrice * volatility * 0.9;
+      return basePrice + wave + pulse + drift;
+    });
+  }, [basePrice, tickMs, volatility]);
+  const [points, setPoints] = useState<number[]>(buildInitialPoints);
   const driftRef = useRef(0);
+
+  useEffect(() => {
+    const seeded = buildInitialPoints();
+    setPoints(seeded);
+    onPrice?.(seeded[seeded.length - 1]);
+  }, [buildInitialPoints, onPrice]);
 
   useEffect(() => {
     const id = setInterval(() => {

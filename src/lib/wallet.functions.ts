@@ -27,7 +27,12 @@ export const createDeposit = createServerFn({ method: "POST" })
     if (error) throw error;
 
     if (data.method === "mpesa" && data.account === "real") {
-      return startDarajaStkPush(tx, data.phone);
+      try {
+        return await startDarajaStkPush(tx, data.phone);
+      } catch (e) {
+        await markTransactionFailed(tx.id, e);
+        throw e;
+      }
     }
 
     return { ok: true, transaction: tx };
@@ -150,6 +155,18 @@ async function recordPaymentRequest(
   } as any);
 }
 
+async function markTransactionFailed(transactionId: string, error: unknown) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  await (supabaseAdmin as any).rpc("apply_transaction", {
+    _transaction_id: transactionId,
+    _status: "failed",
+    _meta: {
+        provider_error: error instanceof Error ? error.message : String(error),
+        failed_at: new Date().toISOString(),
+      },
+  });
+}
+
 function normalizeKenyanPhone(phone?: string) {
   const digits = (phone ?? "").replace(/\D/g, "");
   if (digits.startsWith("254") && digits.length === 12) return digits;
@@ -174,7 +191,9 @@ function getDarajaEnv() {
     b2cTimeoutUrl: process.env.DARAJA_B2C_TIMEOUT_URL ?? `${appUrl}/api/daraja/b2c-timeout`,
   };
   const missing = Object.entries(required).filter(([, value]) => !value).map(([key]) => key);
-  if (missing.length) throw new Error(`Missing Daraja environment variable(s): ${missing.join(", ")}`);
+  if (missing.length) {
+    throw new Error(`Missing Daraja environment variable(s): ${missing.join(", ")}. Set them in Vercel and your local .env file.`);
+  }
   return { baseUrl, ...(required as Record<string, string>) };
 }
 
