@@ -1,12 +1,13 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Eye, EyeOff, RotateCcw, Shield, ShieldPlus, Users, TrendingUp, DollarSign, Plus, Search, X, Wallet } from "lucide-react";
+import { Eye, EyeOff, RotateCcw, Shield, ShieldPlus, Users, TrendingUp, DollarSign, Plus, Search, X, Wallet, UserPlus } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createAdminAccount, createAgent, creditAgentVirtual, failStaleMpesaWithdrawals, listAdmins, listAgents, listClients, reconcileSuccessfulB2cCallbacks } from "@/lib/admin.functions";
+import { createAdminAccount, createAgent, creditAgentVirtual, failStaleMpesaWithdrawals, listAdmins, listAgents, listClients, promoteUserRole, reconcileSuccessfulB2cCallbacks } from "@/lib/admin.functions";
 import { toast } from "sonner";
 import { RouteError, RouteNotFound } from "@/components/RouteError";
+import { AccountsReportPanel } from "@/components/AccountsReportPanel";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({ meta: [{ title: "Admin — TRONIXOPTION" }] }),
@@ -24,7 +25,7 @@ export const Route = createFileRoute("/_authenticated/admin")({
 interface Trade { id: string; user_id: string; module: string; market: string; stake: number; payout: number; status: string; account_type: string; created_at: string }
 
 function AdminPage() {
-  const [tab, setTab] = useState<"users" | "trades" | "agents" | "admins">("users");
+  const [tab, setTab] = useState<"accounts" | "users" | "trades" | "agents" | "admins">("accounts");
   const repairWithdrawals = useServerFn(failStaleMpesaWithdrawals);
   const reconcileB2c = useServerFn(reconcileSuccessfulB2cCallbacks);
   const qc = useQueryClient();
@@ -82,15 +83,16 @@ function AdminPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-4 gap-1 bg-card border border-border rounded-xl p-1">
-        {(["users", "trades", "agents", "admins"] as const).map((k) => (
+      <div className="grid grid-cols-5 gap-1 bg-card border border-border rounded-xl p-1">
+        {(["accounts", "users", "trades", "agents", "admins"] as const).map((k) => (
           <button key={k} onClick={() => setTab(k)}
-            className={"py-2 rounded-lg text-xs font-semibold " + (tab === k ? "bg-primary/15 text-primary" : "text-muted-foreground")}>
-            {k[0].toUpperCase() + k.slice(1)}
+            className={"py-2 rounded-lg text-[10px] font-semibold " + (tab === k ? "bg-primary/15 text-primary" : "text-muted-foreground")}>
+            {k === "accounts" ? "Accounts" : k[0].toUpperCase() + k.slice(1)}
           </button>
         ))}
       </div>
 
+      {tab === "accounts" && <AccountsReportPanel scope="admin" />}
       {tab === "users" && <UsersTab />}
       {tab === "trades" && <TradesTab />}
       {tab === "agents" && <AgentsTab />}
@@ -101,13 +103,26 @@ function AdminPage() {
 
 function UsersTab() {
   const list = useServerFn(listClients);
+  const promote = useServerFn(promoteUserRole);
   const [search, setSearch] = useState("");
   const [agentFilter, setAgentFilter] = useState<string | undefined>(undefined);
   const agentsFn = useServerFn(listAgents);
+  const qc = useQueryClient();
   const { data: agents = [] } = useQuery({ queryKey: ["admin-agents"], queryFn: () => agentsFn() });
   const { data: users = [], isLoading } = useQuery({
     queryKey: ["admin-clients", search, agentFilter],
     queryFn: () => list({ data: { search: search || undefined, agent_id: agentFilter, limit: 200 } }),
+  });
+  const promoteMut = useMutation({
+    mutationFn: (vars: { user_id: string; role: "admin" | "agent" }) =>
+      promote({ data: { ...vars, commission_pct: 10 } }),
+    onSuccess: (_, vars) => {
+      toast.success(`User promoted to ${vars.role}`);
+      qc.invalidateQueries({ queryKey: ["admin-clients"] });
+      qc.invalidateQueries({ queryKey: ["admin-agents"] });
+      qc.invalidateQueries({ queryKey: ["admin-admins"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Promotion failed"),
   });
 
   const totalReal = users.reduce((s: number, u: any) => s + Number(u.balance_usd), 0);
@@ -148,6 +163,22 @@ function UsersTab() {
             <div className="text-right">
               <div className="font-bold tabular-nums text-bull text-xs">🇺🇸 ${Number(u.balance_usd).toFixed(2)}</div>
               <div className="font-bold tabular-nums text-primary text-[10px]">D ${Number(u.demo_balance_usd ?? 0).toFixed(2)}</div>
+              <div className="mt-1 flex justify-end gap-1">
+                <button
+                  onClick={() => promoteMut.mutate({ user_id: u.id, role: "agent" })}
+                  disabled={promoteMut.isPending}
+                  className="rounded border border-primary/40 px-1.5 py-0.5 text-[9px] font-bold text-primary disabled:opacity-50"
+                >
+                  <UserPlus className="mr-0.5 inline h-2.5 w-2.5" /> Agent
+                </button>
+                <button
+                  onClick={() => promoteMut.mutate({ user_id: u.id, role: "admin" })}
+                  disabled={promoteMut.isPending}
+                  className="rounded border border-bull/40 px-1.5 py-0.5 text-[9px] font-bold text-bull disabled:opacity-50"
+                >
+                  <ShieldPlus className="mr-0.5 inline h-2.5 w-2.5" /> Admin
+                </button>
+              </div>
             </div>
           </div>
         ))}

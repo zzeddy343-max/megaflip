@@ -22,6 +22,21 @@ function randomCode(len = 8): string {
   return s;
 }
 
+function sumUsd(rows: Array<{ amount_usd?: number | string | null }>) {
+  return rows.reduce((sum, row) => sum + Number(row.amount_usd ?? 0), 0);
+}
+
+function emptyAccountsReport() {
+  return {
+    clients: [],
+    summary: { clients: 0, deposits_usd: 0, withdrawals_usd: 0, stakes_usd: 0, retained_usd: 0, trades: 0 },
+    by_client: [],
+    deposits: [],
+    withdrawals: [],
+    trades: [],
+  };
+}
+
 export const createAgent = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
@@ -144,6 +159,175 @@ export const listClients = createServerFn({ method: "GET" })
     const { data: profiles, error } = await q;
     if (error) throw new Error(error.message);
     return profiles ?? [];
+  });
+
+export const promoteUserRole = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({
+      user_id: z.string().uuid(),
+      role: z.enum(["admin", "agent"]),
+      commission_pct: z.number().min(0).max(100).default(10),
+    }).parse(d)
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    await supabaseAdmin
+      .from("user_roles")
+      .upsert({ user_id: data.user_id, role: data.role }, { onConflict: "user_id,role" });
+
+    if (data.role === "agent") {
+      let code = randomCode();
+      for (let i = 0; i < 8; i++) {
+        const { data: existing } = await supabaseAdmin
+          .from("agents")
+          .select("id")
+          .eq("referral_code", code)
+          .maybeSingle();
+        if (!existing) break;
+        code = randomCode();
+      }
+
+      await supabaseAdmin
+        .from("agents")
+        .upsert(
+          { user_id: data.user_id, referral_code: code, commission_pct: data.commission_pct },
+          { onConflict: "user_id" },
+        );
+    }
+
+    return { ok: true };
+  });
+
+export const getAccountsReport = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({
+      scope: z.enum(["admin", "agent"]).default("agent"),
+      start_date: z.string().optional(),
+      end_date: z.string().optional(),
+      client_id: z.string().uuid().optional(),
+    }).parse(d)
+  )
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const roleRows = await context.supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId);
+    const roles = new Set((roleRows.data ?? []).map((r) => r.role));
+    const isAdmin = roles.has("admin");
+    const isAgent = roles.has("agent");
+    if (data.scope === "admin" && !isAdmin) throw new Error("Forbidden — admin only");
+    if (data.scope === "agent" && !isAdmin && !isAgent) throw new Error("Forbidden — agent only");
+
+    let clientIds: string[] | null = null;
+    if (data.scope === "agent" && !isAdmin) {
+      const { data: agent } = await supabaseAdmin
+        .from("agents")
+        .select("id")
+        .eq("user_id", context.userId)
+        .maybeSingle();
+      if (!agent?.id) return emptyAccountsReport();
+
+      const { data: refs } = await supabaseAdmin
+        .from("referrals")
+        .select("client_id")
+        .eq("agent_id", agent.id);
+      clientIds = (refs ?? []).map((r) => r.client_id as string);
+      if (clientIds.length === 0) return emptyAccountsReport();
+    }
+
+    if (data.client_id) {
+      if (clientIds && !clientIds.includes(data.client_id)) throw new Error("Client is not under this agent");
+      clientIds = [data.client_id];
+    }
+
+    let profilesQ = supabaseAdmin
+      .from("profiles")
+      .select("id,email,full_name,username,created_at")
+      .order("created_at", { ascending: false })
+      .limit(500);
+    if (clientIds) profilesQ = profilesQ.in("id", clientIds);
+    const { data: clients, error: clientsError } = await profilesQ;
+    if (clientsError) throw new Error(clientsError.message);
+    const scopedIds = (clients ?? []).map((c) => c.id as string);
+    if (scopedIds.length === 0) return { ...emptyAccountsReport(), clients: [] };
+
+    const from = data.start_date ? `${data.start_date}T00:00:00.000Z` : undefined;
+    const to = data.end_date ? `${data.end_date}T23:59:59.999Z` : undefined;
+
+    let txQ = supabaseAdmin
+      .from("transactions")
+      .select("id,user_id,kind,method,amount,currency,amount_usd,status,created_at")
+      .in("user_id", scopedIds)
+      .order("created_at", { ascending: false })
+      .limit(1000);
+    if (from) txQ = txQ.gte("created_at", from);
+    if (to) txQ = txQ.lte("created_at", to);
+    const { data: transactions, error: txError } = await txQ;
+    if (txError) throw new Error(txError.message);
+
+    let tradesQ = supabaseAdmin
+      .from("trades")
+      .select("id,user_id,module,market,direction,stake,payout,status,account_type,created_at,closed_at")
+      .in("user_id", scopedIds)
+      .order("created_at", { ascending: false })
+      .limit(1000);
+    if (from) tradesQ = tradesQ.gte("created_at", from);
+    if (to) tradesQ = tradesQ.lte("created_at", to);
+    const { data: trades, error: tradesError } = await tradesQ;
+    if (tradesError) throw new Error(tradesError.message);
+
+    const clientMap = new Map((clients ?? []).map((c: any) => [c.id, c]));
+    const deposits = (transactions ?? []).filter((t: any) => t.kind === "deposit");
+    const withdrawals = (transactions ?? []).filter((t: any) => t.kind === "withdraw");
+    const closedTrades = (trades ?? []).filter((t: any) => t.status !== "open");
+    const houseRetained = closedTrades.reduce((sum: number, t: any) => {
+      if (t.status === "lost") return sum + Number(t.stake ?? 0);
+      if (t.status === "won") return sum - Math.max(Number(t.payout ?? 0) - Number(t.stake ?? 0), 0);
+      return sum;
+    }, 0);
+
+    const byClient = scopedIds.map((id) => {
+      const profile = clientMap.get(id) as any;
+      const clientTx = (transactions ?? []).filter((t: any) => t.user_id === id);
+      const clientTrades = (trades ?? []).filter((t: any) => t.user_id === id);
+      const clientClosed = clientTrades.filter((t: any) => t.status !== "open");
+      const retained = clientClosed.reduce((sum: number, t: any) => {
+        if (t.status === "lost") return sum + Number(t.stake ?? 0);
+        if (t.status === "won") return sum - Math.max(Number(t.payout ?? 0) - Number(t.stake ?? 0), 0);
+        return sum;
+      }, 0);
+      return {
+        client_id: id,
+        name: profile?.full_name || profile?.username || profile?.email || id.slice(0, 8),
+        email: profile?.email ?? null,
+        deposits_usd: sumUsd(clientTx.filter((t: any) => t.kind === "deposit")),
+        withdrawals_usd: sumUsd(clientTx.filter((t: any) => t.kind === "withdraw")),
+        stakes_usd: clientTrades.reduce((s: number, t: any) => s + Number(t.stake ?? 0), 0),
+        retained_usd: retained,
+        trades: clientTrades.length,
+      };
+    });
+
+    return {
+      clients: clients ?? [],
+      summary: {
+        clients: scopedIds.length,
+        deposits_usd: sumUsd(deposits),
+        withdrawals_usd: sumUsd(withdrawals),
+        stakes_usd: (trades ?? []).reduce((s: number, t: any) => s + Number(t.stake ?? 0), 0),
+        retained_usd: houseRetained,
+        trades: (trades ?? []).length,
+      },
+      by_client: byClient,
+      deposits,
+      withdrawals,
+      trades: trades ?? [],
+    };
   });
 
 export const failStaleMpesaWithdrawals = createServerFn({ method: "POST" })

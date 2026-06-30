@@ -90,8 +90,7 @@ const VOL_INDICES = [
 const TYPES = ["Buy/Sell", "Even/Odd", "Matches/Differs", "Over/Under"] as const;
 type TradeType = (typeof TYPES)[number];
 const QUICK = [1, 5, 10, 25, 50, 100];
-const WIN_PROFIT_RATE = 0.2;
-const WIN_PAYOUT_MULTIPLIER = 1 + WIN_PROFIT_RATE;
+const DEFAULT_WIN_PROFIT_RATE = 0.2;
 
 type Tick = { d: number; tone: "neutral" | "bull" | "bear" };
 
@@ -218,13 +217,14 @@ export function BinaryPanel() {
     else if (ty === "Matches/Differs")
       won = direction === "MATCH" ? finalDigit === sel : finalDigit !== sel;
 
+    const winProfitRate = profitRateForContract(ty, direction);
     try {
       await settle({
         data: {
           trade_id: trade.id,
           won,
           exit_price: priceRef.current,
-          multiplier: WIN_PAYOUT_MULTIPLIER,
+          multiplier: 1 + winProfitRate,
         },
       });
       logDebugEvent("info", "binary.trade", "Binary trade settled", {
@@ -242,7 +242,7 @@ export function BinaryPanel() {
     qc.invalidateQueries({ queryKey: ["trades"] });
 
     if (won) {
-      const profit = useStake * WIN_PROFIT_RATE;
+      const profit = useStake * winProfitRate;
       sessionPnLRef.current += profit;
       toast.success(
         `WIN +$${profit.toFixed(2)} · session $${sessionPnLRef.current.toFixed(2)}`,
@@ -667,6 +667,12 @@ export function BinaryPanel() {
       )}
     </div>
   );
+}
+
+function profitRateForContract(type: TradeType, direction: string) {
+  if (type === "Buy/Sell" || type === "Even/Odd") return 0.7;
+  if (type === "Matches/Differs") return direction === "MATCH" ? 4 : 0.06;
+  return DEFAULT_WIN_PROFIT_RATE;
 }
 
 function BotField({

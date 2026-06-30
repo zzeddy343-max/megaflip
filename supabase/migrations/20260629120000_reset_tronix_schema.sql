@@ -404,7 +404,7 @@ create or replace function public.settle_trade(
   _trade_id uuid,
   _won boolean,
   _exit_price numeric default null,
-  _multiplier numeric default 1.20
+  _multiplier numeric default null
 )
 returns jsonb
 language plpgsql
@@ -414,6 +414,7 @@ as $$
 declare
   _trade public.trades;
   _payout numeric;
+  _effective_multiplier numeric;
 begin
   if auth.uid() is null then
     raise exception 'Unauthorized';
@@ -431,7 +432,17 @@ begin
     return jsonb_build_object('ok', true, 'payout', _trade.payout);
   end if;
 
-  _payout := case when _won then round((_trade.stake * _multiplier)::numeric, 2) else 0 end;
+  _effective_multiplier := coalesce(
+    _multiplier,
+    case
+      when _trade.module = 'binary' and _trade.meta ->> 'type' in ('Buy/Sell', 'Even/Odd') then 1.70
+      when _trade.module = 'binary' and _trade.meta ->> 'type' = 'Matches/Differs' and upper(_trade.direction) = 'MATCH' then 5.00
+      when _trade.module = 'binary' and _trade.meta ->> 'type' = 'Matches/Differs' and upper(_trade.direction) = 'DIFFER' then 1.06
+      else 1.20
+    end
+  );
+
+  _payout := case when _won then round((_trade.stake * _effective_multiplier)::numeric, 2) else 0 end;
 
   update public.trades
   set status = case when _won then 'won'::public.trade_status else 'lost'::public.trade_status end,

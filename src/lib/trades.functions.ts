@@ -63,7 +63,7 @@ const SettleTradeInput = z.object({
   trade_id: z.string().uuid(),
   won: z.boolean(),
   exit_price: z.number().nullable().optional(),
-  multiplier: z.number().positive().default(1.2),
+  multiplier: z.number().positive().nullable().optional(),
 });
 
 export const settleTrade = createServerFn({ method: "POST" })
@@ -76,7 +76,7 @@ export const settleTrade = createServerFn({ method: "POST" })
         _trade_id: data.trade_id,
         _won: data.won,
         _exit_price: data.exit_price ?? null,
-        _multiplier: data.multiplier,
+        _multiplier: data.multiplier ?? null,
       },
     );
     if (error) {

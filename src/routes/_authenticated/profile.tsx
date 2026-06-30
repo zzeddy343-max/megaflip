@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { User, KeyRound, ShieldCheck, Eye, EyeOff, Lock, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { RouteError, RouteNotFound } from "@/components/RouteError";
+import { AccountsReportPanel } from "@/components/AccountsReportPanel";
 
 export const Route = createFileRoute("/_authenticated/profile")({
   head: () => ({ meta: [{ title: "Profile — TRONIXOPTION" }] }),
@@ -36,6 +37,7 @@ function ProfilePage() {
   const [savingPwd, setSavingPwd] = useState(false);
 
   const [kycStatus, setKycStatus] = useState<"unverified" | "pending" | "verified">("unverified");
+  const [isAgent, setIsAgent] = useState(false);
 
   useEffect(() => {
     if (profile) {
@@ -45,6 +47,16 @@ function ProfilePage() {
     }
     supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? ""));
   }, [profile]);
+
+  useEffect(() => {
+    let cancelled = false;
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (!data.user) return;
+      const roles = await supabase.from("user_roles").select("role").eq("user_id", data.user.id);
+      if (!cancelled) setIsAgent(!!roles.data?.some((row) => row.role === "agent"));
+    });
+    return () => { cancelled = true; };
+  }, [profile?.id]);
 
   async function saveProfile() {
     if (fullName.trim().length < 2) { toast.error("Full name too short"); return; }
@@ -154,6 +166,12 @@ function ProfilePage() {
         )}
         <div className="text-[10px] text-muted-foreground">KYC flow is a stub — full document upload + provider check (Smile ID / Onfido) wires up when going to real funds.</div>
       </Section>
+
+      {isAgent && (
+        <Section icon={<ShieldCheck className="h-4 w-4" />} title="Agent accounts">
+          <AccountsReportPanel scope="agent" />
+        </Section>
+      )}
 
       <style>{`
         .profile-input { width: 100%; padding: 0.55rem 0.75rem; border-radius: 0.6rem; background: var(--color-surface); border: 1px solid var(--color-border); outline: none; font-size: 0.85rem; }
