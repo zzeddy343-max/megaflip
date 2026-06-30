@@ -30,6 +30,7 @@ type WalletTransaction = {
 };
 
 type DarajaMode = "stk" | "b2c";
+type DarajaStep = "oauth_token" | "stk_push" | "b2c_payment";
 
 export const createDeposit = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -208,6 +209,7 @@ async function sendB2cPayment(transaction: WalletTransaction, phone?: string) {
 async function darajaRequest(path: string, payload: Record<string, unknown>, mode: DarajaMode) {
   const env = getDarajaEnv(mode);
   const token = await getDarajaToken(mode);
+  const step: DarajaStep = mode === "stk" ? "stk_push" : "b2c_payment";
   const res = await fetch(`${env.baseUrl}${path}`, {
     method: "POST",
     headers: {
@@ -218,12 +220,7 @@ async function darajaRequest(path: string, payload: Record<string, unknown>, mod
   });
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(
-      json.errorMessage ??
-        json.error_description ??
-        json.ResponseDescription ??
-        `Daraja ${mode.toUpperCase()} request failed with ${res.status}`,
-    );
+    throw new Error(formatDarajaError(mode, step, res.status, json, env.baseUrl));
   }
   return json as Record<string, unknown>;
 }
@@ -236,11 +233,7 @@ async function getDarajaToken(mode: DarajaMode) {
   });
   const json = await res.json().catch(() => ({}));
   if (!res.ok || !json.access_token) {
-    throw new Error(
-      json.errorMessage ??
-        json.error_description ??
-        `Could not authenticate Daraja ${mode.toUpperCase()}`,
-    );
+    throw new Error(formatDarajaError(mode, "oauth_token", res.status, json, env.baseUrl));
   }
   return json.access_token as string;
 }
@@ -354,24 +347,26 @@ function darajaTimestamp() {
 }
 
 function getDarajaEnv(mode: DarajaMode) {
-  const baseUrl = process.env.DARAJA_BASE_URL ?? "https://sandbox.safaricom.co.ke";
+  const baseUrl = normalizeDarajaBaseUrl(
+    readEnv("DARAJA_BASE_URL") ?? "https://sandbox.safaricom.co.ke",
+  );
   const appUrl = getPublicAppUrl();
   const shared = {
-    consumerKey: process.env.DARAJA_CONSUMER_KEY,
-    consumerSecret: process.env.DARAJA_CONSUMER_SECRET,
+    consumerKey: readEnv("DARAJA_CONSUMER_KEY"),
+    consumerSecret: readEnv("DARAJA_CONSUMER_SECRET"),
   };
   const stk = {
-    stkShortcode: process.env.DARAJA_STK_SHORTCODE,
-    stkPasskey: process.env.DARAJA_STK_PASSKEY,
-    stkCallbackUrl: process.env.DARAJA_STK_CALLBACK_URL ?? `${appUrl}/api/daraja/stk-callback`,
+    stkShortcode: readEnv("DARAJA_STK_SHORTCODE"),
+    stkPasskey: readEnv("DARAJA_STK_PASSKEY"),
+    stkCallbackUrl: readEnv("DARAJA_STK_CALLBACK_URL") ?? `${appUrl}/api/daraja/stk-callback`,
   };
   const b2c = {
-    b2cInitiatorName: process.env.DARAJA_B2C_INITIATOR_NAME,
-    b2cSecurityCredential: process.env.DARAJA_B2C_SECURITY_CREDENTIAL,
-    b2cShortcode: process.env.DARAJA_B2C_SHORTCODE,
-    b2cCommandId: process.env.DARAJA_B2C_COMMAND_ID ?? "BusinessPayment",
-    b2cResultUrl: process.env.DARAJA_B2C_RESULT_URL ?? `${appUrl}/api/daraja/b2c-result`,
-    b2cTimeoutUrl: process.env.DARAJA_B2C_TIMEOUT_URL ?? `${appUrl}/api/daraja/b2c-timeout`,
+    b2cInitiatorName: readEnv("DARAJA_B2C_INITIATOR_NAME"),
+    b2cSecurityCredential: readEnv("DARAJA_B2C_SECURITY_CREDENTIAL"),
+    b2cShortcode: readEnv("DARAJA_B2C_SHORTCODE"),
+    b2cCommandId: readEnv("DARAJA_B2C_COMMAND_ID") ?? "BusinessPayment",
+    b2cResultUrl: readEnv("DARAJA_B2C_RESULT_URL") ?? `${appUrl}/api/daraja/b2c-result`,
+    b2cTimeoutUrl: readEnv("DARAJA_B2C_TIMEOUT_URL") ?? `${appUrl}/api/daraja/b2c-timeout`,
   };
   const required = mode === "stk" ? { ...shared, ...stk } : { ...shared, ...b2c };
   const missing = Object.entries(required)
@@ -385,10 +380,76 @@ function getDarajaEnv(mode: DarajaMode) {
 
 function getPublicAppUrl() {
   const explicit =
-    process.env.DARAJA_PUBLIC_BASE_URL ?? process.env.PUBLIC_APP_URL ?? process.env.APP_URL;
+    readEnv("DARAJA_PUBLIC_BASE_URL") ?? readEnv("PUBLIC_APP_URL") ?? readEnv("APP_URL");
   if (explicit) return explicit.replace(/\/$/, "");
   if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
   throw new Error("Missing public app URL. Set DARAJA_PUBLIC_BASE_URL or APP_URL.");
+}
+
+function readEnv(name: string) {
+  const value = process.env[name]?.trim();
+  if (!value) return undefined;
+  const quoted =
+    (value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"));
+  return quoted ? value.slice(1, -1).trim() : value;
+}
+
+function normalizeDarajaBaseUrl(value: string) {
+  return value.replace(/\/+$/, "");
+}
+
+function formatDarajaError(
+  mode: DarajaMode,
+  step: DarajaStep,
+  status: number,
+  json: Record<string, unknown>,
+  baseUrl: string,
+) {
+  const providerMessage =
+    getStringValue(json.errorMessage) ??
+    getStringValue(json.error_description) ??
+    getStringValue(json.ResponseDescription) ??
+    getStringValue(json.ResultDesc);
+  const failingStep = describeDarajaStep(step);
+  const providerPart = providerMessage ? ` Provider said: ${providerMessage}.` : "";
+
+  if (providerMessage?.toLowerCase().includes("invalid access token")) {
+    return [
+      `${failingStep} failed because Daraja rejected the OAuth access token.`,
+      `This usually means DARAJA_BASE_URL (${baseUrl}) is using sandbox while the credentials/shortcode are production, or production while they are sandbox.`,
+      "Check DARAJA_BASE_URL, DARAJA_CONSUMER_KEY, DARAJA_CONSUMER_SECRET, DARAJA_STK_SHORTCODE, and DARAJA_STK_PASSKEY, then redeploy.",
+      `Provider said: ${providerMessage}.`,
+    ].join(" ");
+  }
+
+  if (step === "oauth_token") {
+    return [
+      `${failingStep} failed.`,
+      "Daraja did not return an access token.",
+      `Check DARAJA_CONSUMER_KEY and DARAJA_CONSUMER_SECRET for the ${darajaEnvironmentName(baseUrl)} app.`,
+      `HTTP status: ${status}.${providerPart}`,
+    ].join(" ");
+  }
+
+  return [
+    `${failingStep} failed.`,
+    `Check the ${mode.toUpperCase()} payload settings for the ${darajaEnvironmentName(baseUrl)} Daraja app.`,
+    `HTTP status: ${status}.${providerPart}`,
+  ].join(" ");
+}
+
+function getStringValue(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function describeDarajaStep(step: DarajaStep) {
+  if (step === "oauth_token") return "Daraja OAuth token request";
+  if (step === "stk_push") return "Daraja STK push request";
+  return "Daraja B2C payment request";
+}
+
+function darajaEnvironmentName(baseUrl: string) {
+  return baseUrl.includes("sandbox") ? "sandbox" : "production";
 }
 
 function getErrorMessage(error: unknown) {
