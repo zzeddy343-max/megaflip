@@ -14,6 +14,7 @@ const VOL_INDICES = [
     basePrice: 1000,
     volatility: 0.00024,
     tickMs: 980,
+    rhythm: [2100, 1800, 1200, 2200, 900],
   },
   {
     label: "Volatility 25 Index",
@@ -21,6 +22,7 @@ const VOL_INDICES = [
     basePrice: 1000,
     volatility: 0.00038,
     tickMs: 820,
+    rhythm: [1800, 1300, 900, 1600, 520],
   },
   {
     label: "Volatility 50 Index",
@@ -28,6 +30,7 @@ const VOL_INDICES = [
     basePrice: 1000,
     volatility: 0.00058,
     tickMs: 680,
+    rhythm: [1500, 880, 620, 1200, 420],
   },
   {
     label: "Volatility 75 Index",
@@ -35,6 +38,7 @@ const VOL_INDICES = [
     basePrice: 1000,
     volatility: 0.00078,
     tickMs: 560,
+    rhythm: [1200, 640, 420, 900, 320],
   },
   {
     label: "Volatility 100 Index",
@@ -42,6 +46,7 @@ const VOL_INDICES = [
     basePrice: 1000,
     volatility: 0.001,
     tickMs: 480,
+    rhythm: [980, 520, 360, 740, 260],
   },
   {
     label: "Volatility 10 (1s) Index",
@@ -49,6 +54,7 @@ const VOL_INDICES = [
     basePrice: 1000,
     volatility: 0.00036,
     tickMs: 260,
+    rhythm: [2000, 1400, 650, 420, 250],
   },
   {
     label: "Volatility 25 (1s) Index",
@@ -56,6 +62,7 @@ const VOL_INDICES = [
     basePrice: 1000,
     volatility: 0.00054,
     tickMs: 220,
+    rhythm: [1600, 900, 500, 300, 220],
   },
   {
     label: "Volatility 50 (1s) Index",
@@ -63,6 +70,7 @@ const VOL_INDICES = [
     basePrice: 1000,
     volatility: 0.00072,
     tickMs: 200,
+    rhythm: [1300, 760, 440, 260, 190],
   },
   {
     label: "Volatility 75 (1s) Index",
@@ -70,6 +78,7 @@ const VOL_INDICES = [
     basePrice: 1000,
     volatility: 0.00094,
     tickMs: 180,
+    rhythm: [1100, 620, 340, 220, 170],
   },
   {
     label: "Volatility 100 (1s) Index",
@@ -77,6 +86,7 @@ const VOL_INDICES = [
     basePrice: 1000,
     volatility: 0.00115,
     tickMs: 160,
+    rhythm: [900, 500, 280, 190, 150],
   },
   {
     label: "Crash 500 Index",
@@ -84,8 +94,16 @@ const VOL_INDICES = [
     basePrice: 500,
     volatility: 0.00066,
     tickMs: 520,
+    rhythm: [1900, 1450, 900, 520, 760],
   },
-  { label: "Boom 500 Index", value: "Boom 500", basePrice: 500, volatility: 0.00066, tickMs: 520 },
+  {
+    label: "Boom 500 Index",
+    value: "Boom 500",
+    basePrice: 500,
+    volatility: 0.00066,
+    tickMs: 520,
+    rhythm: [760, 520, 900, 1450, 1900],
+  },
 ] as const;
 const TYPES = ["Buy/Sell", "Even/Odd", "Matches/Differs", "Over/Under"] as const;
 type TradeType = (typeof TYPES)[number];
@@ -108,6 +126,7 @@ export function BinaryPanel() {
   const [price, setPrice] = useState(1000);
   const [tickTrail, setTickTrail] = useState<Tick[]>([]);
   const [digitHistory, setDigitHistory] = useState<number[]>([]);
+  const [rhythmStep, setRhythmStep] = useState(0);
 
   const place = useServerFn(placeTrade);
   const settle = useServerFn(settleTrade);
@@ -130,11 +149,19 @@ export function BinaryPanel() {
   useEffect(() => {
     priceRef.current = price;
   }, [price]);
+  useEffect(() => {
+    setRhythmStep(0);
+  }, [index]);
+  useEffect(() => {
+    const id = window.setInterval(() => setRhythmStep((step) => step + 1), 8500);
+    return () => window.clearInterval(id);
+  }, []);
 
   const market = VOL_INDICES.find((m) => m.value === index) ?? VOL_INDICES[1];
   const hour = new Date().getHours();
   const intradayPace = 0.76 + ((Math.sin((hour / 24) * Math.PI * 2 + 0.7) + 1) / 2) * 0.72;
-  const chartTickMs = Math.max(140, Math.round(market.tickMs / intradayPace));
+  const rhythmMs = market.rhythm[rhythmStep % market.rhythm.length];
+  const chartTickMs = Math.max(140, Math.round(rhythmMs / intradayPace));
   const chartVolatility = market.volatility * (0.88 + intradayPace * 0.22);
   const showDigitStats = type !== "Buy/Sell";
   const showDigitPicker = type === "Over/Under" || type === "Matches/Differs";
@@ -244,9 +271,7 @@ export function BinaryPanel() {
     if (won) {
       const profit = useStake * winProfitRate;
       sessionPnLRef.current += profit;
-      toast.success(
-        `WIN +$${profit.toFixed(2)} · session $${sessionPnLRef.current.toFixed(2)}`,
-      );
+      toast.success(`WIN +$${profit.toFixed(2)} · session $${sessionPnLRef.current.toFixed(2)}`);
     } else {
       sessionPnLRef.current -= useStake;
       toast.error(`LOSS -$${useStake} · session $${sessionPnLRef.current.toFixed(2)}`);

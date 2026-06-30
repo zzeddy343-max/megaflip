@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getMyProfile } from "@/lib/trades.functions";
+import { resetDemoBalance } from "@/lib/account.functions";
 import { createDeposit, createWithdrawal, syncPendingMpesaDeposits } from "@/lib/wallet.functions";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -15,6 +16,7 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   Clock,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getErrorMessage, logDebugEvent, serializeError } from "@/lib/debug-logger";
@@ -40,11 +42,16 @@ interface Tx {
   created_at: string;
 }
 
+type ProfileWithPhone = {
+  phone?: string | null;
+};
+
 function WalletPage() {
   const fetchProfile = useServerFn(getMyProfile);
   const depositFn = useServerFn(createDeposit);
   const withdrawFn = useServerFn(createWithdrawal);
   const syncDeposits = useServerFn(syncPendingMpesaDeposits);
+  const resetDemo = useServerFn(resetDemoBalance);
   const { data: profile } = useQuery({ queryKey: ["profile"], queryFn: () => fetchProfile() });
   const qc = useQueryClient();
   const navigate = useNavigate();
@@ -53,10 +60,12 @@ function WalletPage() {
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState(false);
   const [history, setHistory] = useState<Tx[]>([]);
+  const [resettingDemo, setResettingDemo] = useState(false);
 
   const activeAccount = (profile?.active_account ?? "real") as "real" | "demo";
   const isDemoWithdrawal = tab === "withdraw" && activeAccount === "demo";
-  const mpesaPhone = typeof (profile as any)?.phone === "string" ? (profile as any).phone : "";
+  const profilePhone = (profile as ProfileWithPhone | undefined)?.phone;
+  const mpesaPhone = typeof profilePhone === "string" ? profilePhone : "";
 
   const loadHistory = useCallback(async () => {
     const { data } = await supabase
@@ -185,6 +194,22 @@ function WalletPage() {
     navigate({ to: "/auth", replace: true });
   }
 
+  async function resetDemoAccount() {
+    if (!window.confirm("Reset your demo account back to $10,000 and clear demo activity?")) return;
+    setResettingDemo(true);
+    try {
+      await resetDemo();
+      toast.success("Demo account reset");
+      setAmount("");
+      qc.invalidateQueries({ queryKey: ["profile"] });
+      loadHistory();
+    } catch (e) {
+      toast.error(errorMessage(e));
+    } finally {
+      setResettingDemo(false);
+    }
+  }
+
   const balUSD =
     activeAccount === "real"
       ? Number(profile?.balance_usd ?? 0)
@@ -201,6 +226,17 @@ function WalletPage() {
           ~ KSh {(balUSD * USD_TO_KSH).toFixed(0)}
         </div>
       </div>
+
+      {activeAccount === "demo" && (
+        <button
+          onClick={resetDemoAccount}
+          disabled={resettingDemo}
+          className="w-full rounded-xl border border-primary/30 bg-card px-3 py-2 text-xs font-bold text-primary disabled:opacity-50 flex items-center justify-center gap-2"
+        >
+          <RotateCcw className="h-3.5 w-3.5" />
+          {resettingDemo ? "Resetting demo..." : "Reset demo balance"}
+        </button>
+      )}
 
       <div className="grid grid-cols-3 gap-1 bg-card border border-border rounded-xl p-1">
         {(
@@ -299,7 +335,7 @@ function WalletPage() {
                 ? `Deposit ${method === "mpesa" ? "KSh" : "$"}${amount || 0}`
                 : isDemoWithdrawal
                   ? "Demo withdrawals disabled"
-                : `Withdraw ${method === "mpesa" ? "KSh" : "$"}${amount || 0}`}
+                  : `Withdraw ${method === "mpesa" ? "KSh" : "$"}${amount || 0}`}
           </button>
         </>
       )}
@@ -367,13 +403,21 @@ function WalletPage() {
 }
 
 function statusLabel(tx: Tx) {
-  if (tx.kind === "withdraw" && tx.method === "mpesa" && ["pending", "processing"].includes(tx.status)) {
+  if (
+    tx.kind === "withdraw" &&
+    tx.method === "mpesa" &&
+    ["pending", "processing"].includes(tx.status)
+  ) {
     return "pending Safaricom";
   }
   if (tx.kind === "withdraw" && tx.method === "mpesa" && tx.status === "completed") {
     return "successful";
   }
-  if (tx.kind === "withdraw" && tx.method === "mpesa" && ["failed", "cancelled"].includes(tx.status)) {
+  if (
+    tx.kind === "withdraw" &&
+    tx.method === "mpesa" &&
+    ["failed", "cancelled"].includes(tx.status)
+  ) {
     return "failed";
   }
   return tx.status;
