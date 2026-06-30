@@ -300,14 +300,20 @@ async function sendB2cPayment(transaction: WalletTransaction, phone?: string) {
   };
 
   const response = await darajaRequest("/mpesa/b2c/v1/paymentrequest", payload, "b2c");
+  if (response.ResponseCode && response.ResponseCode !== "0") {
+    throw new Error(response.ResponseDescription ?? response.errorMessage ?? "B2C payment rejected");
+  }
+
   await recordPaymentRequest(transaction.id, "b2c", msisdn, payload, response);
-  await markTransaction(transaction.id, "processing", {
+  await markTransaction(transaction.id, "completed", {
     daraja_request_sent: true,
     b2c_request_accepted: true,
+    completed_on_b2c_acceptance: true,
     conversation_id: response.ConversationID ?? null,
     originator_conversation_id: response.OriginatorConversationID ?? null,
     response_description: response.ResponseDescription ?? null,
   });
+  await markPaymentRequestStatus(transaction.id, "b2c", "completed", response);
   return response;
 }
 
@@ -408,6 +414,21 @@ async function recordPaymentRequest(
     request_payload: requestPayload,
     response_payload: responsePayload,
   } as Record<string, unknown>);
+  if (error) throw new Error(error.message);
+}
+
+async function markPaymentRequestStatus(
+  transactionId: string,
+  requestType: PaymentRequestType,
+  status: WalletTransaction["status"],
+  responsePayload: Record<string, unknown>,
+) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { error } = await supabaseAdmin
+    .from("payment_requests")
+    .update({ status, response_payload: responsePayload } as Record<string, unknown>)
+    .eq("transaction_id", transactionId)
+    .eq("request_type", requestType);
   if (error) throw new Error(error.message);
 }
 

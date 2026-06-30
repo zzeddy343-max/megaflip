@@ -312,16 +312,16 @@ function WalletPage() {
             </div>
           )}
           {history.map((t) => {
-            const isDeposit = t.kind === "deposit";
+            const isCredit = ["deposit", "trade_payout", "admin_credit"].includes(t.kind);
             return (
               <div key={t.id} className="flex items-center gap-3 p-3">
                 <div
                   className={
                     "h-9 w-9 rounded-lg grid place-items-center " +
-                    (isDeposit ? "bg-bull/15 text-bull" : "bg-bear/15 text-bear")
+                    (isCredit ? "bg-bull/15 text-bull" : "bg-bear/15 text-bear")
                   }
                 >
-                  {isDeposit ? (
+                  {isCredit ? (
                     <ArrowDownLeft className="h-4 w-4" />
                   ) : (
                     <ArrowUpRight className="h-4 w-4" />
@@ -339,10 +339,10 @@ function WalletPage() {
                 <div className="text-right">
                   <div
                     className={
-                      "font-bold tabular-nums text-sm " + (isDeposit ? "text-bull" : "text-bear")
+                      "font-bold tabular-nums text-sm " + (isCredit ? "text-bull" : "text-bear")
                     }
                   >
-                    {isDeposit ? "+" : "-"}
+                    {isCredit ? "+" : "-"}
                     {t.currency === "KSH" ? "KSh" : "$"}
                     {Number(t.amount).toFixed(2)}
                   </div>

@@ -170,9 +170,15 @@ export const reconcileSuccessfulB2cCallbacks = createServerFn({ method: "POST" }
     await assertAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const { data: rows, error } = await (supabaseAdmin as any).rpc("reconcile_successful_b2c_callbacks");
+    const { data: callbackRows, error } = await (supabaseAdmin as any).rpc("reconcile_successful_b2c_callbacks");
     if (error) throw new Error(error.message);
-    return { ok: true, repaired: rows ?? [] };
+
+    const { data: acceptedRows, error: acceptedError } = await (supabaseAdmin as any).rpc(
+      "complete_accepted_b2c_withdrawals",
+    );
+    if (acceptedError) throw new Error(acceptedError.message);
+
+    return { ok: true, repaired: [...(callbackRows ?? []), ...(acceptedRows ?? [])] };
   });
 
 export const createAdminAccount = createServerFn({ method: "POST" })
