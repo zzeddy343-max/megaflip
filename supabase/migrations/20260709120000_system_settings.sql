@@ -9,125 +9,43 @@ create table if not exists public.system_settings (
 
 do $$
 begin
-  if not exists (
-    select 1
-    from information_schema.columns
-    where table_schema = 'public'
-      and table_name = 'system_settings'
-      and column_name = 'limits_min_stake_usd'
-  ) then
-    alter table public.system_settings add column limits_min_stake_usd numeric default 1;
-  end if;
+  alter table public.system_settings
+    add column if not exists limits_min_stake_usd numeric default 1;
 
-  if not exists (
-    select 1
-    from information_schema.columns
-    where table_schema = 'public'
-      and table_name = 'system_settings'
-      and column_name = 'limits_max_stake_usd'
-  ) then
-    alter table public.system_settings add column limits_max_stake_usd numeric default 1000;
-  end if;
+  alter table public.system_settings
+    add column if not exists limits_max_stake_usd numeric default 1000;
 
-  if not exists (
-    select 1
-    from information_schema.columns
-    where table_schema = 'public'
-      and table_name = 'system_settings'
-      and column_name = 'volatility_model_variant'
-  ) then
-    alter table public.system_settings add column volatility_model_variant text default 'standard';
-  end if;
+  alter table public.system_settings
+    add column if not exists volatility_model_variant text default 'standard';
 
-  if not exists (
-    select 1
-    from information_schema.columns
-    where table_schema = 'public'
-      and table_name = 'system_settings'
-      and column_name = 'user_segmentation_tags'
-  ) then
-    alter table public.system_settings add column user_segmentation_tags text default 'VIP,HIGH ROLLER';
-  end if;
+  alter table public.system_settings
+    add column if not exists user_segmentation_tags text default 'VIP,HIGH ROLLER';
 
-  if not exists (
-    select 1
-    from information_schema.columns
-    where table_schema = 'public'
-      and table_name = 'system_settings'
-      and column_name = 'liability_limits_market_usd'
-  ) then
-    alter table public.system_settings add column liability_limits_market_usd numeric default 5000;
-  end if;
+  alter table public.system_settings
+    add column if not exists liability_limits_market_usd numeric default 5000;
 
-  if not exists (
-    select 1
-    from information_schema.columns
-    where table_schema = 'public'
-      and table_name = 'system_settings'
-      and column_name = 'liability_limits_user_usd'
-  ) then
-    alter table public.system_settings add column liability_limits_user_usd numeric default 2000;
-  end if;
+  alter table public.system_settings
+    add column if not exists liability_limits_user_usd numeric default 2000;
 
-  if not exists (
-    select 1
-    from information_schema.columns
-    where table_schema = 'public'
-      and table_name = 'system_settings'
-      and column_name = 'fraud_detection_enabled'
-  ) then
-    alter table public.system_settings add column fraud_detection_enabled boolean default true;
-  end if;
+  alter table public.system_settings
+    add column if not exists fraud_detection_enabled boolean default true;
 
-  if not exists (
-    select 1
-    from information_schema.columns
-    where table_schema = 'public'
-      and table_name = 'system_settings'
-      and column_name = 'fraud_detection_rules'
-  ) then
-    alter table public.system_settings add column fraud_detection_rules text default 'bot,arbitrage';
-  end if;
+  alter table public.system_settings
+    add column if not exists fraud_detection_rules text default 'bot,arbitrage';
 
-  if not exists (
-    select 1
-    from information_schema.columns
-    where table_schema = 'public'
-      and table_name = 'system_settings'
-      and column_name = 'engagement_notification_triggers'
-  ) then
-    alter table public.system_settings add column engagement_notification_triggers text default 'trade,withdrawal';
-  end if;
+  alter table public.system_settings
+    add column if not exists engagement_notification_triggers text default 'trade,withdrawal';
 
-  if not exists (
-    select 1
-    from information_schema.columns
-    where table_schema = 'public'
-      and table_name = 'system_settings'
-      and column_name = 'caps_daily_loss_usd'
-  ) then
-    alter table public.system_settings add column caps_daily_loss_usd numeric default 10000;
-  end if;
+  alter table public.system_settings
+    add column if not exists caps_daily_loss_usd numeric default 10000;
 
-  if not exists (
-    select 1
-    from information_schema.columns
-    where table_schema = 'public'
-      and table_name = 'system_settings'
-      and column_name = 'caps_weekly_loss_usd'
-  ) then
-    alter table public.system_settings add column caps_weekly_loss_usd numeric default 50000;
-  end if;
+  alter table public.system_settings
+    add column if not exists caps_weekly_loss_usd numeric default 50000;
 
-  if not exists (
-    select 1
-    from information_schema.columns
-    where table_schema = 'public'
-      and table_name = 'system_settings'
-      and column_name = 'caps_monthly_loss_usd'
-  ) then
-    alter table public.system_settings add column caps_monthly_loss_usd numeric default 100000;
-  end if;
+  alter table public.system_settings
+    add column if not exists caps_monthly_loss_usd numeric default 100000;
+
+  perform pg_notify('pgrst', 'reload schema');
 end $$;
 
 insert into public.system_settings (
