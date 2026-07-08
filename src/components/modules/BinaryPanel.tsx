@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { LiveChart } from "@/components/LiveChart";
 import { Plus, Minus, Bot, User, Square, ChevronDown, CandlestickChart, LineChart } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
-import { placeTrade, settleTrade } from "@/lib/trades.functions";
-import { useQueryClient } from "@tanstack/react-query";
+import { placeTrade, settleTrade, getMyProfile } from "@/lib/trades.functions";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { logDebugEvent, serializeError } from "@/lib/debug-logger";
 
@@ -107,6 +107,21 @@ const VOL_INDICES = [
 ] as const;
 const TYPES = ["Buy/Sell", "Even/Odd", "Matches/Differs", "Over/Under"] as const;
 type TradeType = (typeof TYPES)[number];
+const INDICATOR_OPTIONS = [
+  "SMA",
+  "EMA",
+  "Bollinger",
+  "RSI",
+  "MACD",
+  "ATR",
+  "VWAP",
+  "Stochastic",
+  "Momentum",
+  "OBV",
+  "ADX",
+  "CCI",
+] as const;
+type IndicatorOption = (typeof INDICATOR_OPTIONS)[number];
 const QUICK = [1, 5, 10, 25, 50, 100];
 const DEFAULT_WIN_PROFIT_RATE = 0.2;
 
@@ -119,6 +134,8 @@ export function BinaryPanel() {
   const [chartMode, setChartMode] = useState<"line" | "candles">("candles");
   const [stake, setStake] = useState(10);
   const [selectedDigit, setSelectedDigit] = useState(5);
+  const [tickProgression, setTickProgression] = useState(3);
+  const [selectedIndicators, setSelectedIndicators] = useState<IndicatorOption[]>(["SMA", "RSI", "MACD"]);
   const [botMode, setBotMode] = useState(false);
   const [botRunning, setBotRunning] = useState(false);
   const [target, setTarget] = useState(200);
@@ -143,6 +160,12 @@ export function BinaryPanel() {
 
   const place = useServerFn(placeTrade);
   const settle = useServerFn(settleTrade);
+  const fetchProfile = useServerFn(getMyProfile);
+  const { data: profile } = useQuery({
+    queryKey: ["profile"],
+    queryFn: () => fetchProfile(),
+    staleTime: 20_000,
+  });
   const qc = useQueryClient();
 
   // refs for bot loop
@@ -174,7 +197,10 @@ export function BinaryPanel() {
   const market = VOL_INDICES.find((m) => m.value === index) ?? VOL_INDICES[1];
   const hour = new Date().getHours();
   const intradayPace = 0.76 + ((Math.sin((hour / 24) * Math.PI * 2 + 0.7) + 1) / 2) * 0.72;
-  const chartTickMs = Math.max(140, Math.round(market.tickMs / intradayPace));
+  const chartTickMs = Math.max(
+    market.tickMs < 280 ? 260 : 140,
+    Math.round(market.tickMs / intradayPace),
+  );
   const chartCandleMs = Math.max(1600, Math.min(3600, Math.round(chartTickMs * 4.5)));
   const chartVolatility = market.volatility * (0.88 + intradayPace * 0.22);
   const showDigitStats = type !== "Buy/Sell";
@@ -231,6 +257,7 @@ export function BinaryPanel() {
   const maxPct = Math.max(...digitStats.map((s) => s.pct));
   const minPct = Math.min(...digitStats.map((s) => s.pct));
   const currentDigit = digitHistory[digitHistory.length - 1] ?? 0;
+  const isDemoAccount = profile?.active_account === "demo";
   const chartNote = pendingTrade
     ? pendingTrade.status === "open"
       ? `Open ${pendingTrade.direction} ${pendingTrade.type} $${pendingTrade.stake}`
@@ -308,13 +335,14 @@ export function BinaryPanel() {
     // wait 5s for tick result
     await new Promise((r) => setTimeout(r, 5000));
     const finalDigit = Math.floor(priceRef.current * 10000) % 10;
-    let won = false;
-    if (ty === "Buy/Sell") won = direction === "BUY" ? Math.random() > 0.48 : Math.random() > 0.52;
-    else if (ty === "Even/Odd")
-      won = direction === "EVEN" ? finalDigit % 2 === 0 : finalDigit % 2 === 1;
-    else if (ty === "Over/Under") won = direction === "OVER" ? finalDigit > sel : finalDigit < sel;
-    else if (ty === "Matches/Differs")
-      won = direction === "MATCH" ? finalDigit === sel : finalDigit !== sel;
+    const won = simulateContractResult(
+      ty,
+      direction,
+      finalDigit,
+      sel,
+      isDemoAccount,
+      market.basePrice,
+    );
 
     const winProfitRate = profitRateForContract(ty, direction);
     try {
@@ -591,6 +619,7 @@ export function BinaryPanel() {
           badgeTone={badgeTone}
           note={chartNote ?? undefined}
           noteTone={chartNote ? chartNoteTone : "neutral"}
+          indicators={selectedIndicators}
           mode={chartMode}
           className="h-full"
         />
@@ -623,21 +652,25 @@ export function BinaryPanel() {
           Ticks
         </span>
         {tickTrail.length === 0 && <span className="text-xs text-muted-foreground">waiting…</span>}
-        {tickTrail.map((t, i) => (
-          <span
-            key={i}
-            className={
-              "shrink-0 h-7 w-7 grid place-items-center rounded-full text-xs font-extrabold tabular-nums border " +
-              (t.tone === "bull"
-                ? "bg-bull text-bull-foreground border-bull glow-bull"
-                : t.tone === "bear"
-                  ? "bg-bear text-bear-foreground border-bear glow-bear"
-                  : "bg-surface border-border text-muted-foreground")
-            }
-          >
-            {t.d}
-          </span>
-        ))}
+        {tickTrail.map((t, i) => {
+          const isRecent = i >= tickTrail.length - tickProgression;
+          return (
+            <span
+              key={i}
+              className={
+                "shrink-0 h-7 w-7 grid place-items-center rounded-full text-xs font-extrabold tabular-nums border transition-all " +
+                (isRecent ? "scale-110 shadow-lg" : "") +
+                (t.tone === "bull"
+                  ? " bg-bull text-bull-foreground border-bull glow-bull"
+                  : t.tone === "bear"
+                    ? " bg-bear text-bear-foreground border-bear glow-bear"
+                    : " bg-surface border-border text-muted-foreground")
+              }
+            >
+              {t.d}
+            </span>
+          );
+        })}
       </div>
 
       {/* Digit stats — circles like Deriv */}
@@ -697,6 +730,60 @@ export function BinaryPanel() {
               </div>
             </div>
           )}
+          <div className="rounded-3xl border border-border bg-surface p-3">
+            <div className="flex items-center justify-between gap-2 mb-2 text-[10px] uppercase font-bold tracking-wider text-muted-foreground">
+              <span>Chart indicators</span>
+              <span className="text-foreground/70">{selectedIndicators.length} selected</span>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {INDICATOR_OPTIONS.map((indicator) => {
+                const active = selectedIndicators.includes(indicator);
+                return (
+                  <button
+                    key={indicator}
+                    type="button"
+                    onClick={() =>
+                      setSelectedIndicators((prev) =>
+                        prev.includes(indicator)
+                          ? prev.filter((item) => item !== indicator)
+                          : [...prev, indicator],
+                      )
+                    }
+                    className={
+                      "rounded-xl border px-2 py-2 text-[11px] font-semibold transition " +
+                      (active
+                        ? "bg-primary/15 border-primary text-primary"
+                        : "bg-card border-border text-muted-foreground")
+                    }
+                  >
+                    {indicator}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div className="rounded-3xl border border-border bg-surface p-3">
+            <div className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground mb-2">
+              Tick progression
+            </div>
+            <div className="grid grid-cols-5 gap-1.5">
+              {Array.from({ length: 5 }, (_, i) => i + 1).map((count) => (
+                <button
+                  key={count}
+                  type="button"
+                  onClick={() => setTickProgression(count)}
+                  className={
+                    "rounded-xl py-2 text-xs font-bold transition " +
+                    (tickProgression === count
+                      ? "bg-primary text-primary-foreground border border-primary"
+                      : "bg-card border border-border text-muted-foreground")
+                  }
+                >
+                  {count}
+                </button>
+              ))}
+            </div>
+          </div>
           {showDigitPicker && (
             <>
               <div className="text-[10px] uppercase text-muted-foreground text-center font-bold tracking-wider">
@@ -856,6 +943,27 @@ function profitRateForContract(type: TradeType, direction: string) {
   if (type === "Buy/Sell" || type === "Even/Odd") return 0.7;
   if (type === "Matches/Differs") return direction === "MATCH" ? 4 : 0.06;
   return DEFAULT_WIN_PROFIT_RATE;
+}
+
+function simulateContractResult(
+  type: TradeType,
+  direction: string,
+  finalDigit: number,
+  selectedDigit: number,
+  isDemoAccount: boolean,
+  basePrice: number,
+) {
+  if (isDemoAccount) {
+    const baseWin = 0.75;
+    const bonus = type === "Buy/Sell" ? 0.06 : 0.1;
+    const feel = Math.min(0.95, baseWin + bonus + Math.max(0, (1000 - basePrice) / 10000));
+    return Math.random() < feel;
+  }
+
+  if (type === "Buy/Sell") return direction === "BUY" ? Math.random() > 0.48 : Math.random() > 0.52;
+  if (type === "Even/Odd") return direction === "EVEN" ? finalDigit % 2 === 0 : finalDigit % 2 === 1;
+  if (type === "Over/Under") return direction === "OVER" ? finalDigit > selectedDigit : finalDigit < selectedDigit;
+  return direction === "MATCH" ? finalDigit === selectedDigit : finalDigit !== selectedDigit;
 }
 
 function BotField({

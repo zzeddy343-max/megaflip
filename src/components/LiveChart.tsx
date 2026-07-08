@@ -12,6 +12,7 @@ interface Props {
   badgeTone?: "neutral" | "bull" | "bear";
   note?: string;
   noteTone?: "neutral" | "bull" | "bear";
+  indicators?: string[];
   mode?: "line" | "candles";
 }
 
@@ -32,6 +33,7 @@ export function LiveChart({
   badgeTone = "neutral",
   note,
   noteTone = "neutral",
+  indicators = [],
   mode = "line",
 }: Props) {
   const buildInitialPoints = useCallback(() => {
@@ -168,6 +170,23 @@ export function LiveChart({
       {badge !== undefined && (
         <div className={"absolute right-2 bottom-2 px-2 py-1 rounded-lg text-xs font-extrabold tabular-nums shadow-lg " + badgeBg}>
           {badge}
+        </div>
+      )}
+      {indicators.length > 0 && (
+        <div className="absolute left-2 top-2 space-y-1 text-[10px] text-muted-foreground">
+          <div className="font-bold uppercase tracking-[0.18em]">Indicators</div>
+          <div className="flex flex-wrap gap-1">
+            {indicators.slice(0, 6).map((indicator) => (
+              <span key={indicator} className="rounded-full bg-surface/90 px-2 py-0.5 text-[10px] font-semibold text-foreground border border-border">
+                {indicator}
+              </span>
+            ))}
+            {indicators.length > 6 && (
+              <span className="rounded-full bg-surface/90 px-2 py-0.5 text-[10px] font-semibold text-foreground border border-border">
+                +{indicators.length - 6}
+              </span>
+            )}
+          </div>
         </div>
       )}
       {note && (
