@@ -505,8 +505,23 @@ export const getAccountsReport = createServerFn({ method: "POST" })
     if (clientIds) profilesQ = profilesQ.in("id", clientIds);
     const { data: clients, error: clientsError } = await profilesQ;
     if (clientsError) throw new Error(clientsError.message);
+
     const scopedIds = (clients ?? []).map((c) => c.id as string);
-    if (scopedIds.length === 0) return { ...emptyAccountsReport(), clients: [] };
+    const { data: profileRoles, error: rolesError } = await supabaseAdmin
+      .from("user_roles")
+      .select("user_id,role")
+      .in("user_id", scopedIds);
+    if (rolesError) throw new Error(rolesError.message);
+
+    const excludedRoleIds = new Set(
+      (profileRoles ?? [])
+        .filter((row) => row.role === "agent" || row.role === "admin")
+        .map((row) => row.user_id as string),
+    );
+
+    const filteredClients = (clients ?? []).filter((client) => !excludedRoleIds.has(client.id as string));
+    const filteredIds = filteredClients.map((client) => client.id as string);
+    if (filteredIds.length === 0) return { ...emptyAccountsReport(), clients: [] };
 
     let from = data.start_date ? `${data.start_date}T00:00:00.000Z` : undefined;
     const to = data.end_date ? `${data.end_date}T23:59:59.999Z` : undefined;
@@ -528,7 +543,7 @@ export const getAccountsReport = createServerFn({ method: "POST" })
       .select(
         "id,user_id,kind,method,amount,currency,amount_usd,status,account_type,is_virtual,created_at",
       )
-      .in("user_id", scopedIds)
+      .in("user_id", filteredIds)
       .eq("account_type", "real")
       .eq("is_virtual", false)
       .in("status", ["completed"])
@@ -544,7 +559,7 @@ export const getAccountsReport = createServerFn({ method: "POST" })
       .select(
         "id,user_id,module,market,direction,stake,payout,status,account_type,created_at,closed_at",
       )
-      .in("user_id", scopedIds)
+      .in("user_id", filteredIds)
       .eq("account_type", "real")
       .order("created_at", { ascending: false })
       .limit(1000);
@@ -561,7 +576,7 @@ export const getAccountsReport = createServerFn({ method: "POST" })
     const { data: adjustments } = await adjustmentsQ;
     const manual = sumAdjustments((adjustments ?? []) as Array<Record<string, unknown>>);
 
-    const reportClients = (clients ?? []) as ReportClient[];
+    const reportClients = filteredClients as ReportClient[];
     const reportTransactions = (transactions ?? []) as ReportTransaction[];
     const reportTrades = (trades ?? []) as ReportTrade[];
     const clientMap = new Map(reportClients.map((c) => [c.id, c]));
@@ -577,7 +592,7 @@ export const getAccountsReport = createServerFn({ method: "POST" })
       return sum;
     }, 0);
 
-    const byClient = scopedIds.map((id) => {
+    const byClient = filteredIds.map((id) => {
       const profile = clientMap.get(id);
       const clientTx = reportTransactions.filter((t) => t.user_id === id);
       const clientTrades = reportTrades.filter((t) => t.user_id === id);
@@ -601,9 +616,9 @@ export const getAccountsReport = createServerFn({ method: "POST" })
     });
 
     return {
-      clients: clients ?? [],
+      clients: filteredClients,
       summary: {
-        clients: scopedIds.length,
+        clients: filteredIds.length,
         deposits_usd: sumUsd(deposits) + manual.deposits_usd,
         withdrawals_usd: sumUsd(withdrawals) + manual.withdrawals_usd,
         stakes_usd: reportTrades.reduce((s, t) => s + Number(t.stake ?? 0), 0) + manual.stakes_usd,
