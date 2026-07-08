@@ -620,33 +620,48 @@ function UsersTab() {
           <div className="p-6 text-center text-sm text-muted-foreground">No clients match.</div>
         )}
         {userRows.map((u) => (
-          <div key={u.id} className="flex items-center justify-between p-2.5 text-sm">
-            <button
-              type="button"
-              onClick={() => setSelectedClientId(u.id)}
-              className="flex min-w-0 flex-1 items-center justify-between text-left"
-            >
-              <div className="min-w-0 flex-1">
-                <div className="font-semibold truncate">
-                  {u.full_name || u.username || u.id.slice(0, 8)}
+          <div key={u.id} className="border-b border-border last:border-b-0">
+            <div className="flex items-center justify-between p-2.5 text-sm">
+              <button
+                type="button"
+                onClick={() => setSelectedClientId(u.id)}
+                className="flex min-w-0 flex-1 items-center justify-between text-left"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="font-semibold truncate">
+                    {u.full_name || u.username || u.id.slice(0, 8)}
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">
+                    Active: {u.active_account?.toUpperCase()} · joined {new Date(u.created_at).toLocaleDateString()}
+                  </div>
                 </div>
-                <div className="text-[10px] text-muted-foreground">
-                  Active: {u.active_account?.toUpperCase()} · joined {new Date(u.created_at).toLocaleDateString()}
+                <ChevronRight className="ml-2 h-4 w-4 text-muted-foreground" />
+              </button>
+              <div className="text-right ml-4">
+                <div className="font-bold tabular-nums text-bull text-xs">
+                  🇺🇸 ${Number(u.balance_usd).toFixed(2)}
+                </div>
+                <div className="font-bold tabular-nums text-primary text-[10px]">
+                  D ${Number(u.demo_balance_usd ?? 0).toFixed(2)}
                 </div>
               </div>
-              <ChevronRight className="ml-2 h-4 w-4 text-muted-foreground" />
-            </button>
-            <div className="text-right">
-              <div className="font-bold tabular-nums text-bull text-xs">
-                🇺🇸 ${Number(u.balance_usd).toFixed(2)}
-              </div>
-              <div className="font-bold tabular-nums text-primary text-[10px]">
-                D ${Number(u.demo_balance_usd ?? 0).toFixed(2)}
-              </div>
-              <div className="mt-1 flex flex-wrap justify-end gap-1">
+            </div>
+            <div className="px-2.5 pb-2.5 pt-0 space-y-2">
+              <div className="flex flex-wrap gap-1">
                 <span className="rounded-full border border-border px-1.5 py-0.5 text-[9px] font-bold uppercase text-muted-foreground">
                   {String(u.account_state ?? "active").toUpperCase()}
                 </span>
+                <button
+                  onClick={() => {
+                    if (window.confirm("Reset this user's real balance to zero?")) {
+                      resetMut.mutate({ user_id: u.id, account: "real" });
+                    }
+                  }}
+                  disabled={resetMut.isPending}
+                  className="rounded border border-primary/40 px-1.5 py-0.5 text-[9px] font-bold text-primary disabled:opacity-50"
+                >
+                  <RotateCcw className="mr-0.5 inline h-2.5 w-2.5" /> Real
+                </button>
                 <button
                   onClick={() => {
                     if (window.confirm("Reset this user's demo balance to zero?")) {
@@ -673,7 +688,7 @@ function UsersTab() {
                   <ShieldPlus className="mr-0.5 inline h-2.5 w-2.5" /> Admin
                 </button>
               </div>
-              <div className="mt-1 flex flex-wrap justify-end gap-1">
+              <div className="flex flex-wrap gap-1">
                 <select
                   value={freezeDaysByUser[u.id] ?? 1}
                   onChange={(e) => setFreezeDaysByUser((prev) => ({ ...prev, [u.id]: Number(e.target.value) }))}
