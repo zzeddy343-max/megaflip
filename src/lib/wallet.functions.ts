@@ -1,12 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import { calculateNetWithdrawalAmount, readSystemSettings, type SystemSettings } from "@/lib/system-settings";
 
 const USD_TO_KSH = 130;
-const MIN_DEPOSIT_USD = 3;
-const MIN_WITHDRAW_USD = 1;
-const MIN_DEPOSIT_KSH = MIN_DEPOSIT_USD * USD_TO_KSH;
-const MIN_WITHDRAW_KSH = MIN_WITHDRAW_USD * USD_TO_KSH;
 
 const MoneyInput = z.object({
   method: z.enum(["mpesa", "crypto"]),
@@ -38,17 +35,21 @@ export const createDeposit = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => MoneyInput.parse(d))
   .handler(async ({ data, context }) => {
+    const settings = await readSystemSettings();
     const phone = data.method === "mpesa" ? await getProfilePhone(context.userId) : data.phone;
-    validateMoney("deposit", data.method, data.amount, phone);
+    validateMoney("deposit", data.method, data.amount, phone, settings);
 
-    const tx = await createWalletTransaction({
-      userId: context.userId,
-      kind: "deposit",
-      method: data.method,
-      amount: data.amount,
-      account: data.account,
-      phone,
-    });
+    const tx = await createWalletTransaction(
+      {
+        userId: context.userId,
+        kind: "deposit",
+        method: data.method,
+        amount: data.amount,
+        account: data.account,
+        phone,
+      },
+      settings,
+    );
 
     if (data.method === "mpesa" && data.account === "real") {
       try {
@@ -71,21 +72,26 @@ export const createWithdrawal = createServerFn({ method: "POST" })
       throw new Error("Demo funds cannot be withdrawn. Switch to your real account to withdraw.");
     }
 
+    const settings = await readSystemSettings();
+    const netAmount = calculateNetWithdrawalAmount(data.amount, settings.withdrawal_tax_pct);
     const phone = data.method === "mpesa" ? await getProfilePhone(context.userId) : data.phone;
-    validateMoney("withdraw", data.method, data.amount, phone);
+    validateMoney("withdraw", data.method, data.amount, phone, settings);
 
-    const tx = await createWalletTransaction({
-      userId: context.userId,
-      kind: "withdraw",
-      method: data.method,
-      amount: data.amount,
-      account: data.account,
-      phone,
-    });
+    const tx = await createWalletTransaction(
+      {
+        userId: context.userId,
+        kind: "withdraw",
+        method: data.method,
+        amount: data.amount,
+        account: data.account,
+        phone,
+      },
+      settings,
+    );
 
     if (data.method === "mpesa" && data.account === "real") {
       try {
-        const daraja = await sendB2cPayment(tx, phone);
+        const daraja = await sendB2cPayment(tx, phone, netAmount);
         return { ok: true, transaction: tx, daraja };
       } catch (error) {
         await markTransaction(tx.id, "failed", { provider_error: getErrorMessage(error) });
@@ -154,14 +160,17 @@ export const syncPendingMpesaDeposits = createServerFn({ method: "POST" })
     return { ok: true, synced };
   });
 
-async function createWalletTransaction(input: {
-  userId: string;
-  kind: TransactionKind;
-  method: "mpesa" | "crypto";
-  amount: number;
-  account: "real" | "demo";
-  phone?: string;
-}) {
+async function createWalletTransaction(
+  input: {
+    userId: string;
+    kind: TransactionKind;
+    method: "mpesa" | "crypto";
+    amount: number;
+    account: "real" | "demo";
+    phone?: string;
+  },
+  settings: SystemSettings,
+) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   if (input.kind === "withdraw" && input.account === "demo") {
     throw new Error("Demo funds cannot be withdrawn. Switch to your real account to withdraw.");
@@ -169,6 +178,10 @@ async function createWalletTransaction(input: {
 
   const currency = input.method === "mpesa" ? "KSH" : "USD";
   const amountUsd = toUsd(input.amount, currency);
+  const netAmount =
+    input.kind === "withdraw"
+      ? calculateNetWithdrawalAmount(input.amount, settings.withdrawal_tax_pct)
+      : input.amount;
   const isVirtual = input.account === "demo";
   const providerPending = input.method === "mpesa" && input.account === "real";
   const status = providerPending ? "pending" : "completed";
@@ -205,6 +218,8 @@ async function createWalletTransaction(input: {
       meta: {
         phone: input.method === "mpesa" ? normalizeKenyanPhone(input.phone) : null,
         usd_to_ksh: USD_TO_KSH,
+        withdrawal_tax_pct: input.kind === "withdraw" ? settings.withdrawal_tax_pct : null,
+        net_amount: input.kind === "withdraw" ? netAmount : null,
       },
     } as Record<string, unknown>)
     .select("*")
@@ -283,14 +298,14 @@ async function queryStkStatus(checkoutRequestId: string) {
   return json as Record<string, unknown>;
 }
 
-async function sendB2cPayment(transaction: WalletTransaction, phone?: string) {
+async function sendB2cPayment(transaction: WalletTransaction, phone?: string, payoutAmount?: number) {
   const msisdn = normalizeKenyanPhone(phone);
   const env = getDarajaEnv("b2c");
   const payload = {
     InitiatorName: env.b2cInitiatorName,
     SecurityCredential: env.b2cSecurityCredential,
     CommandID: env.b2cCommandId,
-    Amount: Math.round(Number(transaction.amount)),
+    Amount: Math.round(Number(payoutAmount ?? transaction.amount)),
     PartyA: env.b2cShortcode,
     PartyB: msisdn,
     Remarks: "TRONIXOPTION withdrawal",
@@ -437,9 +452,10 @@ function validateMoney(
   method: "mpesa" | "crypto",
   amount: number,
   phone?: string,
+  settings?: SystemSettings,
 ) {
-  const minUsd = kind === "deposit" ? MIN_DEPOSIT_USD : MIN_WITHDRAW_USD;
-  const minKsh = kind === "deposit" ? MIN_DEPOSIT_KSH : MIN_WITHDRAW_KSH;
+  const minUsd = kind === "deposit" ? settings?.min_deposit_usd ?? 3 : settings?.min_withdrawal_usd ?? 3;
+  const minKsh = minUsd * USD_TO_KSH;
   const minimum = method === "mpesa" ? minKsh : minUsd;
   if (amount < minimum) {
     throw new Error(

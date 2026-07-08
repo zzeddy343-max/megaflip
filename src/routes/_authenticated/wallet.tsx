@@ -5,6 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { getMyProfile } from "@/lib/trades.functions";
 import { resetDemoBalance } from "@/lib/account.functions";
 import { createDeposit, createWithdrawal, syncPendingMpesaDeposits } from "@/lib/wallet.functions";
+import { getPublicSystemSettings } from "@/lib/system-settings";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Plus,
@@ -26,10 +27,6 @@ export const Route = createFileRoute("/_authenticated/wallet")({
 });
 
 const USD_TO_KSH = 130;
-const MIN_DEPOSIT_USD = 3;
-const MIN_WITHDRAW_USD = 1;
-const MIN_DEPOSIT_KSH = MIN_DEPOSIT_USD * USD_TO_KSH;
-const MIN_WITHDRAW_KSH = MIN_WITHDRAW_USD * USD_TO_KSH;
 
 interface Tx {
   id: string;
@@ -48,11 +45,13 @@ type ProfileWithPhone = {
 
 function WalletPage() {
   const fetchProfile = useServerFn(getMyProfile);
+  const fetchSettings = useServerFn(getPublicSystemSettings);
   const depositFn = useServerFn(createDeposit);
   const withdrawFn = useServerFn(createWithdrawal);
   const syncDeposits = useServerFn(syncPendingMpesaDeposits);
   const resetDemo = useServerFn(resetDemoBalance);
   const { data: profile } = useQuery({ queryKey: ["profile"], queryFn: () => fetchProfile() });
+  const { data: settings } = useQuery({ queryKey: ["system-settings"], queryFn: () => fetchSettings() });
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [tab, setTab] = useState<"deposit" | "withdraw" | "history">("deposit");
@@ -108,7 +107,7 @@ function WalletPage() {
       account: activeAccount,
       phone: mpesaPhone,
     });
-    const minimum = minimumAmount("deposit", method);
+    const minimum = minimumAmount("deposit", method, settings?.min_deposit_usd, settings?.min_withdrawal_usd);
     if (!amt || amt < minimum) {
       logDebugEvent("warn", "wallet.deposit", "Deposit validation failed", { method, amount: amt });
       toast.error(`Minimum deposit ${minimumLabel("deposit", method)}`);
@@ -155,7 +154,7 @@ function WalletPage() {
       return;
     }
 
-    const minimum = minimumAmount("withdraw", method);
+    const minimum = minimumAmount("withdraw", method, settings?.min_deposit_usd, settings?.min_withdrawal_usd);
     if (!amt || amt < minimum) {
       logDebugEvent("warn", "wallet.withdraw", "Withdraw validation failed", {
         method,
@@ -290,13 +289,14 @@ function WalletPage() {
               <input
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                placeholder={String(minimumAmount(tab, method))}
+                placeholder={String(minimumAmount(tab, method, settings?.min_deposit_usd, settings?.min_withdrawal_usd))}
                 inputMode="numeric"
                 className="flex-1 bg-transparent outline-none font-bold text-base tabular-nums"
               />
             </div>
             <div className="mt-1 text-[10px] text-muted-foreground">
-              Minimum {minimumLabel(tab, method)}
+              Minimum {minimumLabel(tab, method, settings?.min_deposit_usd, settings?.min_withdrawal_usd)}
+              {tab === "withdraw" && settings?.withdrawal_tax_pct != null ? ` · ${Number(settings.withdrawal_tax_pct).toFixed(0)}% retained by system` : ""}
             </div>
           </div>
 
@@ -424,13 +424,25 @@ function statusLabel(tx: Tx) {
   return tx.status;
 }
 
-function minimumAmount(kind: "deposit" | "withdraw", method: "mpesa" | "crypto") {
-  if (kind === "deposit") return method === "mpesa" ? MIN_DEPOSIT_KSH : MIN_DEPOSIT_USD;
-  return method === "mpesa" ? MIN_WITHDRAW_KSH : MIN_WITHDRAW_USD;
+function minimumAmount(
+  kind: "deposit" | "withdraw",
+  method: "mpesa" | "crypto",
+  minDepositUsd?: number,
+  minWithdrawalUsd?: number,
+) {
+  const depositUsd = Number(minDepositUsd ?? 3);
+  const withdrawUsd = Number(minWithdrawalUsd ?? 3);
+  if (kind === "deposit") return method === "mpesa" ? depositUsd * USD_TO_KSH : depositUsd;
+  return method === "mpesa" ? withdrawUsd * USD_TO_KSH : withdrawUsd;
 }
 
-function minimumLabel(kind: "deposit" | "withdraw", method: "mpesa" | "crypto") {
-  const amount = minimumAmount(kind, method);
+function minimumLabel(
+  kind: "deposit" | "withdraw",
+  method: "mpesa" | "crypto",
+  minDepositUsd?: number,
+  minWithdrawalUsd?: number,
+) {
+  const amount = minimumAmount(kind, method, minDepositUsd, minWithdrawalUsd);
   return method === "mpesa" ? `KSh ${amount}` : `$${amount}`;
 }
 

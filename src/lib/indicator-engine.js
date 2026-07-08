@@ -331,7 +331,7 @@ export function getIndicatorScale(indicator, value) {
 export function buildIndicatorPath(values, width, height, minPrice, rangePrice) {
   if (!values || values.length === 0) return "";
   
-  const points = [];
+  let points = [];
   let pathCommands = [];
 
   for (let i = 0; i < values.length; i++) {

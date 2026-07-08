@@ -41,6 +41,11 @@ import { toast } from "sonner";
 import { RouteError, RouteNotFound } from "@/components/RouteError";
 import { AccountsReportPanel } from "@/components/AccountsReportPanel";
 import { SupportPanel } from "@/components/SupportPanel";
+import {
+  calculateHouseEdgePercent,
+  getSystemSettings,
+  updateSystemSettings,
+} from "@/lib/system-settings";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({ meta: [{ title: "Admin — TRONIXOPTION" }] }),
@@ -98,7 +103,7 @@ type AdminRow = {
 };
 
 function AdminPage() {
-  const [tab, setTab] = useState<"accounts" | "users" | "trades" | "agents" | "support" | "admins">(
+  const [tab, setTab] = useState<"accounts" | "users" | "trades" | "agents" | "support" | "settings" | "admins">(
     "accounts",
   );
   const [titleClicks, setTitleClicks] = useState(0);
@@ -190,6 +195,7 @@ function AdminPage() {
             "trades",
             "agents",
             "support",
+            "settings",
             ...(showAdminVault ? (["admins"] as const) : []),
           ] as const
         ).map((k) => (
@@ -211,6 +217,7 @@ function AdminPage() {
       {tab === "trades" && <TradesTab />}
       {tab === "agents" && <AgentsTab />}
       {tab === "support" && <SupportPanel adminMode />}
+      {tab === "settings" && <SettingsTab />}
       {tab === "admins" && showAdminVault && (
         <>
           <HiddenPermanentSummary />
@@ -253,6 +260,81 @@ function HiddenPermanentSummary() {
         <RotateCcw className="h-4 w-4" />
         {resetMut.isPending ? "Resetting summary..." : "Reset visible summary"}
       </button>
+    </div>
+  );
+}
+
+function SettingsTab() {
+  const fetchSettings = useServerFn(getSystemSettings);
+  const updateSettings = useServerFn(updateSystemSettings);
+  const qc = useQueryClient();
+  const { data: settings, isLoading } = useQuery({
+    queryKey: ["system-settings"],
+    queryFn: () => fetchSettings(),
+  });
+  const [minDeposit, setMinDeposit] = useState("3");
+  const [minWithdrawal, setMinWithdrawal] = useState("3");
+  const [taxPct, setTaxPct] = useState("5");
+  const [rtp, setRtp] = useState("95");
+
+  useEffect(() => {
+    if (!settings) return;
+    setMinDeposit(String(Number(settings.min_deposit_usd ?? 3)));
+    setMinWithdrawal(String(Number(settings.min_withdrawal_usd ?? 3)));
+    setTaxPct(String(Number(settings.withdrawal_tax_pct ?? 5)));
+    setRtp(String(Number(settings.rtp_percent ?? 95)));
+  }, [settings]);
+
+  const saveMut = useMutation({
+    mutationFn: () =>
+      updateSettings({
+        data: {
+          min_deposit_usd: Number(minDeposit || 0),
+          min_withdrawal_usd: Number(minWithdrawal || 0),
+          withdrawal_tax_pct: Number(taxPct || 0),
+          rtp_percent: Number(rtp || 0),
+        },
+      }),
+    onSuccess: () => {
+      toast.success("System settings updated");
+      qc.invalidateQueries({ queryKey: ["system-settings"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Could not save settings"),
+  });
+
+  const houseEdge = calculateHouseEdgePercent(Number(rtp || 95));
+
+  return (
+    <div className="space-y-3 rounded-xl border border-border bg-card p-3">
+      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+        <SlidersHorizontal className="h-4 w-4 text-primary" /> System settings
+      </div>
+      <p className="text-[11px] text-muted-foreground">
+        Adjust minimum deposits and withdrawals, the system retention tax, and the global RTP/house edge for forex, aviator, crypto, and other modules.
+      </p>
+      {isLoading ? (
+        <div className="text-sm text-muted-foreground">Loading settings…</div>
+      ) : (
+        <div className="space-y-2">
+          <div className="grid gap-2 sm:grid-cols-2">
+            <LabeledInput label="Minimum deposit (USD)" value={minDeposit} onChange={setMinDeposit} />
+            <LabeledInput label="Minimum withdrawal (USD)" value={minWithdrawal} onChange={setMinWithdrawal} />
+            <LabeledInput label="Withdrawal tax (%)" value={taxPct} onChange={setTaxPct} />
+            <LabeledInput label="RTP (%)" value={rtp} onChange={setRtp} />
+          </div>
+          <div className="rounded-lg border border-border bg-surface/80 p-2 text-sm">
+            <div className="font-semibold">House edge</div>
+            <div className="text-muted-foreground">{houseEdge.toFixed(2)}% ({(100 - houseEdge).toFixed(2)}% RTP)</div>
+          </div>
+          <button
+            onClick={() => saveMut.mutate()}
+            disabled={saveMut.isPending}
+            className="w-full rounded-lg bg-primary px-3 py-2 text-sm font-bold text-primary-foreground disabled:opacity-50"
+          >
+            {saveMut.isPending ? "Saving..." : "Save system settings"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
