@@ -85,18 +85,38 @@ export const updateSystemSettings = createServerFn({ method: "POST" })
 
 export async function readSystemSettings(): Promise<SystemSettings> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data, error } = await supabaseAdmin
+
+  const allColumnsQuery = supabaseAdmin
     .from("system_settings")
     .select("id, min_deposit_usd, min_withdrawal_usd, withdrawal_tax_pct, rtp_percent, limits_min_stake_usd, limits_max_stake_usd, volatility_model_variant, user_segmentation_tags, liability_limits_market_usd, liability_limits_user_usd, fraud_detection_enabled, fraud_detection_rules, engagement_notification_triggers, caps_daily_loss_usd, caps_weekly_loss_usd, caps_monthly_loss_usd, updated_at")
     .eq("id", SYSTEM_SETTINGS_ID)
     .maybeSingle();
 
+  const fallbackQuery = supabaseAdmin
+    .from("system_settings")
+    .select("id, min_deposit_usd, min_withdrawal_usd, withdrawal_tax_pct, rtp_percent, updated_at")
+    .eq("id", SYSTEM_SETTINGS_ID)
+    .maybeSingle();
+
+  const { data, error } = await allColumnsQuery;
+  if (error && isMissingColumnError(error)) {
+    const fallback = await fallbackQuery;
+    if (fallback.error) throw new Error(fallback.error.message);
+    if (!fallback.data) {
+      return writeSystemSettings(DEFAULT_SYSTEM_SETTINGS, true);
+    }
+    return mapSystemSettingsRow(fallback.data);
+  }
   if (error) throw new Error(error.message);
 
   if (!data) {
     return writeSystemSettings(DEFAULT_SYSTEM_SETTINGS, true);
   }
 
+  return mapSystemSettingsRow(data);
+}
+
+function mapSystemSettingsRow(data: Record<string, unknown>): SystemSettings {
   return {
     ...DEFAULT_SYSTEM_SETTINGS,
     min_deposit_usd: Number(data.min_deposit_usd ?? DEFAULT_SYSTEM_SETTINGS.min_deposit_usd),
@@ -115,7 +135,7 @@ export async function readSystemSettings(): Promise<SystemSettings> {
     caps_daily_loss_usd: Number(data.caps_daily_loss_usd ?? DEFAULT_SYSTEM_SETTINGS.caps_daily_loss_usd),
     caps_weekly_loss_usd: Number(data.caps_weekly_loss_usd ?? DEFAULT_SYSTEM_SETTINGS.caps_weekly_loss_usd),
     caps_monthly_loss_usd: Number(data.caps_monthly_loss_usd ?? DEFAULT_SYSTEM_SETTINGS.caps_monthly_loss_usd),
-    updated_at: data.updated_at ?? null,
+    updated_at: (data.updated_at as string | null | undefined) ?? null,
   };
 }
 
@@ -124,7 +144,7 @@ export async function writeSystemSettings(
   initialize = false,
 ): Promise<SystemSettings> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const current = await readSystemSettings();
+  const current = initialize ? DEFAULT_SYSTEM_SETTINGS : await readSystemSettings();
   const nextSettings: SystemSettings = {
     ...current,
     ...changes,
@@ -146,36 +166,17 @@ export async function writeSystemSettings(
     caps_monthly_loss_usd: normalizeNumber(changes.caps_monthly_loss_usd ?? current.caps_monthly_loss_usd, 100000),
   };
 
-  if (initialize) {
-    const { error } = await supabaseAdmin.from("system_settings").insert({
-      id: SYSTEM_SETTINGS_ID,
-      min_deposit_usd: nextSettings.min_deposit_usd,
-      min_withdrawal_usd: nextSettings.min_withdrawal_usd,
-      withdrawal_tax_pct: nextSettings.withdrawal_tax_pct,
-      rtp_percent: nextSettings.rtp_percent,
-      limits_min_stake_usd: nextSettings.limits_min_stake_usd,
-      limits_max_stake_usd: nextSettings.limits_max_stake_usd,
-      volatility_model_variant: nextSettings.volatility_model_variant,
-      user_segmentation_tags: nextSettings.user_segmentation_tags,
-      liability_limits_market_usd: nextSettings.liability_limits_market_usd,
-      liability_limits_user_usd: nextSettings.liability_limits_user_usd,
-      fraud_detection_enabled: nextSettings.fraud_detection_enabled,
-      fraud_detection_rules: nextSettings.fraud_detection_rules,
-      engagement_notification_triggers: nextSettings.engagement_notification_triggers,
-      caps_daily_loss_usd: nextSettings.caps_daily_loss_usd,
-      caps_weekly_loss_usd: nextSettings.caps_weekly_loss_usd,
-      caps_monthly_loss_usd: nextSettings.caps_monthly_loss_usd,
-    } as Record<string, unknown>);
-    if (error) throw new Error(error.message);
-    return nextSettings;
-  }
-
-  const { error } = await supabaseAdmin.from("system_settings").upsert({
+  const basePayload = {
     id: SYSTEM_SETTINGS_ID,
     min_deposit_usd: nextSettings.min_deposit_usd,
     min_withdrawal_usd: nextSettings.min_withdrawal_usd,
     withdrawal_tax_pct: nextSettings.withdrawal_tax_pct,
     rtp_percent: nextSettings.rtp_percent,
+    updated_at: new Date().toISOString(),
+  } as Record<string, unknown>;
+
+  const fullPayload = {
+    ...basePayload,
     limits_min_stake_usd: nextSettings.limits_min_stake_usd,
     limits_max_stake_usd: nextSettings.limits_max_stake_usd,
     volatility_model_variant: nextSettings.volatility_model_variant,
@@ -188,8 +189,18 @@ export async function writeSystemSettings(
     caps_daily_loss_usd: nextSettings.caps_daily_loss_usd,
     caps_weekly_loss_usd: nextSettings.caps_weekly_loss_usd,
     caps_monthly_loss_usd: nextSettings.caps_monthly_loss_usd,
-    updated_at: new Date().toISOString(),
-  } as Record<string, unknown>);
+  } as Record<string, unknown>;
+
+  const { error } = initialize
+    ? await supabaseAdmin.from("system_settings").insert(fullPayload)
+    : await supabaseAdmin.from("system_settings").upsert(fullPayload);
+  if (error && isMissingColumnError(error)) {
+    const fallback = initialize
+      ? await supabaseAdmin.from("system_settings").insert(basePayload)
+      : await supabaseAdmin.from("system_settings").upsert(basePayload);
+    if (fallback.error) throw new Error(fallback.error.message);
+    return nextSettings;
+  }
   if (error) throw new Error(error.message);
 
   return nextSettings;
@@ -288,4 +299,9 @@ function normalizeNumber(value: number | null | undefined, fallback: number) {
 function normalizeText(value: string | null | undefined, fallback: string) {
   const parsed = String(value ?? fallback).trim();
   return parsed || fallback;
+}
+
+function isMissingColumnError(error: { message?: string | null }) {
+  const message = (error.message ?? "").toLowerCase();
+  return message.includes("does not exist") || message.includes("unknown column") || message.includes("could not find the column");
 }
