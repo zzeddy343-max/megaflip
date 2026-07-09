@@ -283,6 +283,10 @@ export function BinaryPanel() {
   const minPct = Math.min(...digitStats.map((s) => s.pct));
   const currentDigit = digitHistory[digitHistory.length - 1] ?? 0;
   const isDemoAccount = profile?.active_account === "demo";
+  const overRate = getProfitRateForContract({ type, direction: "OVER", digit: selectedDigit, ticks: settlementTicks });
+  const underRate = getProfitRateForContract({ type, direction: "UNDER", digit: selectedDigit, ticks: settlementTicks });
+  const payoutOver = (stake * (1 + overRate / 100)) || 0;
+  const payoutUnder = (stake * (1 + underRate / 100)) || 0;
   const chartNote = pendingTrade
     ? pendingTrade.status === "open"
       ? `Open ${pendingTrade.direction} ${pendingTrade.type} $${pendingTrade.stake} · ${settlementTickLabel}`
@@ -1040,6 +1044,19 @@ export function BinaryPanel() {
 
           {/* Action buttons - keep at bottom on desktop */}
           <div className="pt-1">
+            {/* Payout blocks */}
+            <div className="space-y-2">
+              <div className="bg-card border border-border rounded-xl p-3">
+                <div className="text-[10px] uppercase text-muted-foreground">Payout</div>
+                <div className="mt-2 text-sm font-semibold">{payoutOver.toFixed(2)} AUD</div>
+                <div className="mt-2 text-xs text-muted-foreground">Over · {overRate.toFixed(2)}%</div>
+              </div>
+              <div className="bg-card border border-border rounded-xl p-3">
+                <div className="text-[10px] uppercase text-muted-foreground">Payout</div>
+                <div className="mt-2 text-sm font-semibold">{payoutUnder.toFixed(2)} AUD</div>
+                <div className="mt-2 text-xs text-muted-foreground">Under · {underRate.toFixed(2)}%</div>
+              </div>
+            </div>
             {botRunning ? (
               <button
                 onClick={stopBot}
