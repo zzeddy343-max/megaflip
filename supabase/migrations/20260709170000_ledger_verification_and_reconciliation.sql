@@ -229,7 +229,7 @@ BEGIN
         'total_payouts', u.total_payouts
       )
     FROM public.user_ledger_summary u
-    WHERE (_account_type IS NULL OR u.account_type = _account_type)
+    WHERE (_account_type::public.account_type IS NULL OR u.account_type = _account_type::public.account_type)
       AND u.balance_discrepancy <> 0;
   ELSE
     -- Audit specific user
@@ -263,7 +263,7 @@ BEGIN
       )
     FROM public.user_ledger_summary u
     WHERE u.user_id = _user_id
-      AND (_account_type IS NULL OR u.account_type = _account_type);
+      AND (_account_type::public.account_type IS NULL OR u.account_type = _account_type::public.account_type);
   END IF;
 END;
 $$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public;
