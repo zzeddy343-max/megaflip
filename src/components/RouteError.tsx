@@ -8,6 +8,24 @@ export function RouteError({ error, reset }: { error: Error; reset: () => void }
     console.error(error);
   }, [error]);
 
+  function doHardReload() {
+    try {
+      if (typeof window !== "undefined") {
+        if (navigator && "serviceWorker" in navigator) {
+          navigator.serviceWorker.getRegistrations().then((regs) => regs.forEach((r) => r.unregister())).catch(() => {});
+        }
+        const u = new URL(window.location.href);
+        u.searchParams.set("_tbust", String(Date.now()));
+        window.location.replace(u.toString());
+      }
+    } catch (e) {
+      console.error(e);
+      window.location.reload();
+    }
+  }
+
+  const isDynamicImportFailure = error?.message?.includes?.("Failed to fetch dynamically imported module");
+
   return (
     <div className="min-h-[60vh] grid place-items-center px-4">
       <div className="max-w-sm w-full bg-card border border-border rounded-2xl p-5 text-center space-y-3">
@@ -20,14 +38,24 @@ export function RouteError({ error, reset }: { error: Error; reset: () => void }
         </p>
         <div className="flex gap-2">
           <button
-            onClick={() => { router.invalidate(); reset(); }}
+            onClick={() => {
+              if (isDynamicImportFailure) return doHardReload();
+              router.invalidate();
+              reset();
+            }}
             className="flex-1 py-2.5 rounded-lg bg-primary text-primary-foreground font-bold text-sm glow-primary"
           >
-            Try again
+            {isDynamicImportFailure ? "Hard reload" : "Try again"}
           </button>
-          <Link to="/binary" className="flex-1 py-2.5 rounded-lg bg-surface border border-border font-bold text-sm">
+          <button
+            onClick={() => {
+              if (isDynamicImportFailure) return doHardReload();
+              router.push('/binary');
+            }}
+            className="flex-1 py-2.5 rounded-lg bg-surface border border-border font-bold text-sm"
+          >
             Trade
-          </Link>
+          </button>
         </div>
       </div>
     </div>
