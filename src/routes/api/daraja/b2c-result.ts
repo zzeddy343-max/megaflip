@@ -105,6 +105,21 @@ async function findB2cPaymentRequest(
     if (match) return match;
   }
 
+  // Fallback: if we still don't have a payment_request, try to locate the
+  // transaction directly by the TRONIX reference (first 8 hex chars of UUID)
+  if (transactionRef) {
+    const { data: tx } = await supabaseAdmin
+      .from("transactions")
+      .select("id")
+      .ilike("id", `${transactionRef}%`)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (tx && (tx as any).id) {
+      return { id: null, transaction_id: (tx as any).id, request_payload: null } as any;
+    }
+  }
+
   return null;
 }
 

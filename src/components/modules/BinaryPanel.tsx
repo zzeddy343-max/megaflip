@@ -537,482 +537,451 @@ export function BinaryPanel() {
 
   return (
     <div className="space-y-3">
-      {/* Trade type tabs — fit 4 in row, no horizontal scroll */}
-      <div className="grid grid-cols-4 gap-1">
-        {TYPES.map((t) => (
-          <button
-            key={t}
-            onClick={() => setType(t)}
-            className={
-              "py-1.5 px-1 rounded-lg text-[10px] font-bold border transition " +
-              (type === t
-                ? "bg-primary/20 border-primary text-primary glow-primary"
-                : "bg-surface border-border text-muted-foreground")
-            }
-          >
-            {t === "Matches/Differs" ? "Match/Diff" : t}
-          </button>
-        ))}
-      </div>
-
-      {/* Index header */}
-      <div className="relative">
-        <button
-          onClick={() => setMarketOpen(!marketOpen)}
-          className="w-full bg-card border border-border rounded-xl p-3 flex items-center justify-between gap-3"
-        >
-          <div className="flex items-center gap-2 text-left min-w-0">
-            <div className="h-8 w-8 rounded-full bg-primary/20 text-primary grid place-items-center font-extrabold text-xs shrink-0">
-              V
-            </div>
-            <div className="min-w-0">
-              <div className="font-bold text-sm truncate">{market.label}</div>
-              <div className="text-[10px] text-muted-foreground">
-                {market.volatilityLabel} · {market.tickSpeedLabel}
-              </div>
-            </div>
-          </div>
-          <div className="text-right shrink-0">
-            <div className="font-mono font-bold tabular-nums">{price.toFixed(5)}</div>
-            <div className="text-xs text-muted-foreground">
-              last digit <span className="text-primary font-bold tabular-nums">{currentDigit}</span>{" "}
-              <span className="live-dot ml-1" />
-            </div>
-          </div>
-          <ChevronDown
-            className={
-              "h-4 w-4 text-muted-foreground shrink-0 transition " +
-              (marketOpen ? "rotate-180" : "")
-            }
-          />
-        </button>
-
-        {marketOpen && (
-          <div className="absolute z-20 mt-1 w-full bg-card border border-border rounded-xl divide-y divide-border max-h-72 overflow-auto shadow-xl">
-            {VOL_INDICES.map((m) => (
+      <div className="lg:grid lg:grid-cols-12 lg:gap-4">
+        {/* Left / Main column: chart + chart controls */}
+        <div className="lg:col-span-9 space-y-3">
+          {/* Trade type tabs */}
+          <div className="grid grid-cols-4 gap-1">
+            {TYPES.map((t) => (
               <button
-                key={m.value}
-                onClick={() => {
-                  setIndex(m.value);
-                  setMarketOpen(false);
-                }}
-                className="w-full text-left p-2.5 hover:bg-accent flex items-center justify-between gap-2 text-sm"
+                key={t}
+                onClick={() => setType(t)}
+                className={
+                  "py-1.5 px-1 rounded-lg text-[10px] font-bold border transition " +
+                  (type === t
+                    ? "bg-primary/20 border-primary text-primary glow-primary"
+                    : "bg-surface border-border text-muted-foreground")
+                }
               >
-                <span className="font-semibold truncate">{m.label}</span>
-                <span className="text-[10px] text-muted-foreground shrink-0">
-                  {m.volatilityLabel} · {m.tickSpeedLabel}
-                </span>
+                {t === "Matches/Differs" ? "Match/Diff" : t}
               </button>
             ))}
           </div>
-        )}
-      </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        <button
-          onClick={() => setChartMode("line")}
-          className={
-            "py-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 " +
-            (chartMode === "line"
-              ? "bg-primary/20 text-primary border-primary/50"
-              : "bg-card border-border text-muted-foreground")
-          }
-        >
-          <LineChart className="h-3.5 w-3.5" /> Line
-        </button>
-        <button
-          onClick={() => setChartMode("candles")}
-          className={
-            "py-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 " +
-            (chartMode === "candles"
-              ? "bg-primary/20 text-primary border-primary/50"
-              : "bg-card border-border text-muted-foreground")
-          }
-        >
-          <CandlestickChart className="h-3.5 w-3.5" /> Candles
-        </button>
-      </div>
+          {/* Index header */}
+          <div className="relative">
+            <button
+              onClick={() => setMarketOpen(!marketOpen)}
+              className="w-full bg-card border border-border rounded-xl p-3 flex items-center justify-between gap-3"
+            >
+              <div className="flex items-center gap-2 text-left min-w-0">
+                <div className="h-8 w-8 rounded-full bg-primary/20 text-primary grid place-items-center font-extrabold text-xs shrink-0">
+                  V
+                </div>
+                <div className="min-w-0">
+                  <div className="font-bold text-sm truncate">{market.label}</div>
+                  <div className="text-[10px] text-muted-foreground">
+                    {market.volatilityLabel} · {market.tickSpeedLabel}
+                  </div>
+                </div>
+              </div>
+              <div className="text-right shrink-0">
+                <div className="font-mono font-bold tabular-nums">{price.toFixed(5)}</div>
+                <div className="text-xs text-muted-foreground">
+                  last digit <span className="text-primary font-bold tabular-nums">{currentDigit}</span>{" "}
+                  <span className="live-dot ml-1" />
+                </div>
+              </div>
+              <ChevronDown
+                className={
+                  "h-4 w-4 text-muted-foreground shrink-0 transition " +
+                  (marketOpen ? "rotate-180" : "")
+                }
+              />
+            </button>
 
-      <div className="bg-card border border-border rounded-xl p-3">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <div className="text-[10px] uppercase text-muted-foreground tracking-wider font-bold">
-              Chart controls
-            </div>
-            <div className="text-sm font-semibold">Indicators & tick progression</div>
-          </div>
-          <button
-            type="button"
-            onClick={() => setChartOptionsOpen((prev) => !prev)}
-            className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-foreground"
-          >
-            <span>{chartOptionsOpen ? "Hide" : "Show"} options</span>
-            <ChevronDown className={"h-4 w-4 transition " + (chartOptionsOpen ? "rotate-180" : "")} />
-          </button>
-        </div>
-        <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-muted-foreground">
-          <span className="rounded-full border border-border bg-surface px-2 py-1">Indicators: {selectedIndicators.length}</span>
-          <span className="rounded-full border border-border bg-surface px-2 py-1">Progression: {settlementTicks} tick{settlementTicks === 1 ? "" : "s"}</span>
-          {showDigitPicker && (
-            <span className="rounded-full border border-border bg-surface px-2 py-1">Selected digit: {selectedDigit}</span>
-          )}
-        </div>
-        {chartOptionsOpen && (
-          <div className="mt-3 space-y-3">
-            <div>
-              <div className="text-[10px] uppercase text-muted-foreground tracking-wider font-bold mb-2">
-                Chart indicators
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                {INDICATOR_OPTIONS.map((indicator) => {
-                  const active = selectedIndicators.includes(indicator);
-                  return (
-                    <button
-                      key={indicator}
-                      type="button"
-                      onClick={() =>
-                        setSelectedIndicators((prev) =>
-                          prev.includes(indicator)
-                            ? prev.filter((item) => item !== indicator)
-                            : [...prev, indicator],
-                        )
-                      }
-                      className={
-                        "rounded-xl border px-2 py-2 text-[11px] font-semibold transition " +
-                        (active
-                          ? "bg-primary/15 border-primary text-primary"
-                          : "bg-card border-border text-muted-foreground")
-                      }
-                    >
-                      {indicator}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-            <div>
-              <div className="text-[10px] uppercase text-muted-foreground tracking-wider font-bold mb-2">
-                Tick progression
-              </div>
-              <div className="grid grid-cols-5 gap-1.5">
-                {Array.from({ length: 5 }, (_, i) => i + 1).map((count) => (
+            {marketOpen && (
+              <div className="absolute z-20 mt-1 w-full bg-card border border-border rounded-xl divide-y divide-border max-h-72 overflow-auto shadow-xl">
+                {VOL_INDICES.map((m) => (
                   <button
-                    key={count}
-                    type="button"
-                    onClick={() => setTickProgression(count)}
-                    className={
-                      "rounded-xl py-2 text-xs font-bold transition " +
-                      (tickProgression === count
-                        ? "bg-primary text-primary-foreground border border-primary"
-                        : "bg-card border border-border text-muted-foreground")
-                    }
+                    key={m.value}
+                    onClick={() => {
+                      setIndex(m.value);
+                      setMarketOpen(false);
+                    }}
+                    className="w-full text-left p-2.5 hover:bg-accent flex items-center justify-between gap-2 text-sm"
                   >
-                    {count}
+                    <span className="font-semibold truncate">{m.label}</span>
+                    <span className="text-[10px] text-muted-foreground shrink-0">
+                      {m.volatilityLabel} · {m.tickSpeedLabel}
+                    </span>
                   </button>
                 ))}
-              </div>
-            </div>
-            {showDigitPicker && (
-              <div>
-                <div className="text-[10px] uppercase text-muted-foreground tracking-wider font-bold mb-2">
-                  Select digit
-                </div>
-                <div className="grid grid-cols-10 gap-1">
-                  {Array.from({ length: 10 }).map((_, d) => (
-                    <button
-                      key={d}
-                      onClick={() => setSelectedDigit(d)}
-                      className={
-                        "h-9 rounded-full font-bold text-sm border-2 " +
-                        (selectedDigit === d
-                          ? "bg-primary text-primary-foreground border-primary glow-primary"
-                          : "bg-surface border-border")
-                      }
-                    >
-                      {d}
-                    </button>
-                  ))}
-                </div>
               </div>
             )}
           </div>
-        )}
-      </div>
 
-      <div className="bg-card border border-border rounded-xl p-2 h-56 relative">
-        <LiveChart
-          basePrice={market.basePrice}
-          volatility={chartVolatility}
-          tickMs={chartTickMs}
-          candleMs={chartCandleMs}
-          onPrice={setPrice}
-          badge={`${currentDigit}`}
-          badgeTone={badgeTone}
-          note={chartNote ?? undefined}
-          noteTone={chartNote ? chartNoteTone : "neutral"}
-          indicators={selectedIndicators}
-          mode={chartMode}
-          className="h-full"
-        />
-      </div>
-
-      {(placing || pendingTrade?.status === "open" || settleNote) && (
-        <div className="bg-card border border-border rounded-xl p-3 text-sm space-y-1 text-foreground">
-          {placing && <div className="text-muted-foreground">Placing trade… please wait.</div>}
-          {pendingTrade?.status === "open" && (
-            <div className="rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-primary font-semibold">
-              Contract placed: {pendingTrade.direction} {pendingTrade.type} ${pendingTrade.stake} — waiting for result.
-            </div>
-          )}
-          {pendingTrade?.status === "settled" && settleNote && (
-            <div className={
-              "rounded-xl px-3 py-2 font-semibold " +
-              (pendingTrade.result === "win"
-                ? "bg-bull/10 text-bull border border-bull/30"
-                : "bg-bear/10 text-bear border border-bear/30")
-            }>
-              {settleNote} · settled on digit {currentDigit}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Tick trail — shows each tick's last digit colored by win/loss */}
-      <div className="bg-card border border-border rounded-xl px-2 py-2 flex items-center gap-1.5 overflow-x-auto">
-        <span className="text-[10px] uppercase text-muted-foreground font-bold tracking-wider shrink-0 mr-1">
-          Ticks
-        </span>
-        {tickTrail.length === 0 && <span className="text-xs text-muted-foreground">waiting…</span>}
-        {tickTrail.map((t, i) => {
-          const highlightCount = tickProgression + 1;
-          const isRecent = i >= tickTrail.length - highlightCount;
-          return (
-            <span
-              key={i}
+          {/* Chart mode + controls */}
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => setChartMode("line")}
               className={
-                "shrink-0 h-7 w-7 grid place-items-center rounded-full text-xs font-extrabold tabular-nums border transition-all " +
-                (isRecent ? "scale-110 shadow-lg" : "") +
-                (t.tone === "bull"
-                  ? " bg-bull text-bull-foreground border-bull glow-bull"
-                  : t.tone === "bear"
-                    ? " bg-bear text-bear-foreground border-bear glow-bear"
-                    : " bg-surface border-border text-muted-foreground")
+                "py-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 " +
+                (chartMode === "line"
+                  ? "bg-primary/20 text-primary border-primary/50"
+                  : "bg-card border-border text-muted-foreground")
               }
             >
-              {t.d}
-            </span>
-          );
-        })}
-      </div>
-
-      {/* Digit stats — circles like Deriv */}
-      {showDigitStats && (
-        <div className="bg-card border border-border rounded-xl p-3 space-y-3">
-          <div className="text-[10px] uppercase text-muted-foreground font-bold tracking-wider">
-            Last 100 digits
+              <LineChart className="h-3.5 w-3.5" /> Line
+            </button>
+            <button
+              onClick={() => setChartMode("candles")}
+              className={
+                "py-2 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 " +
+                (chartMode === "candles"
+                  ? "bg-primary/20 text-primary border-primary/50"
+                  : "bg-card border-border text-muted-foreground")
+              }
+            >
+              <CandlestickChart className="h-3.5 w-3.5" /> Candles
+            </button>
           </div>
-          <div className="grid grid-cols-10 gap-1">
-            {digitStats.map(({ d, pct }) => {
-              const isMax = pct === maxPct;
-              const isMin = pct === minPct;
-              const isCurrent = d === currentDigit;
-              return (
-                <div key={d} className="flex flex-col items-center gap-1">
-                  <div
-                    className={
-                      "h-9 w-9 rounded-full grid place-items-center text-sm font-extrabold border-2 transition-all " +
-                      (isCurrent ? "ring-2 ring-primary digit-pop " : "") +
-                      (isMax
-                        ? "bg-bull/20 border-bull text-bull"
-                        : isMin
-                          ? "bg-bear/15 border-bear/60 text-bear"
-                          : "bg-surface border-border text-foreground")
-                    }
-                  >
-                    {d}
-                  </div>
-                  <span className="text-[9px] font-mono tabular-nums text-muted-foreground">
-                    {pct.toFixed(1)}%
-                  </span>
+
+          <div className="bg-card border border-border rounded-xl p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-[10px] uppercase text-muted-foreground tracking-wider font-bold">
+                  Chart controls
                 </div>
+                <div className="text-sm font-semibold">Indicators & tick progression</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setChartOptionsOpen((prev) => !prev)}
+                className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-foreground"
+              >
+                <span>{chartOptionsOpen ? "Hide" : "Show"} options</span>
+                <ChevronDown className={"h-4 w-4 transition " + (chartOptionsOpen ? "rotate-180" : "")} />
+              </button>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-muted-foreground">
+              <span className="rounded-full border border-border bg-surface px-2 py-1">Indicators: {selectedIndicators.length}</span>
+              <span className="rounded-full border border-border bg-surface px-2 py-1">Progression: {settlementTicks} tick{settlementTicks === 1 ? "" : "s"}</span>
+              {showDigitPicker && (
+                <span className="rounded-full border border-border bg-surface px-2 py-1">Selected digit: {selectedDigit}</span>
+              )}
+            </div>
+            {chartOptionsOpen && (
+              <div className="mt-3 space-y-3">
+                <div>
+                  <div className="text-[10px] uppercase text-muted-foreground tracking-wider font-bold mb-2">
+                    Chart indicators
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {INDICATOR_OPTIONS.map((indicator) => {
+                      const active = selectedIndicators.includes(indicator);
+                      return (
+                        <button
+                          key={indicator}
+                          type="button"
+                          onClick={() =>
+                            setSelectedIndicators((prev) =>
+                              prev.includes(indicator)
+                                ? prev.filter((item) => item !== indicator)
+                                : [...prev, indicator],
+                            )
+                          }
+                          className={
+                            "rounded-xl border px-2 py-2 text-[11px] font-semibold transition " +
+                            (active
+                              ? "bg-primary/15 border-primary text-primary"
+                              : "bg-card border-border text-muted-foreground")
+                          }
+                        >
+                          {indicator}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase text-muted-foreground tracking-wider font-bold mb-2">
+                    Tick progression
+                  </div>
+                  <div className="grid grid-cols-5 gap-1.5">
+                    {Array.from({ length: 5 }, (_, i) => i + 1).map((count) => (
+                      <button
+                        key={count}
+                        type="button"
+                        onClick={() => setTickProgression(count)}
+                        className={
+                          "rounded-xl py-2 text-xs font-bold transition " +
+                          (tickProgression === count
+                            ? "bg-primary text-primary-foreground border border-primary"
+                            : "bg-card border border-border text-muted-foreground")
+                        }
+                      >
+                        {count}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {showDigitPicker && (
+                  <div>
+                    <div className="text-[10px] uppercase text-muted-foreground tracking-wider font-bold mb-2">
+                      Select digit
+                    </div>
+                    <div className="grid grid-cols-10 gap-1">
+                      {Array.from({ length: 10 }).map((_, d) => (
+                        <button
+                          key={d}
+                          onClick={() => setSelectedDigit(d)}
+                          className={
+                            "h-9 rounded-full font-bold text-sm border-2 " +
+                            (selectedDigit === d
+                              ? "bg-primary text-primary-foreground border-primary glow-primary"
+                              : "bg-surface border-border")
+                          }
+                        >
+                          {d}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Chart container */}
+          <div className="bg-card border border-border rounded-xl p-2 relative lg:min-h-[520px]">
+            <LiveChart
+              basePrice={market.basePrice}
+              volatility={chartVolatility}
+              tickMs={chartTickMs}
+              candleMs={chartCandleMs}
+              onPrice={setPrice}
+              badge={`${currentDigit}`}
+              badgeTone={badgeTone}
+              note={chartNote ?? undefined}
+              noteTone={chartNote ? chartNoteTone : "neutral"}
+              indicators={selectedIndicators}
+              mode={chartMode}
+              className="h-full"
+            />
+          </div>
+
+          {/* Tick trail */}
+          <div className="bg-card border border-border rounded-xl px-2 py-2 flex items-center gap-1.5 overflow-x-auto">
+            <span className="text-[10px] uppercase text-muted-foreground font-bold tracking-wider shrink-0 mr-1">
+              Ticks
+            </span>
+            {tickTrail.length === 0 && <span className="text-xs text-muted-foreground">waiting…</span>}
+            {tickTrail.map((t, i) => {
+              const highlightCount = tickProgression + 1;
+              const isRecent = i >= tickTrail.length - highlightCount;
+              return (
+                <span
+                  key={i}
+                  className={
+                    "shrink-0 h-7 w-7 grid place-items-center rounded-full text-xs font-extrabold tabular-nums border transition-all " +
+                    (isRecent ? "scale-110 shadow-lg" : "") +
+                    (t.tone === "bull"
+                      ? " bg-bull text-bull-foreground border-bull glow-bull"
+                      : t.tone === "bear"
+                        ? " bg-bear text-bear-foreground border-bear glow-bear"
+                        : " bg-surface border-border text-muted-foreground")
+                  }
+                >
+                  {t.d}
+                </span>
               );
             })}
           </div>
-          {type === "Even/Odd" && (
-            <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-lg bg-bull/10 border border-bull/30 p-2 text-center">
-                <div className="text-[10px] uppercase text-bull font-bold">Even</div>
-                <div className="text-lg font-extrabold tabular-nums">
-                  {digitStats
-                    .filter((s) => s.d % 2 === 0)
-                    .reduce((sum, s) => sum + s.pct, 0)
-                    .toFixed(1)}
-                  %
-                </div>
-              </div>
-              <div className="rounded-lg bg-bear/10 border border-bear/30 p-2 text-center">
-                <div className="text-[10px] uppercase text-bear font-bold">Odd</div>
-                <div className="text-lg font-extrabold tabular-nums">
-                  {digitStats
-                    .filter((s) => s.d % 2 === 1)
-                    .reduce((sum, s) => sum + s.pct, 0)
-                    .toFixed(1)}
-                  %
-                </div>
-              </div>
-            </div>
-          )}
-          {showDigitPicker && (
-            <>
-              <div className="text-[10px] uppercase text-muted-foreground text-center font-bold tracking-wider">
-                Select digit (0-9)
+
+          {/* Digit stats */}
+          {showDigitStats && (
+            <div className="bg-card border border-border rounded-xl p-3 space-y-3">
+              <div className="text-[10px] uppercase text-muted-foreground font-bold tracking-wider">
+                Last 100 digits
               </div>
               <div className="grid grid-cols-10 gap-1">
-                {Array.from({ length: 10 }).map((_, d) => (
-                  <button
-                    key={d}
-                    onClick={() => setSelectedDigit(d)}
-                    className={
-                      "h-9 rounded-full font-bold text-sm border-2 " +
-                      (selectedDigit === d
-                        ? "bg-primary text-primary-foreground border-primary glow-primary"
-                        : "bg-surface border-border")
-                    }
-                  >
-                    {d}
-                  </button>
-                ))}
+                {digitStats.map(({ d, pct }) => {
+                  const isMax = pct === maxPct;
+                  const isMin = pct === minPct;
+                  const isCurrent = d === currentDigit;
+                  return (
+                    <div key={d} className="flex flex-col items-center gap-1">
+                      <div
+                        className={
+                          "h-9 w-9 rounded-full grid place-items-center text-sm font-extrabold border-2 transition-all " +
+                          (isCurrent ? "ring-2 ring-primary digit-pop " : "") +
+                          (isMax
+                            ? "bg-bull/20 border-bull text-bull"
+                            : isMin
+                              ? "bg-bear/15 border-bear/60 text-bear"
+                              : "bg-surface border-border text-foreground")
+                        }
+                      >
+                        {d}
+                      </div>
+                      <span className="text-[9px] font-mono tabular-nums text-muted-foreground">
+                        {pct.toFixed(1)}%
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
-            </>
+              {type === "Even/Odd" && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-lg bg-bull/10 border border-bull/30 p-2 text-center">
+                    <div className="text-[10px] uppercase text-bull font-bold">Even</div>
+                    <div className="text-lg font-extrabold tabular-nums">
+                      {digitStats
+                        .filter((s) => s.d % 2 === 0)
+                        .reduce((sum, s) => sum + s.pct, 0)
+                        .toFixed(1)}
+                      %
+                    </div>
+                  </div>
+                  <div className="rounded-lg bg-bear/10 border border-bear/30 p-2 text-center">
+                    <div className="text-[10px] uppercase text-bear font-bold">Odd</div>
+                    <div className="text-lg font-extrabold tabular-nums">
+                      {digitStats
+                        .filter((s) => s.d % 2 === 1)
+                        .reduce((sum, s) => sum + s.pct, 0)
+                        .toFixed(1)}
+                      %
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </div>
-      )}
 
-      {/* Mode */}
-      <div className="grid grid-cols-2 gap-2">
-        <button
-          onClick={() => setBotMode(false)}
-          disabled={botRunning}
-          className={
-            "py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 " +
-            (!botMode
-              ? "bg-primary text-primary-foreground glow-primary"
-              : "bg-card border border-border text-muted-foreground")
-          }
-        >
-          <User className="h-4 w-4" /> Manual Trading
-        </button>
-        <button
-          onClick={() => setBotMode(true)}
-          disabled={botRunning}
-          className={
-            "py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 " +
-            (botMode
-              ? "bg-primary text-primary-foreground glow-primary"
-              : "bg-card border border-border text-muted-foreground")
-          }
-        >
-          <Bot className="h-4 w-4" /> Smart Trading Bot
-        </button>
-      </div>
-
-      {/* Stake */}
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => setStake(Math.max(1, stake - 1))}
-          className="h-12 w-12 rounded-xl bg-surface border border-border grid place-items-center"
-        >
-          <Minus />
-        </button>
-        <div className="flex-1 bg-card border-2 border-primary rounded-xl py-2 text-center">
-          <div className="text-[10px] uppercase text-muted-foreground tracking-wider">Stake $</div>
-          <div className="text-2xl font-extrabold tabular-nums">{stake}</div>
-        </div>
-        <button
-          onClick={() => setStake(stake + 1)}
-          className="h-12 w-12 rounded-xl bg-surface border border-border grid place-items-center"
-        >
-          <Plus />
-        </button>
-      </div>
-
-      <div className="grid grid-cols-6 gap-1.5">
-        {QUICK.map((q) => (
-          <button
-            key={q}
-            onClick={() => setStake(q)}
-            className={
-              "py-1.5 rounded-lg border text-xs font-bold " +
-              (stake === q
-                ? "bg-primary/20 border-primary text-primary"
-                : "bg-card border-border text-muted-foreground")
-            }
-          >
-            ${q}
-          </button>
-        ))}
-      </div>
-
-      {botMode && (
-        <div className="grid grid-cols-3 gap-2">
-          <BotField
-            label="Target profit"
-            prefix="$"
-            value={target}
-            onChange={setTarget}
-            accent="text-bull"
-          />
-          <BotField
-            label="Stop loss"
-            prefix="$"
-            value={stop}
-            onChange={setStop}
-            accent="text-bear"
-          />
-          <BotField
-            label="Multiplier"
-            prefix="x"
-            value={martingale}
-            onChange={setMartingale}
-            accent="text-primary"
-          />
-        </div>
-      )}
-
-      {/* Action buttons */}
-      {botRunning ? (
-        <button
-          onClick={stopBot}
-          className="w-full py-4 rounded-2xl bg-bear text-bear-foreground font-extrabold text-lg glow-bear flex items-center justify-center gap-2"
-        >
-          <Square className="h-5 w-5" /> STOP BOT · session ${sessionPnLRef.current.toFixed(2)}
-        </button>
-      ) : (
-        <div className="grid grid-cols-2 gap-2 pt-1">
-          {botMode && (
-            <button
-              onClick={() => startBot("AUTO")}
-              className="col-span-2 py-4 rounded-2xl bg-primary text-primary-foreground font-extrabold text-lg glow-primary"
-            >
-              AUTO TRADE
-            </button>
+        {/* Right column: trade controls, stake, bot, actions */}
+        <div className="lg:col-span-3 space-y-3">
+          {(placing || pendingTrade?.status === "open" || settleNote) && (
+            <div className="bg-card border border-border rounded-xl p-3 text-sm space-y-1 text-foreground">
+              {placing && <div className="text-muted-foreground">Placing trade… please wait.</div>}
+              {pendingTrade?.status === "open" && (
+                <div className="rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-primary font-semibold">
+                  Contract placed: {pendingTrade.direction} {pendingTrade.type} ${pendingTrade.stake} — waiting for result.
+                </div>
+              )}
+              {pendingTrade?.status === "settled" && settleNote && (
+                <div className={
+                  "rounded-xl px-3 py-2 font-semibold " +
+                  (pendingTrade.result === "win"
+                    ? "bg-bull/10 text-bull border border-bull/30"
+                    : "bg-bear/10 text-bear border border-bear/30")
+                }>
+                  {settleNote} · settled on digit {currentDigit}
+                </div>
+              )}
+            </div>
           )}
-          {actions.map(([label, tone]) => (
+
+          {/* Mode */}
+          <div className="grid grid-cols-2 gap-2">
             <button
-              key={label}
-              onClick={() => (botMode ? startBot(label) : fireManual(label))}
+              onClick={() => setBotMode(false)}
+              disabled={botRunning}
               className={
-                "py-4 rounded-2xl font-extrabold text-lg tracking-wide " +
-                (tone === "bull"
-                  ? "bg-bull text-bull-foreground glow-bull"
-                  : "bg-bear text-bear-foreground glow-bear")
+                "py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 " +
+                (!botMode
+                  ? "bg-primary text-primary-foreground glow-primary"
+                  : "bg-card border border-border text-muted-foreground")
               }
             >
-              {botMode ? `BOT ${label}` : label} {tone === "bull" ? "↑" : "↓"}
+              <User className="h-4 w-4" /> Manual
             </button>
-          ))}
+            <button
+              onClick={() => setBotMode(true)}
+              disabled={botRunning}
+              className={
+                "py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 " +
+                (botMode
+                  ? "bg-primary text-primary-foreground glow-primary"
+                  : "bg-card border border-border text-muted-foreground")
+              }
+            >
+              <Bot className="h-4 w-4" /> Bot
+            </button>
+          </div>
+
+          {/* Stake */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setStake(Math.max(1, stake - 1))}
+              className="h-12 w-12 rounded-xl bg-surface border border-border grid place-items-center"
+            >
+              <Minus />
+            </button>
+            <div className="flex-1 bg-card border-2 border-primary rounded-xl py-2 text-center">
+              <div className="text-[10px] uppercase text-muted-foreground tracking-wider">Stake $</div>
+              <div className="text-2xl font-extrabold tabular-nums">{stake}</div>
+            </div>
+            <button
+              onClick={() => setStake(stake + 1)}
+              className="h-12 w-12 rounded-xl bg-surface border border-border grid place-items-center"
+            >
+              <Plus />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            {QUICK.map((q) => (
+              <button
+                key={q}
+                onClick={() => setStake(q)}
+                className={
+                  "py-1.5 rounded-lg border text-xs font-bold " +
+                  (stake === q
+                    ? "bg-primary/20 border-primary text-primary"
+                    : "bg-card border-border text-muted-foreground")
+                }
+              >
+                ${q}
+              </button>
+            ))}
+          </div>
+
+          {botMode && (
+            <div className="space-y-2">
+              <BotField label="Target" prefix="$" value={target} onChange={setTarget} accent="text-bull" />
+              <BotField label="Stop" prefix="$" value={stop} onChange={setStop} accent="text-bear" />
+              <BotField label="Mult" prefix="x" value={martingale} onChange={setMartingale} accent="text-primary" />
+            </div>
+          )}
+
+          {/* Action buttons */}
+          {botRunning ? (
+            <button
+              onClick={stopBot}
+              className="w-full py-4 rounded-2xl bg-bear text-bear-foreground font-extrabold text-lg glow-bear flex items-center justify-center gap-2"
+            >
+              <Square className="h-5 w-5" /> STOP BOT · session ${sessionPnLRef.current.toFixed(2)}
+            </button>
+          ) : (
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              {botMode && (
+                <button
+                  onClick={() => startBot("AUTO")}
+                  className="col-span-2 py-4 rounded-2xl bg-primary text-primary-foreground font-extrabold text-lg glow-primary"
+                >
+                  AUTO TRADE
+                </button>
+              )}
+              {actions.map(([label, tone]) => (
+                <button
+                  key={label}
+                  onClick={() => (botMode ? startBot(label) : fireManual(label))}
+                  className={
+                    "py-4 rounded-2xl font-extrabold text-lg tracking-wide " +
+                    (tone === "bull"
+                      ? "bg-bull text-bull-foreground glow-bull"
+                      : "bg-bear text-bear-foreground glow-bear")
+                  }
+                >
+                  {botMode ? `BOT ${label}` : label} {tone === "bull" ? "↑" : "↓"}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
