@@ -92,16 +92,16 @@ function BotBuilderPage() {
   };
 
   return (
-    <div className="w-full bg-slate-50 px-2 py-2 sm:px-3 lg:px-4">
-      <div className="w-full space-y-4">
-        <section className="rounded-3xl bg-white border border-slate-200 p-4 shadow-sm sm:p-5">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+    <div className="w-full bg-slate-50 px-4 py-6 sm:px-6 lg:px-8">
+      <div className="w-full space-y-6">
+        <section className="rounded-3xl bg-white border border-slate-200 p-6 shadow-sm">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <p className="text-xs uppercase tracking-[0.28em] text-slate-500">Bot name</p>
               <input
                 value={botName}
                 onChange={(event) => setBotName(event.target.value)}
-                className="mt-2 w-full max-w-md rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 text-lg font-semibold text-slate-900 outline-none"
+                className="mt-3 w-full max-w-md rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 text-lg font-semibold text-slate-900 outline-none"
               />
               <p className="mt-2 text-sm text-slate-600">Set the bot name and launch the trading page.</p>
             </div>
@@ -127,8 +127,8 @@ function BotBuilderPage() {
           </div>
         </section>
 
-        <section className="rounded-3xl bg-white border border-slate-200 p-4 shadow-sm sm:p-5">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <section className="rounded-3xl bg-white border border-slate-200 p-5 shadow-sm">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div>
               <label className="block text-xs uppercase tracking-[0.28em] text-slate-500">Market</label>
               <select
@@ -246,7 +246,7 @@ function BotBuilderPage() {
             </div>
           </div>
 
-          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="text-sm text-slate-600">Simplified view with only core bot settings.</div>
             <button
               type="button"

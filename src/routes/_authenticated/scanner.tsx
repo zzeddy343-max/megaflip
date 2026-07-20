@@ -65,7 +65,7 @@ function ScannerPage() {
   }
 
   return (
-    <div className="w-full space-y-2">
+    <div className="w-full space-y-4">
       <div className="flex items-start gap-3">
         <div className="h-12 w-12 rounded-xl bg-primary/15 text-primary grid place-items-center glow-primary border border-primary/40">
           <Crosshair className="h-6 w-6" />
@@ -78,7 +78,7 @@ function ScannerPage() {
         </div>
       </div>
 
-      <div className="bg-card border border-border rounded-xl p-2.5 text-xs text-muted-foreground leading-relaxed">
+      <div className="bg-card border border-border rounded-xl p-3 text-xs text-muted-foreground leading-relaxed">
         AI-powered market finder: deep-scans volatility indices for the strongest trade setup in
         your chosen category. Signals only — not financial advice.
       </div>

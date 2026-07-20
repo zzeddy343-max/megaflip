@@ -123,8 +123,8 @@ function ProfilePage() {
   }
 
   return (
-    <div className="w-full space-y-2">
-      <div className="bg-card border border-border rounded-2xl p-2.5 flex items-center gap-3">
+    <div className="w-full space-y-4">
+      <div className="bg-card border border-border rounded-2xl p-3 flex items-center gap-3">
         <div className="h-12 w-12 rounded-full bg-primary/15 grid place-items-center text-primary font-extrabold text-lg">
           {(fullName || email || "?").slice(0, 1).toUpperCase()}
         </div>
