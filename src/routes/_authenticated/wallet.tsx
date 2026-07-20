@@ -215,7 +215,7 @@ function WalletPage() {
       : Number(profile?.demo_balance_usd ?? 0);
 
   return (
-    <div className="w-full space-y-4">
+    <div className="w-full h-full overflow-y-auto space-y-4 p-4">
       <div className="rounded-2xl bg-gradient-to-br from-primary/20 to-primary-glow/10 border border-primary/30 p-5 text-center glow-primary">
         <div className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-1">
           {activeAccount === "real" ? "Real Account" : "Demo Account"} - USD

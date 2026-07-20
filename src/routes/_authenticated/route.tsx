@@ -84,14 +84,14 @@ function AuthedLayout() {
   return (
     <div className="flex min-h-screen w-full flex-col bg-background pb-20 lg:pb-0">
       <AppHeader />
-      <main className={isFullWidth ? "flex-1 overflow-y-auto px-0 py-3 lg:py-4" : "flex-1 overflow-y-auto px-3 py-3 sm:px-4 lg:px-6 lg:py-4"}>
+      <main className="flex-1 w-full overflow-hidden px-0 py-0">
         {isAdmin && (supportUnread?.count ?? 0) > 0 && (
-          <div className="mx-3 mt-2 rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-bold text-primary sm:mx-4">
+          <div className="border-b border-primary/30 bg-primary/10 px-4 py-2 text-xs font-bold text-primary">
             Support: {supportUnread?.count} unread user message
             {(supportUnread?.count ?? 0) === 1 ? "" : "s"}
           </div>
         )}
-        <div className="mx-auto w-full max-w-6xl pb-6">
+        <div className="h-full w-full overflow-hidden">
           <Outlet />
         </div>
       </main>

@@ -92,7 +92,7 @@ function BotBuilderPage() {
   };
 
   return (
-    <div className="w-full bg-slate-50 px-4 py-6 sm:px-6 lg:px-8">
+    <div className="w-full h-full overflow-y-auto bg-slate-50 px-4 py-6 sm:px-6 lg:px-8">
       <div className="w-full space-y-6">
         <section className="rounded-3xl bg-white border border-slate-200 p-6 shadow-sm">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
