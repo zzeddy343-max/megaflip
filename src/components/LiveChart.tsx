@@ -232,7 +232,7 @@ export function LiveChart({
               const step = total <= 1 ? 0 : totalWidth / (total - 1);
               return digitStats.map((s, i) => {
                 const x = startX + i * step;
-                const y = h - 7.6;
+                const y = h - 14;
                 const isCurrent = currentDigit === s.d;
                 const isSelected = selectedDigit === s.d;
                 const r = isCurrent ? 4.35 : 3.95;

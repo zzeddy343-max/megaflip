@@ -168,7 +168,7 @@ export function BinaryPanel() {
   const [index, setIndex] = useState("Vol 10 (1s)");
   const [type, setType] = useState<TradeType>("Even/Odd");
   const [marketOpen, setMarketOpen] = useState(false);
-  const [chartMode, setChartMode] = useState<"line" | "candles">("line");
+  const [chartMode, setChartMode] = useState<"line" | "candles">("candles");
   const [stake, setStake] = useState(10);
   const [selectedDigit, setSelectedDigit] = useState(5);
   const [tickProgression, setTickProgression] = useState(1);
@@ -731,10 +731,40 @@ export function BinaryPanel() {
               </button>
             </div>
             <div className="relative h-full min-h-0 overflow-hidden rounded-2xl border border-border bg-card/90 p-1">
-              <div className="absolute left-2 top-2 z-20 rounded-xl border border-border bg-card/90 px-2.5 py-1.5 backdrop-blur">
-                <div className="text-xs font-extrabold">{market.value}</div>
+              <button
+                type="button"
+                onClick={() => setMarketOpen((prev) => !prev)}
+                className="absolute left-2 top-2 z-30 max-w-[11rem] rounded-xl border border-border bg-card/95 px-2.5 py-1.5 text-left backdrop-blur"
+              >
+                <div className="flex items-center gap-1.5">
+                  <div className="truncate text-xs font-extrabold">{market.value}</div>
+                  <ChevronDown
+                    className={
+                      "h-3.5 w-3.5 shrink-0 text-muted-foreground transition " +
+                      (marketOpen ? "rotate-180" : "")
+                    }
+                  />
+                </div>
                 <div className="text-[10px] text-muted-foreground">{price.toFixed(2)}</div>
-              </div>
+              </button>
+              {marketOpen && (
+                <div className="absolute left-2 top-[3.85rem] z-40 max-h-64 w-[min(18rem,calc(100%-1rem))] overflow-auto rounded-xl border border-border bg-card/98 shadow-2xl backdrop-blur">
+                  {VOL_INDICES.map((m) => (
+                    <button
+                      type="button"
+                      key={m.value}
+                      onClick={() => {
+                        setIndex(m.value);
+                        setMarketOpen(false);
+                      }}
+                      className="flex w-full items-center justify-between gap-2 border-b border-border px-3 py-2 text-left text-xs last:border-b-0 hover:bg-surface"
+                    >
+                      <span className="min-w-0 truncate font-semibold">{m.label}</span>
+                      <span className="shrink-0 text-[10px] text-muted-foreground">{m.volatilityLabel}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
               <LiveChart
                 basePrice={market.basePrice}
                 volatility={chartVolatility}
