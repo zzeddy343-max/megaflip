@@ -1652,6 +1652,13 @@ function normalizePlacedTrade(value: unknown): { id?: string } | null {
   return null;
 }
 
+function titleCase(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[_/-]+/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
 function PositionCard({ trade, mode }: { trade: PositionTrade; mode: "open" | "closed" | "tx" }) {
   const pnl = Number(trade.payout ?? 0) - Number(trade.stake);
   const won = trade.status === "won" || pnl > 0;
