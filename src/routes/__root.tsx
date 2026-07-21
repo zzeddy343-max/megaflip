@@ -75,7 +75,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { name: "theme-color", content: "#0f1014" },
       { title: "MEGAFLIP — Premium trading workspace" },
       { name: "description", content: "MEGAFLIP: Real Forex, in-house binaries, Polymarket-style predictions, Aviator, and an AI Market Scanner — one premium trading workspace." },

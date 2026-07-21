@@ -82,16 +82,16 @@ function AuthedLayout() {
   }, [location.pathname]);
 
   return (
-    <div className="flex min-h-screen w-full flex-col bg-background pb-20 lg:pb-0">
+    <div className="flex h-[100dvh] w-full max-w-full flex-col overflow-hidden bg-background pb-20 lg:pb-0">
       <AppHeader />
-      <main className="flex-1 w-full overflow-hidden px-0 py-0">
+      <main className="min-h-0 flex-1 w-full max-w-full overflow-hidden px-0 py-0">
         {isAdmin && (supportUnread?.count ?? 0) > 0 && (
           <div className="border-b border-primary/30 bg-primary/10 px-4 py-2 text-xs font-bold text-primary">
             Support: {supportUnread?.count} unread user message
             {(supportUnread?.count ?? 0) === 1 ? "" : "s"}
           </div>
         )}
-        <div className="h-full w-full overflow-hidden">
+        <div className="h-full min-h-0 w-full max-w-full overflow-hidden">
           <Outlet />
         </div>
       </main>

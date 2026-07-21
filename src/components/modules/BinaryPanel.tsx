@@ -636,7 +636,7 @@ export function BinaryPanel() {
   }
 
   return (
-    <div className="w-full h-full md:pb-0">
+    <div className="h-full min-h-0 w-full max-w-full overflow-hidden md:pb-0">
       <div className="hidden">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0">
@@ -672,15 +672,15 @@ export function BinaryPanel() {
         </div>
       </div>
 
-      <div className="md:hidden h-[calc(100dvh-7rem)] overflow-hidden px-2 py-1.5">
-        <div className="flex h-full min-h-0 flex-col gap-1.5 border-y border-border bg-background">
-          <div className="grid shrink-0 grid-cols-4 gap-1 text-xs text-muted-foreground uppercase tracking-[0.1em]">
+      <div className="md:hidden h-full min-h-0 w-full max-w-full overflow-hidden px-2 py-1.5">
+        <div className="flex h-full min-h-0 w-full max-w-full flex-col gap-1.5 overflow-y-auto overflow-x-hidden border-y border-border bg-background pb-[max(env(safe-area-inset-bottom),0.5rem)]">
+          <div className="grid shrink-0 grid-cols-4 gap-1 text-xs text-muted-foreground uppercase tracking-[0.08em]">
             {TYPES.map((t) => (
               <button
                 key={t}
                 onClick={() => setType(t)}
                 className={
-                  "rounded-full py-1.5 text-[8px] font-semibold transition sm:text-[9px] " +
+                  "min-w-0 truncate rounded-full px-1 py-1.5 text-[7.5px] font-semibold transition min-[390px]:text-[8px] sm:text-[9px] " +
                   (type === t
                     ? "bg-primary text-primary-foreground"
                     : "bg-surface border border-border text-muted-foreground")
@@ -705,7 +705,7 @@ export function BinaryPanel() {
             </div>
           </div>
 
-          <div className="min-h-0 flex-1 rounded-2xl border border-border bg-card p-1.5">
+          <div className="h-[clamp(15rem,42dvh,22rem)] shrink-0 rounded-2xl border border-border bg-card p-1.5">
             <div className="hidden">
               <button
                 onClick={() => setChartMode("line")}
@@ -783,13 +783,13 @@ export function BinaryPanel() {
           </div>
 
           <div className="shrink-0 rounded-2xl border border-border bg-surface p-1 overflow-x-auto">
-            <div className="flex items-center justify-between gap-1.5">
+            <div className="flex min-w-full items-center justify-between gap-1.5">
               {Array.from({ length: 10 }).map((_, d) => (
                 <button
                   key={d}
                   onClick={() => setSelectedDigit(d)}
                   className={
-                    "min-w-[2rem] h-8 rounded-full text-xs font-bold border transition " +
+                    "h-8 min-w-8 rounded-full border text-xs font-bold transition " +
                     (d === currentDigit
                       ? "bg-primary text-primary-foreground border-primary shadow-[0_0_24px_color-mix(in_oklab,var(--gold)_42%,transparent)]"
                       : selectedDigit === d
