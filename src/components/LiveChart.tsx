@@ -227,7 +227,7 @@ export function LiveChart({
           <g>
             {(() => {
               const total = digitStats.length;
-              const totalWidth = w * 0.62;
+              const totalWidth = w * 0.84;
               const startX = (w - totalWidth) / 2;
               const step = total <= 1 ? 0 : totalWidth / (total - 1);
               return digitStats.map((s, i) => {
@@ -235,7 +235,7 @@ export function LiveChart({
                 const y = h - 7.6;
                 const isCurrent = currentDigit === s.d;
                 const isSelected = selectedDigit === s.d;
-                const r = isCurrent ? 4.7 : 4.1;
+                const r = isCurrent ? 4.35 : 3.95;
                 const active = isSelected && digitMarkerTone === "active";
                 const win = isSelected && digitMarkerTone === "win";
                 const loss = isSelected && digitMarkerTone === "loss";
