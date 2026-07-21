@@ -18,7 +18,7 @@ type ProfileWithPhone = {
 };
 
 export const Route = createFileRoute("/_authenticated/profile")({
-  head: () => ({ meta: [{ title: "Profile — TRONIXOPTION" }] }),
+  head: () => ({ meta: [{ title: "Profile — MEGAFLIP" }] }),
   errorComponent: RouteError,
   notFoundComponent: RouteNotFound,
   component: ProfilePage,

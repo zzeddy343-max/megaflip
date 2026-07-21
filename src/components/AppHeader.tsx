@@ -79,8 +79,8 @@ export function AppHeader() {
         <SheetContent side="left" className="w-72 bg-background border-border p-0">
           <SheetHeader className="px-5 pt-5 pb-3 border-b border-border">
             <SheetTitle className="flex items-center gap-2">
-              <img src={LOGO_URL} alt="TronixOption" className="h-8 w-8 object-contain" />
-              <span className="text-base font-extrabold tracking-tight">TRONIX<span className="text-primary">OPTION</span></span>
+              <img src={LOGO_URL} alt="Megaflip" className="h-8 w-8 object-contain" />
+              <span className="text-base font-extrabold tracking-tight">MEGAFLIP</span>
             </SheetTitle>
           </SheetHeader>
           <nav className="p-2">
@@ -123,8 +123,8 @@ export function AppHeader() {
       </Sheet>
 
       <Link to="/binary" className="flex items-center gap-1.5 shrink-0">
-        <img src={LOGO_URL} alt="TronixOption" className="h-9 w-9 rounded-xl object-contain bg-primary/10 p-1 drop-shadow-[0_0_10px_color-mix(in_oklab,var(--gold)_55%,transparent)]" />
-        <span className="hidden sm:inline text-xs font-extrabold tracking-wider">TRONIX<span className="text-primary">OPTION</span></span>
+        <img src={LOGO_URL} alt="Megaflip" className="h-9 w-9 rounded-xl object-contain bg-primary/10 p-1 drop-shadow-[0_0_10px_color-mix(in_oklab,var(--gold)_55%,transparent)]" />
+        <span className="hidden sm:inline text-xs font-extrabold tracking-wider">MEGAFLIP</span>
       </Link>
 
       <nav className="hidden xl:flex items-center gap-6 text-muted-foreground">
@@ -138,8 +138,8 @@ export function AppHeader() {
 
       <button className="hidden lg:flex mx-auto h-10 min-w-[200px] items-center justify-between rounded-lg border border-border bg-surface px-3 text-sm font-bold">
         <span className="flex items-center gap-2">
-          <span className="grid h-6 w-6 place-items-center rounded-md bg-primary text-[10px] font-black text-primary-foreground">TO</span>
-          Tronix Option Trader
+          <span className="grid h-6 w-6 place-items-center rounded-md bg-primary text-[10px] font-black text-primary-foreground">MF</span>
+          Megaflip Trader
         </span>
         <ChevronDown className="h-4 w-4 text-muted-foreground" />
       </button>

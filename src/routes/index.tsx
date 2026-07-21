@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { LOGO_URL } from "@/lib/brand";
 
 export const Route = createFileRoute("/")({
-  head: () => ({ meta: [{ title: "TRONIXOPTION - Trading workspace" }] }),
+  head: () => ({ meta: [{ title: "MEGAFLIP - Trading workspace" }] }),
   component: LandingPage,
 });
 
@@ -38,8 +38,8 @@ function LandingPage() {
       <header className="fixed inset-x-0 top-0 z-30 border-b border-border/60 bg-background/80 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
           <Link to="/" onClick={handleLogoClick} className="flex items-center gap-2.5">
-            <img src={LOGO_URL} alt="TRONIXOPTION" className="h-10 w-10 object-contain" />
-            <span className="text-base font-extrabold tracking-wider">TRONIX<span className="text-primary">OPTION</span></span>
+            <img src={LOGO_URL} alt="MEGAFLIP" className="h-10 w-10 object-contain" />
+            <span className="text-base font-extrabold tracking-wider">MEGAFLIP</span>
           </Link>
           <div className="flex items-center gap-2">
             <Link to="/auth" className="px-3 py-2 text-sm font-bold text-muted-foreground hover:text-foreground">Sign in</Link>
@@ -53,13 +53,13 @@ function LandingPage() {
         <div className="relative mx-auto grid min-h-[calc(92vh-4rem)] max-w-6xl content-center gap-10 px-4 py-12 lg:grid-cols-[1fr_420px] lg:items-center">
           <div className="max-w-3xl">
             <div className="mb-5 flex items-center gap-3">
-              <button type="button" onClick={handleLogoClick} aria-label="TRONIXOPTION logo" className="rounded-xl">
+              <button type="button" onClick={handleLogoClick} aria-label="MEGAFLIP logo" className="rounded-xl">
                 <img src={LOGO_URL} alt="" className="h-16 w-16 object-contain drop-shadow-[0_0_24px_color-mix(in_oklab,var(--gold)_55%,transparent)]" />
               </button>
               <div className="text-xs font-bold uppercase tracking-[0.28em] text-primary">Trading workspace</div>
             </div>
             <h1 className="max-w-3xl text-5xl font-black leading-[0.95] tracking-normal sm:text-6xl lg:text-7xl">
-              TRONIX<span className="text-primary">OPTION</span>
+              MEGAFLIP
             </h1>
             <p className="mt-5 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg">
               Trade binary markets, Forex, crypto, prediction events, and synced Aviator rounds from one focused dashboard.

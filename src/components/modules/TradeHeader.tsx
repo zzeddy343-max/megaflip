@@ -69,8 +69,8 @@ export function TradeHeader({
             <SheetContent side="left" className="w-72 bg-background border-border p-0">
               <SheetHeader className="px-5 pt-5 pb-3 border-b border-border">
                 <SheetTitle className="flex items-center gap-2">
-                  <img src={LOGO_URL} alt="TronixOption" className="h-8 w-8 object-contain" />
-                  <span className="text-base font-extrabold tracking-tight">TRONIX<span className="text-primary">OPTION</span></span>
+                  <img src={LOGO_URL} alt="Megaflip" className="h-8 w-8 object-contain" />
+                  <span className="text-base font-extrabold tracking-tight">MEGAFLIP</span>
                 </SheetTitle>
               </SheetHeader>
               <nav className="p-2 space-y-1">
@@ -81,9 +81,9 @@ export function TradeHeader({
 
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
-            <img src={LOGO_URL} alt="TRONIXOPTION" className="h-8 w-8 object-contain" />
+            <img src={LOGO_URL} alt="MEGAFLIP" className="h-8 w-8 object-contain" />
             <span className="hidden sm:inline text-base font-extrabold tracking-wider text-foreground">
-              TRONIX<span className="text-primary">OPTION</span>
+              MEGAFLIP
             </span>
           </Link>
         </div>

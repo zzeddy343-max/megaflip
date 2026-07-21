@@ -10,8 +10,8 @@ export interface DebugEvent {
   path?: string;
 }
 
-const STORAGE_KEY = "tronix.debug.events";
-const ENABLED_KEY = "tronix.debug.enabled";
+const STORAGE_KEY = "megaflip.debug.events";
+const ENABLED_KEY = "megaflip.debug.enabled";
 const MAX_EVENTS = 250;
 const REDACT_KEYS = ["password", "passkey", "token", "authorization", "credential", "secret"];
 
@@ -36,7 +36,7 @@ export function logDebugEvent(level: DebugLevel, scope: string, message: string,
   const events = getDebugEvents();
   const next = [event, ...events].slice(0, MAX_EVENTS);
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-  window.dispatchEvent(new CustomEvent("tronix-debug-log", { detail: event }));
+  window.dispatchEvent(new CustomEvent("megaflip-debug-log", { detail: event }));
   return event;
 }
 
@@ -53,7 +53,7 @@ export function getDebugEvents(): DebugEvent[] {
 export function clearDebugEvents() {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(STORAGE_KEY);
-  window.dispatchEvent(new CustomEvent("tronix-debug-log-cleared"));
+  window.dispatchEvent(new CustomEvent("megaflip-debug-log-cleared"));
 }
 
 export function setDebugLoggingEnabled(enabled: boolean) {

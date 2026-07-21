@@ -29,7 +29,7 @@ function tryRecoverDynamicImport(error: unknown) {
     if (!msg.includes("Failed to fetch dynamically imported module")) return;
 
     // Avoid reload loops: only attempt once every 5 minutes per tab
-    const last = Number(window.sessionStorage.getItem("tronix-dynamic-import-reload") ?? "0");
+    const last = Number(window.sessionStorage.getItem("megaflip-dynamic-import-reload") ?? "0");
     if (Date.now() - last < 1000 * 60 * 5) {
       // already tried recently — notify user
       try {
@@ -38,7 +38,7 @@ function tryRecoverDynamicImport(error: unknown) {
       } catch {}
       return;
     }
-    window.sessionStorage.setItem("tronix-dynamic-import-reload", String(Date.now()));
+    window.sessionStorage.setItem("megaflip-dynamic-import-reload", String(Date.now()));
 
     // Unregister service workers to avoid stale cached HTML/manifest
     if (navigator && "serviceWorker" in navigator) {

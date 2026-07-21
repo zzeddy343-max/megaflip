@@ -2,7 +2,7 @@
 
 ## ✅ Implementation Complete
 
-A professional, production-ready three-column trading user interface has been successfully implemented for the TronixOption platform, matching the functional layout and polished design of Deriv Trader and other professional trading platforms.
+A professional, production-ready three-column trading user interface has been successfully implemented for the Megaflip platform, matching the functional layout and polished design of Deriv Trader and other professional trading platforms.
 
 ## 📦 What Was Built
 

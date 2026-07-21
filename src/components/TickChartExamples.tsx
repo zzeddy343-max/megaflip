@@ -467,7 +467,7 @@ export function TickChartExamplesShowcase() {
       <div className="max-w-6xl mx-auto">
         <h1 className="text-3xl font-bold mb-2">Tick-Based Trading Charts</h1>
         <p className="text-muted-foreground mb-8">
-          Examples demonstrating the complete tick-based charting system for Tronix
+          Examples demonstrating the complete tick-based charting system for Megaflip
         </p>
 
         <div className="grid grid-cols-5 gap-2 mb-8">

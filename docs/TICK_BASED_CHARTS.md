@@ -1,4 +1,4 @@
-# Tick-Based Trading Chart System for Tronix
+# Tick-Based Trading Chart System for Megaflip
 
 ## Overview
 

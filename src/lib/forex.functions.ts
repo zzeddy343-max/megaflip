@@ -31,7 +31,7 @@ async function fetchYahooCandles(
   const res = await fetch(url, {
     headers: {
       accept: "application/json",
-      "user-agent": "Mozilla/5.0 TRONIXOPTION market chart",
+      "user-agent": "Mozilla/5.0 MEGAFLIP market chart",
     },
   });
   if (!res.ok) return { ok: false as const, reason: "upstream" as const, status: res.status };

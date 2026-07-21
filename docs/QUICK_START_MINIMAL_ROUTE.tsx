@@ -13,7 +13,7 @@ import { TradingLayout } from "@/components/modules";
 import { TickBasedLiveChart } from "@/components/TickBasedLiveChart";
 
 export const Route = createFileRoute("/_authenticated/trading-demo")({
-  head: () => ({ meta: [{ title: "Trading - TronixOption" }] }),
+  head: () => ({ meta: [{ title: "Trading - Megaflip" }] }),
   component: TradingDemoRoute,
 });
 

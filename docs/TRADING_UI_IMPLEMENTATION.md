@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is a complete, production-ready trading user interface implementation based on professional platforms like Deriv Trader and TronixOption. The architecture follows a fixed three-column layout optimized for active trading workflows.
+This is a complete, production-ready trading user interface implementation based on professional platforms like Deriv Trader and Megaflip. The architecture follows a fixed three-column layout optimized for active trading workflows.
 
 ## Architecture
 

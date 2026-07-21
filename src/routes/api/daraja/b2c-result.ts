@@ -100,13 +100,13 @@ async function findB2cPaymentRequest(
     const match = (data ?? []).find((row: { transaction_id?: string; request_payload?: Record<string, unknown> }) => {
       const occasion = getString(row.request_payload?.Occasion);
       return row.transaction_id?.toLowerCase().startsWith(transactionRef) ||
-        parseTronixRef(occasion) === transactionRef;
+        parseMegaflipRef(occasion) === transactionRef;
     });
     if (match) return match;
   }
 
   // Fallback: if we still don't have a payment_request, try to locate the
-  // transaction directly by the TRONIX reference (first 8 hex chars of UUID)
+  // transaction directly by the MEGAFLIP reference (first 8 hex chars of UUID)
   if (transactionRef) {
     const { data: tx } = await supabaseAdmin
       .from("transactions")
@@ -125,7 +125,7 @@ async function findB2cPaymentRequest(
 
 function extractTransactionRef(result: Record<string, unknown>) {
   const direct = getString(result.Occasion) ?? getString(result.OriginatorConversationID);
-  const fromDirect = parseTronixRef(direct);
+  const fromDirect = parseMegaflipRef(direct);
   if (fromDirect) return fromDirect;
 
   const referenceData = getRecord(result.ReferenceData);
@@ -134,14 +134,14 @@ function extractTransactionRef(result: Record<string, unknown>) {
   for (const raw of items) {
     const row = getRecord(raw);
     const value = getString(row.Value) ?? getString(row.value);
-    const ref = parseTronixRef(value);
+    const ref = parseMegaflipRef(value);
     if (ref) return ref;
   }
   return undefined;
 }
 
-function parseTronixRef(value?: string) {
-  const match = value?.match(/TRONIX-([0-9a-f]{8})/i);
+function parseMegaflipRef(value?: string) {
+  const match = value?.match(/MEGAFLIP-([0-9a-f]{8})/i);
   return match?.[1]?.toLowerCase();
 }
 

@@ -1,6 +1,6 @@
 // Tiny theme manager: toggles `.dark` / `.light` on <html>.
 export type Theme = "dark" | "light";
-const KEY = "tronix-theme";
+const KEY = "megaflip-theme";
 
 export function getInitialTheme(): Theme {
   if (typeof window === "undefined") return "dark";

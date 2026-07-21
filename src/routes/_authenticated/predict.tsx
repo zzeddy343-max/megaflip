@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { placeTrade } from "@/lib/trades.functions";
 
 export const Route = createFileRoute("/_authenticated/predict")({
-  head: () => ({ meta: [{ title: "Polymarket - TRONIXOPTION" }] }),
+  head: () => ({ meta: [{ title: "Polymarket - MEGAFLIP" }] }),
   component: PredictPage,
 });
 

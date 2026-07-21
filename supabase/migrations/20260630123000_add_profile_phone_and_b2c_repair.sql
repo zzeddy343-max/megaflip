@@ -38,8 +38,8 @@ begin
     _occasion := _cb.payload #>> '{Result,ReferenceData,ReferenceItem,Value}';
     _tx_ref := null;
 
-    if _occasion like 'TRONIX-%' then
-      _tx_ref := lower(replace(_occasion, 'TRONIX-', ''));
+    if _occasion like 'MEGAFLIP-%' then
+      _tx_ref := lower(replace(_occasion, 'MEGAFLIP-', ''));
     end if;
 
     if _tx_id is null then

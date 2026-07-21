@@ -297,10 +297,10 @@ export function BinaryPanel() {
 
   useEffect(() => {
     if (autoSignalConsumedRef.current) return;
-    const raw = window.sessionStorage.getItem("tronix-scanner-bot");
+    const raw = window.sessionStorage.getItem("megaflip-scanner-bot");
     if (!raw) return;
     autoSignalConsumedRef.current = true;
-    window.sessionStorage.removeItem("tronix-scanner-bot");
+    window.sessionStorage.removeItem("megaflip-scanner-bot");
     try {
       const signal = JSON.parse(raw) as { category?: TradeType; market?: string; direction?: string; digit?: number };
       if (signal.category && TYPES.includes(signal.category)) {

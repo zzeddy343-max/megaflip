@@ -9,7 +9,7 @@ import { signUpWithoutEmailVerification } from "@/lib/auth.functions";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
-  head: () => ({ meta: [{ title: "Sign in — TRONIXOPTION" }] }),
+  head: () => ({ meta: [{ title: "Sign in — MEGAFLIP" }] }),
   component: AuthPage,
 });
 
@@ -89,8 +89,8 @@ function AuthPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-6">
           <div className="inline-flex items-center gap-2.5 mb-2">
-            <img src={LOGO_URL} alt="TRONIXOPTION" className="h-11 w-11 object-contain drop-shadow-[0_0_18px_color-mix(in_oklab,var(--gold)_55%,transparent)]" />
-            <span className="text-xl font-extrabold tracking-wider">TRONIX<span className="text-primary">OPTION</span></span>
+            <img src={LOGO_URL} alt="MEGAFLIP" className="h-11 w-11 object-contain drop-shadow-[0_0_18px_color-mix(in_oklab,var(--gold)_55%,transparent)]" />
+            <span className="text-xl font-extrabold tracking-wider">MEGAFLIP</span>
           </div>
           <p className="text-xs text-muted-foreground">Forex · Crypto · Binaries · Polymarket · Aviator</p>
         </div>

@@ -59,7 +59,7 @@ import {
 } from "@/lib/system-settings";
 
 export const Route = createFileRoute("/_authenticated/admin")({
-  head: () => ({ meta: [{ title: "Admin — TRONIXOPTION" }] }),
+  head: () => ({ meta: [{ title: "Admin — MEGAFLIP" }] }),
   beforeLoad: async () => {
     const { data: u } = await supabase.auth.getUser();
     if (!u.user) throw redirect({ to: "/auth" });
