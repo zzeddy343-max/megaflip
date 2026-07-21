@@ -741,6 +741,31 @@ function AccountAdjustments() {
   );
 }
 
+function MetricInput({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <label className="block space-y-1">
+      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </span>
+      <input
+        type="number"
+        step="0.01"
+        value={value}
+        onChange={(event) => onChange(Number(event.target.value) || 0)}
+        className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm font-semibold outline-none focus:border-primary"
+      />
+    </label>
+  );
+}
+
 function UsersTab() {
   const list = useServerFn(listClients);
   const promote = useServerFn(promoteUserRole);
@@ -847,7 +872,12 @@ function UsersTab() {
         {!isLoading && userRows.length === 0 && (
           <div className="p-6 text-center text-sm text-muted-foreground">No clients match.</div>
         )}
-        {userRows.map((u) => (
+        {userRows.map((u) => {
+          const accountState = String(u.account_state ?? "active").toLowerCase();
+          const isFrozen = accountState === "frozen";
+          const isClosed = accountState === "closed";
+
+          return (
           <div key={u.id} className="border-b border-border last:border-b-0">
             <div className="flex items-center justify-between p-2.5 text-sm">
               <button
@@ -928,36 +958,45 @@ function UsersTab() {
                 </select>
                 <button
                   onClick={() => {
-                    if (window.confirm("Freeze this account for the selected duration?")) {
-                      moderateMut.mutate({ user_id: u.id, action: "freeze", duration_days: freezeDaysByUser[u.id] ?? 1 });
+                    if (isFrozen) {
+                      if (window.confirm("Unfreeze this account and restore access?")) {
+                        moderateMut.mutate({ user_id: u.id, action: "activate" });
+                      }
+                    } else if (window.confirm("Freeze this account for the selected duration?")) {
+                      moderateMut.mutate({
+                        user_id: u.id,
+                        action: "freeze",
+                        duration_days: freezeDaysByUser[u.id] ?? 1,
+                      });
                     }
                   }}
                   disabled={moderateMut.isPending}
-                  className="rounded border border-amber-500/40 px-1.5 py-0.5 text-[9px] font-bold text-amber-500 disabled:opacity-50"
+                  className={
+                    "rounded border px-1.5 py-0.5 text-[9px] font-bold disabled:opacity-50 " +
+                    (isFrozen
+                      ? "border-bull/40 text-bull"
+                      : "border-amber-500/40 text-amber-500")
+                  }
                 >
-                  Freeze
+                  {isFrozen ? "Unfreeze" : "Freeze"}
                 </button>
                 <button
                   onClick={() => {
-                    if (window.confirm("Close this account so it can sign in but stays inert?")) {
+                    if (isClosed) {
+                      if (window.confirm("Open and unlock this closed account?")) {
+                        moderateMut.mutate({ user_id: u.id, action: "activate" });
+                      }
+                    } else if (window.confirm("Close this account so it can sign in but stays inert?")) {
                       moderateMut.mutate({ user_id: u.id, action: "close" });
                     }
                   }}
                   disabled={moderateMut.isPending}
-                  className="rounded border border-primary/40 px-1.5 py-0.5 text-[9px] font-bold text-primary disabled:opacity-50"
+                  className={
+                    "rounded border px-1.5 py-0.5 text-[9px] font-bold disabled:opacity-50 " +
+                    (isClosed ? "border-bull/40 text-bull" : "border-primary/40 text-primary")
+                  }
                 >
-                  Close
-                </button>
-                <button
-                  onClick={() => {
-                    if (window.confirm("Unfreeze and unlock this account?")) {
-                      moderateMut.mutate({ user_id: u.id, action: "activate" });
-                    }
-                  }}
-                  disabled={moderateMut.isPending}
-                  className="rounded border border-bull/40 px-1.5 py-0.5 text-[9px] font-bold text-bull disabled:opacity-50"
-                >
-                  Unlock
+                  {isClosed ? "Open" : "Close"}
                 </button>
                 <button
                   onClick={() => {
@@ -973,7 +1012,8 @@ function UsersTab() {
               </div>
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {selectedClient && <ClientDetailsDrawer client={selectedClient} onClose={() => setSelectedClientId(null)} />}

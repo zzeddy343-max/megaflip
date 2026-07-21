@@ -17,7 +17,7 @@ import {
   User,
 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
-import { placeTrade, settleTrade, cancelTrade, getMyProfile } from "@/lib/trades.functions";
+import { placeTrade, settleTrade, cancelTrade, releaseStaleBinaryTrades, getMyProfile } from "@/lib/trades.functions";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { logDebugEvent, serializeError } from "@/lib/debug-logger";
@@ -204,6 +204,7 @@ export function BinaryPanel() {
   const place = useServerFn(placeTrade);
   const settle = useServerFn(settleTrade);
   const cancel = useServerFn(cancelTrade);
+  const releaseStale = useServerFn(releaseStaleBinaryTrades);
   const fetchProfile = useServerFn(getMyProfile);
   const { data: profile } = useQuery({
     queryKey: ["profile"],
@@ -443,6 +444,29 @@ export function BinaryPanel() {
       cancelled = true;
     };
   }, [cancel, positionTrades, qc]);
+
+  useEffect(() => {
+    let stopped = false;
+    async function sweepStaleBinaryTrades(showToast = false) {
+      try {
+        const result = await releaseStale({});
+        const released = Number(result?.released ?? 0);
+        if (stopped || released <= 0) return;
+        if (showToast) toast.error(`Released ${released} binary trade${released === 1 ? "" : "s"} open past 1 minute`);
+        qc.invalidateQueries({ queryKey: ["profile"] });
+        qc.invalidateQueries({ queryKey: ["binary-positions"] });
+      } catch (error) {
+        logDebugEvent("error", "binary.trade", "Stale binary sweep failed", serializeError(error));
+      }
+    }
+
+    sweepStaleBinaryTrades(true);
+    const interval = window.setInterval(() => sweepStaleBinaryTrades(false), 10_000);
+    return () => {
+      stopped = true;
+      window.clearInterval(interval);
+    };
+  }, [qc, releaseStale]);
 
   async function placeAndSettle(direction: string, useStake: number, mode: "manual" | "bot" | "scanner" = "manual"): Promise<boolean> {
     if (placingRef.current || pendingTradeRef.current?.status === "open") {

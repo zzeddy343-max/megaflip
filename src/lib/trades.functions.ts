@@ -127,6 +127,14 @@ export const settleTrade = createServerFn({ method: "POST" })
     return { ...(result as Record<string, unknown>), payout: data.won ? payout : payout };
   });
 
+export const releaseStaleBinaryTrades = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const supabase = context.supabase as unknown as RpcClient & { from: (table: string) => any };
+    const released = await cancelStaleBinaryTrades(supabase, context.userId);
+    return { ok: true, released };
+  });
+
 async function enforceTradeRiskRules(
   supabase: any,
   userId: string,
@@ -158,7 +166,7 @@ async function enforceTradeRiskRules(
   }
 
   if (input.module === "binary") {
-    await cancelStaleBinaryTrades(supabase, userId, accountType);
+    await cancelStaleBinaryTrades(supabase, userId);
     const { count: openBinaryCount } = await supabase
       .from("trades")
       .select("id", { count: "exact", head: true })
@@ -245,22 +253,27 @@ async function enforceTradeRiskRules(
   }
 }
 
-async function cancelStaleBinaryTrades(supabase: any, userId: string, accountType: string) {
+async function cancelStaleBinaryTrades(supabase: any, userId: string, accountType?: string) {
   const staleBefore = new Date(Date.now() - 60_000).toISOString();
-  const { data: staleTrades } = await supabase
+  let query = supabase
     .from("trades")
     .select("id")
     .eq("user_id", userId)
-    .eq("account_type", accountType)
     .eq("module", "binary")
     .eq("status", "open")
     .lt("created_at", staleBefore)
-    .limit(10);
+    .limit(1000);
 
+  if (accountType) query = query.eq("account_type", accountType);
+
+  const { data: staleTrades } = await query;
+
+  let released = 0;
   for (const trade of staleTrades ?? []) {
     try {
       const { error } = await supabase.rpc("cancel_open_trade", { _trade_id: trade.id });
       if (error) throw new Error(error.message ?? String(error));
+      released += 1;
     } catch (error) {
       console.warn("[Trades] stale binary cancellation skipped", {
         userId,
@@ -269,6 +282,7 @@ async function cancelStaleBinaryTrades(supabase: any, userId: string, accountTyp
       });
     }
   }
+  return released;
 }
 
 async function getUserSegmentStats(supabase: any, userId: string, accountType: string) {
