@@ -133,10 +133,32 @@ async function enforceTradeRiskRules(
   input: { module: string; market: string; stake: number; direction: string },
   settings: SystemSettings,
 ) {
-  const accountProfile = await supabase.from("profiles").select("active_account").eq("id", userId).maybeSingle();
+  const accountProfile = await supabase
+    .from("profiles")
+    .select("active_account,account_state,freeze_until")
+    .eq("id", userId)
+    .maybeSingle();
   const accountType = accountProfile?.data?.active_account ?? "real";
+  const accountState = accountProfile?.data?.account_state ?? "active";
+  const freezeUntil = accountProfile?.data?.freeze_until;
+
+  if (accountState === "closed" || accountState === "deleted") {
+    throw new Error("This account is locked. Contact support.");
+  }
+
+  if (accountState === "frozen") {
+    if (freezeUntil && new Date(freezeUntil).getTime() <= Date.now()) {
+      await supabase
+        .from("profiles")
+        .update({ account_state: "active", freeze_until: null })
+        .eq("id", userId);
+    } else {
+      throw new Error("This account is frozen. Contact support.");
+    }
+  }
 
   if (input.module === "binary") {
+    await cancelStaleBinaryTrades(supabase, userId, accountType);
     const { count: openBinaryCount } = await supabase
       .from("trades")
       .select("id", { count: "exact", head: true })
@@ -220,6 +242,32 @@ async function enforceTradeRiskRules(
   const triggers = getEnabledEngagementTriggers(settings);
   if (triggers.includes("TRADE")) {
     console.info("[Engagement] trade", { userId, market: input.market, stake: input.stake, direction: input.direction, accountType });
+  }
+}
+
+async function cancelStaleBinaryTrades(supabase: any, userId: string, accountType: string) {
+  const staleBefore = new Date(Date.now() - 60_000).toISOString();
+  const { data: staleTrades } = await supabase
+    .from("trades")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("account_type", accountType)
+    .eq("module", "binary")
+    .eq("status", "open")
+    .lt("created_at", staleBefore)
+    .limit(10);
+
+  for (const trade of staleTrades ?? []) {
+    try {
+      const { error } = await supabase.rpc("cancel_open_trade", { _trade_id: trade.id });
+      if (error) throw new Error(error.message ?? String(error));
+    } catch (error) {
+      console.warn("[Trades] stale binary cancellation skipped", {
+        userId,
+        tradeId: trade.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
 }
 

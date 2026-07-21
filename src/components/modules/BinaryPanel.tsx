@@ -17,7 +17,7 @@ import {
   User,
 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
-import { placeTrade, settleTrade, getMyProfile } from "@/lib/trades.functions";
+import { placeTrade, settleTrade, cancelTrade, getMyProfile } from "@/lib/trades.functions";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { logDebugEvent, serializeError } from "@/lib/debug-logger";
@@ -161,6 +161,8 @@ const INDICATOR_OPTIONS = [
 type IndicatorOption = (typeof INDICATOR_OPTIONS)[number];
 const QUICK = [1, 5, 10, 25, 50, 100];
 const MULTIPLIER_OPTIONS = [1, 1.5, 2, 2.5, 3, 4, 5, 10];
+const MAX_BINARY_OPEN_MS = 60_000;
+const TRADE_REQUEST_TIMEOUT_MS = 20_000;
 
 type Tick = { d: number; tone: "neutral" | "bull" | "bear" };
 
@@ -187,10 +189,12 @@ export function BinaryPanel() {
     type: TradeType;
     market: string;
     entryPrice: number;
+    openedAt: number;
     status: "open" | "settled";
     result?: "win" | "loss";
     pnl?: number;
   } | null>(null);
+  const [tradeIntent, setTradeIntent] = useState<{ direction: string; mode: "manual" | "bot" | "scanner" } | null>(null);
   const [settleNote, setSettleNote] = useState<string | null>(null);
   const [placing, setPlacing] = useState(false);
   const [tickTrail, setTickTrail] = useState<Tick[]>([]);
@@ -199,6 +203,7 @@ export function BinaryPanel() {
 
   const place = useServerFn(placeTrade);
   const settle = useServerFn(settleTrade);
+  const cancel = useServerFn(cancelTrade);
   const fetchProfile = useServerFn(getMyProfile);
   const { data: profile } = useQuery({
     queryKey: ["profile"],
@@ -259,13 +264,12 @@ export function BinaryPanel() {
   };
 
   const { data: positionTrades = [] } = useQuery({
-    queryKey: ["binary-positions", market.value],
+    queryKey: ["binary-positions"],
     queryFn: async () => {
       const { data } = await supabase
         .from("trades")
         .select("id,module,market,direction,stake,entry_price,exit_price,payout,status,meta,created_at")
         .eq("module", "binary")
-        .eq("market", market.value)
         .order("created_at", { ascending: false })
         .limit(50);
       return (data ?? []) as PositionTrade[];
@@ -321,7 +325,7 @@ export function BinaryPanel() {
       setBotMode(true);
       toast.success("Scanner bot loaded and auto trade started");
       const initialDirection = signal.direction && signal.direction.length > 0 ? signal.direction : "AUTO";
-      window.setTimeout(() => startBot(initialDirection), 450);
+      window.setTimeout(() => startBot(initialDirection, "scanner"), 450);
     } catch {
       toast.error("Could not load scanner bot signal");
     }
@@ -385,11 +389,62 @@ export function BinaryPanel() {
     const timeout = window.setTimeout(() => {
       setPendingTrade(null);
       setSettleNote(null);
+      setTradeIntent(null);
     }, 4000);
     return () => clearTimeout(timeout);
   }, [pendingTrade?.status]);
 
-  async function placeAndSettle(direction: string, useStake: number): Promise<boolean> {
+  useEffect(() => {
+    if (pendingTrade?.status !== "open") return;
+    const remaining = Math.max(0, MAX_BINARY_OPEN_MS - (Date.now() - pendingTrade.openedAt));
+    const timeout = window.setTimeout(async () => {
+      const openTrade = pendingTradeRef.current;
+      if (!openTrade || openTrade.status !== "open") return;
+      try {
+        await cancel({ data: { trade_id: openTrade.tradeId } });
+        toast.error("Binary trade timed out after 1 minute - stake returned");
+        setSettleNote("Timed out - stake returned");
+        setPendingTrade(null);
+        qc.invalidateQueries({ queryKey: ["profile"] });
+        qc.invalidateQueries({ queryKey: ["binary-positions"] });
+      } catch (error) {
+        logDebugEvent("error", "binary.trade", "Timed-out binary trade cancellation failed", serializeError(error));
+        toast.error("Trade passed 1 minute but could not be released automatically");
+      } finally {
+        setPlacing(false);
+        placingRef.current = false;
+        activeDirectionRef.current = null;
+        setTradeIntent(null);
+      }
+    }, remaining);
+    return () => clearTimeout(timeout);
+  }, [cancel, pendingTrade?.openedAt, pendingTrade?.status, qc]);
+
+  useEffect(() => {
+    const staleOpen = positionTrades.find(
+      (trade) =>
+        trade.status === "open" &&
+        Date.now() - new Date(trade.created_at).getTime() > MAX_BINARY_OPEN_MS,
+    );
+    if (!staleOpen) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        await cancel({ data: { trade_id: staleOpen.id } });
+        if (cancelled) return;
+        toast.error("Released a binary trade that was open for over 1 minute");
+        qc.invalidateQueries({ queryKey: ["profile"] });
+        qc.invalidateQueries({ queryKey: ["binary-positions"] });
+      } catch (error) {
+        logDebugEvent("error", "binary.trade", "Stale open binary trade release failed", serializeError(error));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [cancel, positionTrades, qc]);
+
+  async function placeAndSettle(direction: string, useStake: number, mode: "manual" | "bot" | "scanner" = "manual"): Promise<boolean> {
     if (placingRef.current || pendingTradeRef.current?.status === "open") {
       toast("Wait for the open contract to settle first");
       throw new Error("An existing binary contract is still open");
@@ -399,7 +454,10 @@ export function BinaryPanel() {
     const entryPrice = priceRef.current;
     const neededTicks = settlementTicks;
     activeDirectionRef.current = direction;
+    setTradeIntent({ direction, mode });
+    toast.info(`${mode === "manual" ? "Manual" : mode === "scanner" ? "Scanner" : "Bot"} ${direction} sent`);
     let trade;
+    let tradeId: string | undefined;
     logDebugEvent("info", "binary.trade", "Placing binary trade", {
       market: indexRef.current,
       type: ty,
@@ -421,6 +479,8 @@ export function BinaryPanel() {
           entry_price: priceRef.current,
           meta: {
             type: ty,
+            mode,
+            max_open_ms: MAX_BINARY_OPEN_MS,
             digit: ty === "Over/Under" || ty === "Matches/Differs" ? sel : undefined,
           },
         },
@@ -435,6 +495,7 @@ export function BinaryPanel() {
         type: ty,
         market: indexRef.current,
         entryPrice: priceRef.current,
+        openedAt: Date.now(),
         status: "open",
       });
       toast.success("Contract placed and open — waiting for result");
@@ -444,6 +505,7 @@ export function BinaryPanel() {
         stake: useStake,
       });
       qc.invalidateQueries({ queryKey: ["profile"] });
+      qc.invalidateQueries({ queryKey: ["binary-positions"] });
     } catch (e) {
       logDebugEvent("error", "binary.trade", "Binary trade placement failed", serializeError(e));
       toast.error(e instanceof Error ? e.message : "Failed");
@@ -520,9 +582,12 @@ export function BinaryPanel() {
   }
 
   async function fireManual(direction: string) {
-    if (botRunningRef.current || placingRef.current || pendingTradeRef.current?.status === "open") return;
+    if (botRunningRef.current || placingRef.current || pendingTradeRef.current?.status === "open") {
+      toast("Wait for the open contract to settle first");
+      return;
+    }
     try {
-      await placeAndSettle(direction, stake);
+      await placeAndSettle(direction, stake, "manual");
     } catch {
       // The trade function already shows the failure toast.
     }
@@ -541,7 +606,7 @@ export function BinaryPanel() {
     return avg >= selectedDigitRef.current ? "DIFFER" : "MATCH";
   }
 
-  async function startBot(direction: string) {
+  async function startBot(direction: string, mode: "bot" | "scanner" = "bot") {
     if (botRunningRef.current || placingRef.current || pendingTradeRef.current?.status === "open") {
       toast("Wait for the open contract to settle first");
       return;
@@ -563,7 +628,7 @@ export function BinaryPanel() {
     while (botRunningRef.current) {
       try {
         const nextDirection = direction === "AUTO" ? autoDirection() : direction;
-        const won = await placeAndSettle(nextDirection, currentStakeRef.current);
+        const won = await placeAndSettle(nextDirection, currentStakeRef.current, mode);
         if (won) {
           currentStakeRef.current = stake; // reset on win
         } else {
@@ -920,6 +985,11 @@ export function BinaryPanel() {
           {(placing || pendingTrade?.status === "open" || settleNote) && (
             <div className="bg-card border border-border rounded-xl p-3 text-sm space-y-1 text-foreground">
               {placing && <div className="text-muted-foreground">Placing trade… please wait.</div>}
+              {tradeIntent && (
+                <div className="rounded-xl border border-[#47D6D9]/30 bg-[#47D6D9]/10 px-3 py-2 font-semibold text-[#47D6D9]">
+                  {tradeIntent.mode === "manual" ? "Manual" : tradeIntent.mode === "scanner" ? "Scanner" : "Bot"} {tradeIntent.direction} accepted.
+                </div>
+              )}
               {pendingTrade?.status === "open" && (
                 <div className="rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-primary font-semibold">
                   Contract placed: {pendingTrade.direction} {pendingTrade.type} ${pendingTrade.stake} — waiting for result.

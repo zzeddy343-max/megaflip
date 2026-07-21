@@ -55,6 +55,7 @@ function ScannerPage() {
       JSON.stringify({
         category: cat,
         market: result.bestMarket,
+        direction: result.bias,
         bias: result.bias,
         edge: result.edge,
         autotrade: true,

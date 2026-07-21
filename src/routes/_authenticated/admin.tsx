@@ -783,10 +783,10 @@ function UsersTab() {
     onError: (e) => toast.error(e instanceof Error ? e.message : "Reset failed"),
   });
   const moderateMut = useMutation({
-    mutationFn: (vars: { user_id: string; action: "freeze" | "close" | "delete"; duration_days?: number; note?: string }) =>
+    mutationFn: (vars: { user_id: string; action: "freeze" | "close" | "delete" | "activate"; duration_days?: number; note?: string }) =>
       moderate({ data: vars }),
     onSuccess: (_, vars) => {
-      const label = vars.action === "freeze" ? "frozen" : vars.action === "close" ? "closed" : "deleted";
+      const label = vars.action === "freeze" ? "frozen" : vars.action === "close" ? "closed" : vars.action === "delete" ? "deleted" : "unlocked";
       toast.success(`Account ${label}`);
       qc.invalidateQueries({ queryKey: ["admin-clients"] });
       qc.invalidateQueries({ queryKey: ["profile"] });
@@ -947,6 +947,17 @@ function UsersTab() {
                   className="rounded border border-primary/40 px-1.5 py-0.5 text-[9px] font-bold text-primary disabled:opacity-50"
                 >
                   Close
+                </button>
+                <button
+                  onClick={() => {
+                    if (window.confirm("Unfreeze and unlock this account?")) {
+                      moderateMut.mutate({ user_id: u.id, action: "activate" });
+                    }
+                  }}
+                  disabled={moderateMut.isPending}
+                  className="rounded border border-bull/40 px-1.5 py-0.5 text-[9px] font-bold text-bull disabled:opacity-50"
+                >
+                  Unlock
                 </button>
                 <button
                   onClick={() => {

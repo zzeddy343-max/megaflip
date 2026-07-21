@@ -266,7 +266,7 @@ export const moderateClientAccount = createServerFn({ method: "POST" })
     z
       .object({
         user_id: z.string().uuid(),
-        action: z.enum(["freeze", "close", "delete"]),
+        action: z.enum(["freeze", "close", "delete", "activate"]),
         duration_days: z.number().int().min(1).max(365).optional(),
         note: z.string().trim().max(500).optional(),
       })
@@ -299,6 +299,21 @@ export const moderateClientAccount = createServerFn({ method: "POST" })
       await supabaseAdmin.from("profiles").delete().eq("id", data.user_id);
 
       return { ok: true, state: "deleted" };
+    }
+
+    if (data.action === "activate") {
+      const { error: updateError } = await supabaseAdmin
+        .from("profiles")
+        .update({
+          account_state: "active",
+          freeze_until: null,
+          deleted_at: null,
+          moderation_note: data.note ?? null,
+        })
+        .eq("id", data.user_id);
+      if (updateError) throw new Error(updateError.message);
+
+      return { ok: true, state: "active", freeze_until: null };
     }
 
     const freezeUntil =
