@@ -167,13 +167,15 @@ async function enforceTradeRiskRules(
 
   if (input.module === "binary") {
     await cancelStaleBinaryTrades(supabase, userId);
+    const liveBinarySince = new Date(Date.now() - 60_000).toISOString();
     const { count: openBinaryCount } = await supabase
       .from("trades")
       .select("id", { count: "exact", head: true })
       .eq("user_id", userId)
       .eq("account_type", accountType)
       .eq("module", "binary")
-      .eq("status", "open");
+      .eq("status", "open")
+      .gte("created_at", liveBinarySince);
     if ((openBinaryCount ?? 0) > 0) {
       throw new Error("You already have one open binary contract. Wait for it to settle first.");
     }
@@ -255,9 +257,10 @@ async function enforceTradeRiskRules(
 
 async function cancelStaleBinaryTrades(supabase: any, userId: string, accountType?: string) {
   const staleBefore = new Date(Date.now() - 60_000).toISOString();
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   let query = supabase
     .from("trades")
-    .select("id")
+    .select("id,stake,account_type")
     .eq("user_id", userId)
     .eq("module", "binary")
     .eq("status", "open")
@@ -271,8 +274,13 @@ async function cancelStaleBinaryTrades(supabase: any, userId: string, accountTyp
   let released = 0;
   for (const trade of staleTrades ?? []) {
     try {
-      const { error } = await supabase.rpc("cancel_open_trade", { _trade_id: trade.id });
-      if (error) throw new Error(error.message ?? String(error));
+      const cancelled = await cancelOpenTradeWithRefund(
+        supabaseAdmin,
+        userId,
+        trade.id,
+        "stale_binary_timeout",
+      );
+      if (!cancelled) continue;
       released += 1;
     } catch (error) {
       console.warn("[Trades] stale binary cancellation skipped", {
@@ -283,6 +291,79 @@ async function cancelStaleBinaryTrades(supabase: any, userId: string, accountTyp
     }
   }
   return released;
+}
+
+async function cancelOpenTradeWithRefund(
+  supabaseAdmin: any,
+  userId: string,
+  tradeId: string,
+  reason: string,
+) {
+  const { data: trade, error: tradeError } = await supabaseAdmin
+    .from("trades")
+    .select("id,stake,account_type")
+    .eq("id", tradeId)
+    .eq("user_id", userId)
+    .eq("status", "open")
+    .maybeSingle();
+  if (tradeError) throw new Error(tradeError.message);
+  if (!trade) return null;
+
+  const { data: cancelled, error } = await supabaseAdmin
+    .from("trades")
+    .update({
+      status: "cancelled",
+      payout: Number(trade.stake ?? 0),
+      closed_at: new Date().toISOString(),
+      meta: { cancelled_by_system: true, reason },
+    } as Record<string, unknown>)
+    .eq("id", trade.id)
+    .eq("user_id", userId)
+    .eq("status", "open")
+    .select("id,stake,account_type")
+    .maybeSingle();
+  if (error) throw new Error(error.message ?? String(error));
+  if (!cancelled) return null;
+
+  await refundCancelledStake(supabaseAdmin, userId, cancelled);
+  return cancelled;
+}
+
+async function refundCancelledStake(
+  supabaseAdmin: any,
+  userId: string,
+  trade: { id: string; stake?: number | string | null; account_type?: string | null },
+) {
+  const stake = Number(trade.stake ?? 0);
+  const accountType = trade.account_type === "demo" ? "demo" : "real";
+  const balanceField = accountType === "demo" ? "demo_balance_usd" : "balance_usd";
+
+  const { data: profile, error: profileError } = await supabaseAdmin
+    .from("profiles")
+    .select(balanceField)
+    .eq("id", userId)
+    .single();
+  if (profileError) throw new Error(profileError.message);
+
+  const { error: balanceError } = await supabaseAdmin
+    .from("profiles")
+    .update({ [balanceField]: Number(profile?.[balanceField] ?? 0) + stake } as Record<string, unknown>)
+    .eq("id", userId);
+  if (balanceError) throw new Error(balanceError.message);
+
+  const { error: txError } = await supabaseAdmin.from("transactions").insert({
+    user_id: userId,
+    kind: "trade_payout",
+    method: "system",
+    account_type: accountType,
+    amount: stake,
+    currency: "USD",
+    amount_usd: stake,
+    status: "completed",
+    is_virtual: accountType === "demo",
+    meta: { trade_id: trade.id, reason: "stale_binary_timeout" },
+  });
+  if (txError) throw new Error(txError.message);
 }
 
 async function getUserSegmentStats(supabase: any, userId: string, accountType: string) {
@@ -399,7 +480,27 @@ export const cancelTrade = createServerFn({ method: "POST" })
       "cancel_open_trade",
       { _trade_id: data.trade_id },
     );
-    if (error) throw new Error(`Could not cancel trade: ${error.message ?? String(error)}`);
+    if (error) {
+      const message = error.message ?? String(error);
+      if (/invalid input value for enum trade_status: "completed"|Trade not found/i.test(message)) {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const cancelled = await cancelOpenTradeWithRefund(
+          supabaseAdmin,
+          context.userId,
+          data.trade_id,
+          "cancel_rpc_fallback",
+        );
+        if (cancelled) {
+          return {
+            ok: true,
+            payout: Number(cancelled.stake ?? 0),
+            status: "cancelled",
+          } as TradeCloseResult;
+        }
+        return { ok: true, payout: 0, status: "missing" } as TradeCloseResult;
+      }
+      throw new Error(`Could not cancel trade: ${message}`);
+    }
     return result as TradeCloseResult;
   });
 

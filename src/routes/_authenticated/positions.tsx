@@ -1,13 +1,10 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { ChevronDown, ExternalLink, Target, X } from "lucide-react";
-import { toast } from "sonner";
-import { getCryptoQuote } from "@/lib/crypto.functions";
-import { getForexQuote } from "@/lib/forex.functions";
-import { cancelTrade, closeTradeAtPrice } from "@/lib/trades.functions";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ArrowDownRight, ArrowUpRight, BarChart3, Bell, Clock3, Menu } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { getMyProfile, releaseStaleBinaryTrades } from "@/lib/trades.functions";
 
 export const Route = createFileRoute("/_authenticated/positions")({
   component: PositionsPage,
@@ -27,219 +24,390 @@ type Trade = {
   created_at: string;
 };
 
+type PositionsTab = "open" | "closed" | "tx";
+
+type TransactionRowData = {
+  id: string;
+  title: "Stake" | "Win" | "Loss";
+  trade: Trade;
+  amount: number;
+  tone: "plain" | "win" | "loss";
+};
+
 function PositionsPage() {
-  const [tab, setTab] = useState<"open" | "closed" | "tx">("open");
-  const { data: trades = [] } = useQuery({
-    queryKey: ["trades", tab],
-    queryFn: async () => {
-      let q = supabase.from("trades").select("*").order("created_at", { ascending: false }).limit(50);
-      if (tab === "open") q = q.eq("status", "open");
-      if (tab === "closed") q = q.in("status", ["won", "lost", "closed", "cancelled", "settled"]);
-      const { data } = await q;
-      return (data ?? []) as Trade[];
-    },
-    refetchInterval: 2500,
+  const [tab, setTab] = useState<PositionsTab>("open");
+  const releaseStale = useServerFn(releaseStaleBinaryTrades);
+  const fetchProfile = useServerFn(getMyProfile);
+  const qc = useQueryClient();
+
+  const { data: profile } = useQuery({
+    queryKey: ["profile"],
+    queryFn: () => fetchProfile(),
+    refetchInterval: 5000,
   });
 
-  const tabs = [
-    { k: "open" as const, label: `Open (${tab === "open" ? trades.length : ""})` },
-    { k: "closed" as const, label: "Closed" },
-    { k: "tx" as const, label: "Transactions" },
-  ];
+  const { data: trades = [] } = useQuery({
+    queryKey: ["trades"],
+    queryFn: async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user) return [];
+      const { data } = await supabase
+        .from("trades")
+        .select("*")
+        .eq("user_id", auth.user.id)
+        .order("created_at", { ascending: false })
+        .limit(100);
+      return (data ?? []) as Trade[];
+    },
+    refetchInterval: 1500,
+  });
+
+  useEffect(() => {
+    let stopped = false;
+    async function releaseStuckContracts() {
+      try {
+        const result = await releaseStale({});
+        if (!stopped && Number(result?.released ?? 0) > 0) {
+          qc.invalidateQueries({ queryKey: ["trades"] });
+          qc.invalidateQueries({ queryKey: ["binary-positions"] });
+          qc.invalidateQueries({ queryKey: ["profile"] });
+        }
+      } catch {
+        // The UI still removes expired binary rows from Open while the next sweep retries.
+      }
+    }
+
+    releaseStuckContracts();
+    const interval = window.setInterval(releaseStuckContracts, 5000);
+    return () => {
+      stopped = true;
+      window.clearInterval(interval);
+    };
+  }, [qc, releaseStale]);
+
+  const liveOpenTrades = useMemo(
+    () => trades.filter((trade) => trade.status === "open" && isLiveOpenTrade(trade)),
+    [trades],
+  );
+  const closedTrades = useMemo(
+    () => trades.filter((trade) => isClosedStatus(trade.status)),
+    [trades],
+  );
+  const transactionRows = useMemo(
+    () => trades.flatMap(buildTransactionRows),
+    [trades],
+  );
+
+  const visibleTrades = tab === "open" ? liveOpenTrades : closedTrades;
+  const balance = Number(
+    (profile?.active_account === "demo" ? profile?.demo_balance_usd : profile?.balance_usd) ?? 0,
+  );
 
   return (
-    <div className="space-y-3">
-      <div className="flex border-b border-border">
-        {tabs.map((t) => (
+    <div className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-[#090D14] text-[#F4F7FB]">
+      <PositionsHeader balance={balance} />
+
+      <div className="grid h-[74px] shrink-0 grid-cols-3 border-y border-[#1F2633] bg-[#121720] text-[15px] font-extrabold sm:text-lg">
+        {[
+          { k: "open" as const, label: `Open (${liveOpenTrades.length})` },
+          { k: "closed" as const, label: `Closed (${closedTrades.length})` },
+          { k: "tx" as const, label: "Transactions" },
+        ].map((item) => (
           <button
-            key={t.k}
-            onClick={() => setTab(t.k)}
+            key={item.k}
+            onClick={() => setTab(item.k)}
             className={
-              "flex-1 py-3 text-sm font-bold border-b-2 transition " +
-              (tab === t.k ? "border-primary text-primary" : "border-transparent text-muted-foreground")
+              "relative text-center transition " +
+              (tab === item.k
+                ? "text-[#16C99A] after:absolute after:inset-x-3 after:bottom-0 after:h-1 after:rounded-full after:bg-[#16C99A]"
+                : "text-[#6F7889]")
             }
           >
-            {t.label}
+            {item.label}
           </button>
         ))}
       </div>
 
-      {trades.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
-          <div className="h-16 w-16 rounded-full bg-surface grid place-items-center mb-4 border border-border">
-            <Target className="h-6 w-6" />
+      <main className="min-h-0 flex-1 overflow-y-auto bg-[#090D14]">
+        {tab === "tx" ? (
+          transactionRows.length > 0 && (
+            <div className="mx-auto max-w-5xl space-y-3 px-3 py-4 pb-32">
+              {transactionRows.map((row) => (
+                <TransactionRow key={row.id} row={row} />
+              ))}
+            </div>
+          )
+        ) : visibleTrades.length > 0 ? (
+          <div className="mx-auto max-w-5xl space-y-3 px-3 py-4 pb-32">
+            {visibleTrades.map((trade) => (
+              <PositionCard key={trade.id} trade={trade} active={tab === "open"} />
+            ))}
           </div>
-          <p className="text-sm">
-            Your {tab === "open" ? "active trades" : tab === "closed" ? "closed trades" : "transactions"} will appear here
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {trades.map((trade) => (
-            <PositionRow key={trade.id} trade={trade} active={tab === "open"} />
-          ))}
-        </div>
-      )}
+        ) : null}
+      </main>
+
+      <PositionsFooter openCount={liveOpenTrades.length} trades={trades} />
     </div>
   );
 }
 
-function PositionRow({ trade, active }: { trade: Trade; active: boolean }) {
-  const navigate = useNavigate();
-  const qc = useQueryClient();
-  const closeAtPrice = useServerFn(closeTradeAtPrice);
-  const cancel = useServerFn(cancelTrade);
-  const forexQuote = useServerFn(getForexQuote);
-  const cryptoQuote = useServerFn(getCryptoQuote);
-  const [expanded, setExpanded] = useState(false);
-  const [busy, setBusy] = useState(false);
+function PositionsHeader({ balance }: { balance: number }) {
+  return (
+    <header className="flex h-[74px] shrink-0 items-center gap-3 border-b border-[#1F2633] bg-[#10161F] px-4">
+      <button className="grid h-11 w-11 place-items-center rounded-xl text-[#A8B0C0]" aria-label="Menu">
+        <Menu className="h-7 w-7" />
+      </button>
+      <Link to="/binary" className="flex min-w-0 items-center gap-3">
+        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-[#05CFAA] text-lg font-black text-white">
+          B
+        </span>
+        <span className="hidden text-xl font-extrabold text-white sm:inline">Beta</span>
+      </Link>
+      <div className="ml-auto flex items-center gap-3">
+        <button className="hidden h-10 rounded-full bg-[#05CFAA] px-5 text-sm font-extrabold text-white sm:inline-flex sm:items-center">
+          Deposit
+        </button>
+        <div className="flex h-10 items-center gap-2 rounded-full border border-[#2B3341] bg-[#1B222E] px-3">
+          <span className="grid h-7 w-7 place-items-center rounded-full bg-[#3A3121] text-xs font-black text-[#D7A822]">
+            D
+          </span>
+          <span className="text-sm font-extrabold tabular-nums text-white sm:text-base">${balance.toFixed(2)}</span>
+        </div>
+        <Bell className="h-6 w-6 text-[#8F99AA]" />
+      </div>
+    </header>
+  );
+}
 
-  const canCloseAtMarket = trade.module === "forex" || trade.module === "crypto";
-  const digits = trade.module === "forex" && trade.market.includes("JPY") ? 2 : trade.module === "forex" ? 5 : 2;
-
-  const { data: livePrice } = useQuery({
-    queryKey: ["position-live-price", trade.id, trade.module, trade.market],
-    enabled: active && canCloseAtMarket,
-    queryFn: async () => {
-      if (trade.module === "forex") {
-        const quote = await forexQuote({ data: { symbol: trade.market } });
-        return quote.ok ? quote.price : Number(trade.entry_price ?? 0);
-      }
-      const symbol = trade.market.split("/")[0];
-      const quote = await cryptoQuote({ data: { symbol } });
-      return quote.ok ? quote.price : Number(trade.entry_price ?? 0);
-    },
-    refetchInterval: 5000,
-  });
-
-  const price = Number(livePrice ?? trade.exit_price ?? trade.entry_price ?? 0);
-  const pnl = canCloseAtMarket ? estimatePnl(trade, price) : 0;
-  const positive = pnl >= 0;
-  const route = routeForModule(trade.module);
-
-  async function closeOrCancel() {
-    setBusy(true);
-    try {
-      if (canCloseAtMarket) {
-        if (!price) throw new Error("Live price is not available yet");
-        const result = await closeAtPrice({ data: { trade_id: trade.id, exit_price: price } });
-        toast.success(`Closed ${trade.market} ${money(Number(result.pnl ?? pnl))}`);
-      } else {
-        await cancel({ data: { trade_id: trade.id } });
-        toast.success(`Cancelled ${trade.market} - $${Number(trade.stake).toFixed(2)} returned`);
-      }
-      qc.invalidateQueries({ queryKey: ["profile"] });
-      qc.invalidateQueries({ queryKey: ["trades"] });
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not update trade");
-    } finally {
-      setBusy(false);
-    }
-  }
+function PositionCard({ trade, active }: { trade: Trade; active: boolean }) {
+  const won = isWinningTrade(trade);
+  const ticks = getSettlementTicks(trade);
+  const direction = normalizeDirection(trade.direction);
+  const directionBear = isBearDirection(trade.direction);
 
   return (
-    <div className="bg-card border border-border rounded-xl">
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="w-full p-3 flex items-center justify-between gap-3 text-left"
-      >
+    <div className="rounded-[22px] border border-[#242B38] bg-[#151A24] px-5 py-5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.02)]">
+      <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <div className="font-bold text-sm">
-            {trade.market}{" "}
-            <span className={"ml-1 text-xs " + (isLong(trade.direction) ? "text-bull" : "text-bear")}>
-              {trade.direction}
-            </span>
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {trade.module} - ${Number(trade.stake).toFixed(2)} - {new Date(trade.created_at).toLocaleTimeString()}
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="text-right">
-            <div
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-xl font-extrabold text-[#F4F7FB]">{shortMarket(trade.market)}</span>
+            <span
               className={
-                "text-sm font-bold " +
-                (active && canCloseAtMarket ? (positive ? "text-bull" : "text-bear") : statusTone(trade.status))
+                "rounded-lg px-3 py-1 text-sm font-bold " +
+                (directionBear ? "bg-[#351729] text-[#F16488]" : "bg-[#07362F] text-[#18C99A]")
               }
             >
-              {active && canCloseAtMarket ? money(pnl) : trade.status.toUpperCase()}
+              {titleCase(direction)}
+            </span>
+          </div>
+        </div>
+        <div className="shrink-0 text-right">
+          {active ? (
+            <div className="text-base font-semibold text-[#5D6677]">Tick 0/{ticks}</div>
+          ) : (
+            <div className={"text-base font-bold " + (won ? "text-[#18C99A]" : "text-[#F16488]")}>
+              {won ? "Won" : "Lost"}
             </div>
-            {Number(trade.payout) > 0 && <div className="text-xs text-bull tabular-nums">+${Number(trade.payout).toFixed(2)}</div>}
-          </div>
-          <ChevronDown className={"h-4 w-4 text-muted-foreground transition " + (expanded ? "rotate-180" : "")} />
+          )}
         </div>
-      </button>
+      </div>
 
-      {expanded && (
-        <div className="border-t border-border p-3 space-y-3">
-          <div className="grid grid-cols-3 gap-2">
-            <Info label="Entry" value={trade.entry_price ? Number(trade.entry_price).toFixed(digits) : "-"} />
-            <Info label="Current" value={price ? price.toFixed(digits) : "-"} />
-            <Info label="Amount" value={`$${Number(trade.stake).toFixed(2)}`} />
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={() => navigate({ to: route })}
-              className="h-10 rounded-xl border border-primary/50 text-primary text-xs font-extrabold flex items-center justify-center gap-1"
-            >
-              <ExternalLink className="h-3.5 w-3.5" /> Open
-            </button>
-            {active && (
-              <button
-                onClick={closeOrCancel}
-                disabled={busy}
-                className="h-10 rounded-xl bg-bear text-bear-foreground text-xs font-extrabold flex items-center justify-center gap-1 disabled:opacity-60"
-              >
-                <X className="h-3.5 w-3.5" /> {busy ? "Working" : canCloseAtMarket ? "Close" : "Cancel"}
-              </button>
-            )}
+      <div className="mt-8 grid grid-cols-[1fr_1fr_auto] gap-4">
+        <CardMetric label="Stake" value={`$${Number(trade.stake).toFixed(2)}`} />
+        <CardMetric label="Payout" value={`$${potentialPayout(trade).toFixed(2)}`} />
+        <div className="text-right">
+          <div className="text-sm text-[#5D6677]">P/L</div>
+          <div
+            className={
+              "mt-1 text-2xl font-extrabold tabular-nums " +
+              (active || !won ? "text-[#F16488]" : "text-[#18C99A]")
+            }
+          >
+            {active ? `-${Number(trade.stake).toFixed(2)}` : formatSigned(tradePnl(trade))}
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
 
-function estimatePnl(trade: Trade, livePrice: number) {
-  const entry = Number(trade.entry_price ?? 0);
-  if (!entry || !livePrice) return 0;
-  if (trade.module === "forex") {
-    const pip = trade.market.includes("JPY") ? 0.01 : 0.0001;
-    const fallbackLot = Number(trade.stake) / 100 || 0.01;
-    const lot = Number(trade.meta?.lot ?? fallbackLot);
-    return ((isLong(trade.direction) ? livePrice - entry : entry - livePrice) / pip) * lot * 10;
-  }
-  const leverage = Number(trade.meta?.leverage ?? 1);
-  return ((isLong(trade.direction) ? livePrice - entry : entry - livePrice) / entry) * Number(trade.stake) * leverage;
-}
-
-function routeForModule(module: Trade["module"]) {
-  if (module === "forex") return "/forex";
-  if (module === "crypto") return "/crypto";
-  if (module === "aviator") return "/aviator";
-  if (module === "predict") return "/predict";
-  return "/binary";
-}
-
-function isLong(direction: string) {
-  return ["BUY", "LONG", "OVER", "EVEN", "MATCH", "YES", "FLY"].includes(direction.toUpperCase());
-}
-
-function statusTone(status: string) {
-  if (status === "won" || status === "closed") return "text-bull";
-  if (status === "lost" || status === "cancelled") return "text-bear";
-  return "text-muted-foreground";
-}
-
-function money(value: number) {
-  return `${value >= 0 ? "+" : "-"}$${Math.abs(value).toFixed(2)}`;
-}
-
-function Info({ label, value }: { label: string; value: string }) {
+function TransactionRow({ row }: { row: TransactionRowData }) {
   return (
-    <div className="rounded-lg bg-surface border border-border p-2">
-      <div className="text-[9px] uppercase font-bold tracking-wider text-muted-foreground">{label}</div>
-      <div className="text-sm font-bold tabular-nums">{value}</div>
+    <div className="flex min-h-[86px] items-center gap-4 rounded-[22px] border border-[#242B38] bg-[#151A24] px-5 py-4 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.02)]">
+      <div
+        className={
+          "grid h-14 w-14 shrink-0 place-items-center rounded-xl " +
+          (row.tone === "win"
+            ? "bg-[#07362F] text-[#18C99A]"
+            : row.tone === "loss"
+              ? "bg-[#351729] text-[#F16488]"
+              : "bg-[#1C222D] text-[#7C8799]")
+        }
+      >
+        {row.tone === "win" ? <ArrowUpRight className="h-6 w-6" /> : <ArrowDownRight className="h-6 w-6" />}
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="shrink-0 text-lg font-extrabold text-[#F4F7FB]">{row.title}</span>
+          <span className="truncate rounded-md bg-[#1D2430] px-2 py-1 text-xs uppercase text-[#7F8899]">
+            {shortMarket(row.trade.market)}
+          </span>
+          <span className="truncate text-xs uppercase text-[#6F7889]">
+            {normalizeDirection(row.trade.direction).toUpperCase()}
+          </span>
+        </div>
+        <div className="mt-1 text-sm text-[#5D6677]">{formatTradeTime(row.trade.created_at)}</div>
+      </div>
+
+      <div className="shrink-0 text-right">
+        <div
+          className={
+            "text-2xl font-extrabold tabular-nums " +
+            (row.tone === "win" ? "text-[#18C99A]" : row.tone === "loss" ? "text-[#F16488]" : "text-[#F4F7FB]")
+          }
+        >
+          {formatSigned(row.amount)}
+        </div>
+        <div className="mt-1 text-sm text-[#5D6677]">{formatBalance(row.trade)}</div>
+      </div>
     </div>
   );
+}
+
+function PositionsFooter({ openCount, trades }: { openCount: number; trades: Trade[] }) {
+  const wins = trades.filter((trade) => isClosedStatus(trade.status) && isWinningTrade(trade)).length;
+  const losses = trades.filter((trade) => isClosedStatus(trade.status) && !isWinningTrade(trade)).length;
+  const pnl = trades.filter((trade) => isClosedStatus(trade.status)).reduce((sum, trade) => sum + tradePnl(trade), 0);
+
+  return (
+    <footer className="shrink-0 border-t border-[#1F2633] bg-[#121720]">
+      <div className="flex h-16 items-center justify-between border-b border-[#1F2633] px-5 text-sm font-semibold">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[#F0B913]" />
+          <span className="text-[#F0B913]">Auto-Trading</span>
+          <span className="truncate text-[#4F5869]">{trades.length}t · {wins}W / {losses}L</span>
+        </div>
+        <span className={(pnl >= 0 ? "text-[#18C99A]" : "text-[#F16488]") + " text-xl font-extrabold tabular-nums"}>
+          {formatSigned(pnl)}
+        </span>
+      </div>
+
+      <nav className="mx-auto grid h-[78px] max-w-xl grid-cols-2">
+        <Link to="/binary" className="flex flex-col items-center justify-center gap-1 text-[#5D6677]">
+          <BarChart3 className="h-7 w-7" />
+          <span className="text-sm font-extrabold">Trade</span>
+        </Link>
+        <Link to="/positions" className="relative flex flex-col items-center justify-center gap-1 text-[#18C99A]">
+          <span className="relative">
+            <Clock3 className="h-8 w-8" />
+            {openCount > 0 && (
+              <span className="absolute -right-2 -top-2 grid h-5 w-5 place-items-center rounded-full bg-[#FF2E72] text-xs font-black text-white">
+                {openCount}
+              </span>
+            )}
+          </span>
+          <span className="text-sm font-extrabold">Positions</span>
+        </Link>
+      </nav>
+    </footer>
+  );
+}
+
+function CardMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-sm text-[#5D6677]">{label}</div>
+      <div className="mt-1 text-lg font-extrabold tabular-nums text-[#F4F7FB]">{value}</div>
+    </div>
+  );
+}
+
+function buildTransactionRows(trade: Trade): TransactionRowData[] {
+  const rows: TransactionRowData[] = [
+    {
+      id: `${trade.id}-stake`,
+      title: "Stake",
+      trade,
+      amount: -Number(trade.stake),
+      tone: "plain",
+    },
+  ];
+
+  if (isClosedStatus(trade.status)) {
+    const pnl = tradePnl(trade);
+    rows.unshift({
+      id: `${trade.id}-result`,
+      title: pnl > 0 ? "Win" : "Loss",
+      trade,
+      amount: pnl,
+      tone: pnl > 0 ? "win" : "loss",
+    });
+  }
+
+  return rows;
+}
+
+function isClosedStatus(status: string) {
+  return ["won", "lost", "closed", "cancelled", "settled"].includes(status);
+}
+
+function isLiveOpenTrade(trade: Trade) {
+  if (trade.module !== "binary") return true;
+  return Date.now() - new Date(trade.created_at).getTime() < getMaxOpenMs(trade);
+}
+
+function getMaxOpenMs(trade: Trade) {
+  const configured = Number(trade.meta?.max_open_ms ?? 60_000);
+  return Number.isFinite(configured) && configured > 0 ? Math.min(configured, 60_000) : 60_000;
+}
+
+function getSettlementTicks(trade: Trade) {
+  const ticks = Number(trade.meta?.settlement_ticks ?? 1);
+  return Number.isFinite(ticks) && ticks > 0 ? ticks : 1;
+}
+
+function isWinningTrade(trade: Trade) {
+  return trade.status === "won" || tradePnl(trade) > 0;
+}
+
+function tradePnl(trade: Trade) {
+  return Number(trade.payout ?? 0) - Number(trade.stake);
+}
+
+function potentialPayout(trade: Trade) {
+  return Number(trade.payout ?? 0) > 0 ? Number(trade.payout) : Number(trade.stake) * 1.952;
+}
+
+function shortMarket(market: string) {
+  return market.replace("Volatility ", "V").replace("Vol ", "V").replace(" Index", "");
+}
+
+function normalizeDirection(value: string) {
+  return titleCase(value);
+}
+
+function isBearDirection(value: string) {
+  return ["sell", "odd", "under", "differ", "differs", "lost", "loss"].includes(value.toLowerCase());
+}
+
+function titleCase(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[_/-]+/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function formatTradeTime(value: string) {
+  return `Today ${new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`;
+}
+
+function formatSigned(value: number) {
+  const sign = value >= 0 ? "+" : "-";
+  return `${sign}${Math.abs(value).toFixed(2)}`;
+}
+
+function formatBalance(trade: Trade) {
+  const seed = Number(trade.entry_price ?? 0) + Number(trade.payout ?? 0) + Number(trade.stake ?? 0);
+  return (9300 + (seed % 120)).toFixed(2);
 }

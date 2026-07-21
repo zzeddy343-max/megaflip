@@ -267,9 +267,12 @@ export function BinaryPanel() {
   const { data: positionTrades = [] } = useQuery({
     queryKey: ["binary-positions"],
     queryFn: async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user) return [];
       const { data } = await supabase
         .from("trades")
         .select("id,module,market,direction,stake,entry_price,exit_price,payout,status,meta,created_at")
+        .eq("user_id", auth.user.id)
         .eq("module", "binary")
         .order("created_at", { ascending: false })
         .limit(50);
@@ -278,10 +281,12 @@ export function BinaryPanel() {
     refetchInterval: 2500,
   });
 
+  const openPositionTrades = positionTrades.filter((trade) => trade.status === "open" && isLiveOpenTrade(trade));
+  const closedPositionTrades = positionTrades.filter((trade) => isClosedTradeStatus(trade.status));
   const visiblePositionTrades = positionsTab === "open"
-    ? positionTrades.filter((t) => t.status === "open")
+    ? openPositionTrades
     : positionsTab === "closed"
-      ? positionTrades.filter((t) => ["won", "lost", "closed", "cancelled", "settled"].includes(t.status))
+      ? closedPositionTrades
       : positionTrades;
   const displayedPositionTrades = positionsTab === "open"
     ? visiblePositionTrades.slice(0, 1)
@@ -477,6 +482,7 @@ export function BinaryPanel() {
     const sel = selectedDigitRef.current;
     const entryPrice = priceRef.current;
     const neededTicks = settlementTicks;
+    const maxOpenMs = getBinaryMaxOpenMs(neededTicks, chartTickMs);
     activeDirectionRef.current = direction;
     setTradeIntent({ direction, mode });
     toast.info(`${mode === "manual" ? "Manual" : mode === "scanner" ? "Scanner" : "Bot"} ${direction} sent`);
@@ -504,7 +510,9 @@ export function BinaryPanel() {
           meta: {
             type: ty,
             mode,
-            max_open_ms: MAX_BINARY_OPEN_MS,
+            max_open_ms: maxOpenMs,
+            settlement_ticks: neededTicks,
+            tick_ms: chartTickMs,
             digit: ty === "Over/Under" || ty === "Matches/Differs" ? sel : undefined,
           },
         },
@@ -1674,8 +1682,8 @@ export function BinaryPanel() {
           <div className="flex h-full min-h-0 flex-col">
             <div className="grid h-10 shrink-0 grid-cols-3 border-b border-[#2A3447] bg-[#202939] text-sm font-semibold">
               {[
-                { key: "open", label: `Open (${positionsTab === "open" ? visiblePositionTrades.length : positionTrades.filter((t) => t.status === "open").length})` },
-                { key: "closed", label: `Closed (${positionsTab === "closed" ? visiblePositionTrades.length : positionTrades.filter((t) => ["won", "lost", "closed", "cancelled", "settled"].includes(t.status)).length})` },
+                { key: "open", label: `Open (${positionsTab === "open" ? visiblePositionTrades.length : openPositionTrades.length})` },
+                { key: "closed", label: `Closed (${positionsTab === "closed" ? visiblePositionTrades.length : closedPositionTrades.length})` },
                 { key: "tx", label: `Transactions (${positionsTab === "tx" ? visiblePositionTrades.length : positionTrades.length})` },
               ].map((tabDef) => (
                 <button
@@ -1786,11 +1794,11 @@ function titleCase(value: string) {
 function PositionCard({ trade, mode }: { trade: PositionTrade; mode: "open" | "closed" | "tx" }) {
   const pnl = Number(trade.payout ?? 0) - Number(trade.stake);
   const won = trade.status === "won" || pnl > 0;
-  const lost = trade.status === "lost" || pnl < 0;
   const isTx = mode === "tx";
   const direction = String(trade.direction || trade.meta?.direction || "EVEN").toUpperCase();
   const contractLabel = shortMarket(trade.market);
   const potentialPayout = Number(trade.payout ?? trade.stake * 1.952);
+  const settlementTicks = getSettlementTicks(trade);
 
   if (isTx) {
     const rows = buildTransactionRows(trade);
@@ -1831,7 +1839,7 @@ function PositionCard({ trade, mode }: { trade: PositionTrade; mode: "open" | "c
           </div>
           <div className="text-right">
             {mode === "open" ? (
-              <div className="text-base font-semibold text-[#5D6677]">Tick 0/1</div>
+              <div className="text-base font-semibold text-[#5D6677]">Tick 0/{settlementTicks}</div>
             ) : (
               <div className={"text-base font-bold " + (won ? "text-[#18C99A]" : "text-[#F16488]")}>{won ? "Won" : "Lost"}</div>
             )}
@@ -1848,39 +1856,6 @@ function PositionCard({ trade, mode }: { trade: PositionTrade; mode: "open" | "c
             </div>
           </div>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function LegacyPositionCard({ trade }: { trade: PositionTrade }) {
-  const positive = Number(trade.payout ?? 0) - Number(trade.stake) >= 0;
-  return (
-    <div className="rounded-2xl border border-border bg-surface p-3 space-y-2">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="text-sm font-bold">{trade.market}</div>
-          <div className="text-[11px] text-muted-foreground">{trade.direction} · ${trade.stake.toFixed(2)}</div>
-        </div>
-        <div className={"text-right text-sm font-extrabold " + (trade.status === "open" ? "text-primary" : positive ? "text-bull" : "text-bear")}>
-          {trade.status === "open" ? "OPEN" : trade.status.toUpperCase()}
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-2 text-[11px] text-muted-foreground">
-        <div className="rounded-xl bg-card p-2">
-          <div className="font-bold">Entry</div>
-          <div>{trade.entry_price ? trade.entry_price.toFixed(5) : "-"}</div>
-        </div>
-        <div className="rounded-xl bg-card p-2">
-          <div className="font-bold">Payout</div>
-          <div>{trade.payout ? `$${trade.payout.toFixed(2)}` : "-"}</div>
-        </div>
-      </div>
-      <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-        <span>{new Date(trade.created_at).toLocaleTimeString()}</span>
-        <span className={positive ? "text-bull" : "text-bear"}>
-          {trade.payout ? `${positive ? "+" : "-"}$${Math.abs(Number(trade.payout) - Number(trade.stake)).toFixed(2)}` : "-"}
-        </span>
       </div>
     </div>
   );
@@ -1954,6 +1929,31 @@ function SessionFooter({ trades, pnl }: { trades: number; pnl: number }) {
 
 function shortMarket(market: string) {
   return market.replace("Vol ", "V").replace("atility ", "").replace(" Index", "");
+}
+
+function isClosedTradeStatus(status: string) {
+  return ["won", "lost", "closed", "cancelled", "settled"].includes(status);
+}
+
+function isLiveOpenTrade(trade: PositionTrade) {
+  return Date.now() - new Date(trade.created_at).getTime() < getTradeMaxOpenMs(trade);
+}
+
+function getTradeMaxOpenMs(trade: PositionTrade) {
+  const configured = Number(trade.meta?.max_open_ms ?? MAX_BINARY_OPEN_MS);
+  return Number.isFinite(configured) && configured > 0
+    ? Math.min(configured, MAX_BINARY_OPEN_MS)
+    : MAX_BINARY_OPEN_MS;
+}
+
+function getSettlementTicks(trade: PositionTrade) {
+  const ticks = Number(trade.meta?.settlement_ticks ?? 1);
+  return Number.isFinite(ticks) && ticks > 0 ? ticks : 1;
+}
+
+function getBinaryMaxOpenMs(ticks: number, tickMs: number) {
+  const tickWindow = normalizeTickCount(ticks) * Math.max(250, Number(tickMs) || 1000);
+  return Math.min(MAX_BINARY_OPEN_MS, Math.max(1500, Math.ceil(tickWindow + 2500)));
 }
 
 function formatTradeTime(value: string) {
