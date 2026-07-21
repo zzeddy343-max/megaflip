@@ -784,13 +784,36 @@ export const listAdmins = createServerFn({ method: "GET" })
     const ids = (roles ?? []).map((row) => row.user_id);
     if (ids.length === 0) return [];
 
-    const { data: profiles, error } = await supabaseAdmin
+    const [{ data: profiles, error }, { data: authUsers, error: authError }] = await Promise.all([
+      supabaseAdmin
       .from("profiles")
       .select("id,email,full_name,username,created_at")
       .in("id", ids)
-      .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false }),
+      supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 }),
+    ]);
     if (error) throw new Error(error.message);
-    return profiles ?? [];
+    if (authError) throw new Error(authError.message);
+
+    const profileById = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
+    const authById = new Map((authUsers.users ?? []).map((user) => [user.id, user]));
+
+    return ids
+      .map((id) => {
+        const profile = profileById.get(id);
+        const authUser = authById.get(id);
+        return {
+          id,
+          email: profile?.email ?? authUser?.email ?? null,
+          full_name:
+            profile?.full_name ??
+            (authUser?.user_metadata?.full_name as string | undefined) ??
+            null,
+          username: profile?.username ?? null,
+          created_at: profile?.created_at ?? authUser?.created_at ?? new Date(0).toISOString(),
+        };
+      })
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   });
 
 export const changePassword = createServerFn({ method: "POST" })

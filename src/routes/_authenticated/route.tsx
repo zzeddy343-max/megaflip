@@ -77,21 +77,32 @@ function AuthedLayout() {
     setLastUnread(count);
   }, [isAdmin, lastUnread, supportUnread?.count]);
 
+  const isAdminConsole = location.pathname === "/admin" || location.pathname.startsWith("/admin/");
+
   useEffect(() => {
     setIsFullWidth(location.pathname === "/binary" || location.pathname.startsWith("/binary/"));
   }, [location.pathname]);
 
+  const shellHeightClass = isAdminConsole ? "min-h-[100dvh]" : "h-[100dvh]";
+  const shellOverflowClass = isAdminConsole ? "overflow-x-hidden" : "overflow-hidden";
+  const mainOverflowClass = isFullWidth
+    ? "overflow-hidden"
+    : isAdminConsole
+      ? "overflow-visible"
+      : "overflow-y-auto overflow-x-hidden";
+  const contentOverflowClass = isFullWidth ? "overflow-hidden" : "overflow-visible";
+
   return (
-    <div className="flex h-[100dvh] w-full max-w-full flex-col overflow-hidden bg-background pb-20 lg:pb-0">
+    <div className={`flex ${shellHeightClass} w-full max-w-full flex-col ${shellOverflowClass} bg-background pb-20 lg:pb-0`}>
       <AppHeader />
-      <main className="min-h-0 flex-1 w-full max-w-full overflow-hidden px-0 py-0">
+      <main className={`min-h-0 flex-1 w-full max-w-full px-0 py-0 ${mainOverflowClass}`}>
         {isAdmin && (supportUnread?.count ?? 0) > 0 && (
           <div className="border-b border-primary/30 bg-primary/10 px-4 py-2 text-xs font-bold text-primary">
             Support: {supportUnread?.count} unread user message
             {(supportUnread?.count ?? 0) === 1 ? "" : "s"}
           </div>
         )}
-        <div className="h-full min-h-0 w-full max-w-full overflow-hidden">
+        <div className={`min-h-full w-full max-w-full ${contentOverflowClass}`}>
           <Outlet />
         </div>
       </main>

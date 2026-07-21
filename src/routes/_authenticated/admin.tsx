@@ -120,6 +120,7 @@ function AdminPage() {
   const [tab, setTab] = useState<"accounts" | "users" | "trades" | "agents" | "support" | "settings" | "ledger" | "admins">(
     "accounts",
   );
+  const [adminVaultPage, setAdminVaultPage] = useState<"tools" | "admins">("tools");
   const [titleClicks, setTitleClicks] = useState(0);
   const [showAdminVault, setShowAdminVault] = useState(false);
   const repairWithdrawals = useServerFn(failStaleMpesaWithdrawals);
@@ -157,7 +158,7 @@ function AdminPage() {
   });
 
   return (
-    <div className="space-y-3">
+    <div className="mx-auto w-full max-w-6xl space-y-3 px-3 py-3 pb-28 lg:px-4 lg:pb-6">
       <div className="bg-card border border-border rounded-2xl p-3 flex items-center gap-3">
         <div className="h-10 w-10 rounded-xl bg-primary/15 text-primary grid place-items-center glow-primary">
           <Shield className="h-5 w-5" />
@@ -170,6 +171,7 @@ function AdminPage() {
               if (next >= 5) {
                 setShowAdminVault(true);
                 setTab("admins");
+                setAdminVaultPage("tools");
               }
             }}
             className="text-left font-bold text-base"
@@ -235,11 +237,52 @@ function AdminPage() {
       {tab === "settings" && <SettingsTab />}
       {tab === "ledger" && <LedgerReconciliationTab />}
       {tab === "admins" && showAdminVault && (
+        <HiddenAdminVault page={adminVaultPage} onPageChange={setAdminVaultPage} />
+      )}
+    </div>
+  );
+}
+
+function HiddenAdminVault({
+  page,
+  onPageChange,
+}: {
+  page: "tools" | "admins";
+  onPageChange: (page: "tools" | "admins") => void;
+}) {
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-1 rounded-xl border border-border bg-card p-1">
+        <button
+          type="button"
+          onClick={() => onPageChange("tools")}
+          className={
+            "rounded-lg py-2 text-[10px] font-semibold " +
+            (page === "tools" ? "bg-primary/15 text-primary" : "text-muted-foreground")
+          }
+        >
+          Hidden tools
+        </button>
+        <button
+          type="button"
+          onClick={() => onPageChange("admins")}
+          className={
+            "rounded-lg py-2 text-[10px] font-semibold " +
+            (page === "admins" ? "bg-primary/15 text-primary" : "text-muted-foreground")
+          }
+        >
+          Admins list
+        </button>
+      </div>
+
+      {page === "tools" ? (
         <>
           <HiddenPermanentSummary />
           <AccountAdjustments />
-          <AdminsTab />
+          <CreateAdminForm />
         </>
+      ) : (
+        <AdminsList />
       )}
     </div>
   );
@@ -1481,16 +1524,9 @@ function AgentsTab() {
   );
 }
 
-function AdminsTab() {
-  const adminsFn = useServerFn(listAdmins);
+function CreateAdminForm() {
   const create = useServerFn(createAdminAccount);
-  const demote = useServerFn(demoteUserRole);
   const qc = useQueryClient();
-  const { data: admins = [], isLoading } = useQuery({
-    queryKey: ["admin-admins"],
-    queryFn: () => adminsFn(),
-  });
-  const adminRows = admins as AdminRow[];
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -1513,16 +1549,6 @@ function AdminsTab() {
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Failed to create admin"),
   });
-  const demoteMut = useMutation({
-    mutationFn: (vars: { user_id: string }) =>
-      demote({ data: { user_id: vars.user_id, role: "admin", reset_agent_balances: false } }),
-    onSuccess: () => {
-      toast.success("Admin demoted to user");
-      qc.invalidateQueries({ queryKey: ["admin-admins"] });
-      qc.invalidateQueries({ queryKey: ["admin-clients"] });
-    },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed to demote admin"),
-  });
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -1538,8 +1564,7 @@ function AdminsTab() {
   }
 
   return (
-    <div className="space-y-3">
-      <form onSubmit={submit} className="bg-card border border-border rounded-xl p-3 space-y-2">
+    <form onSubmit={submit} className="bg-card border border-border rounded-xl p-3 space-y-2">
         <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
           <ShieldPlus className="h-4 w-4 text-primary" /> Add admin
         </div>
@@ -1593,7 +1618,37 @@ function AdminsTab() {
           {createMut.isPending ? "Creating..." : "Create admin"}
         </button>
       </form>
+  );
+}
 
+function AdminsList() {
+  const adminsFn = useServerFn(listAdmins);
+  const demote = useServerFn(demoteUserRole);
+  const promote = useServerFn(promoteUserRole);
+  const qc = useQueryClient();
+  const { data: admins = [], isLoading } = useQuery({
+    queryKey: ["admin-admins"],
+    queryFn: () => adminsFn(),
+  });
+  const adminRows = admins as AdminRow[];
+  const demoteMut = useMutation({
+    mutationFn: (vars: { user_id: string; next_role: "agent" | "client" }) =>
+      demote({ data: { user_id: vars.user_id, role: "admin", reset_agent_balances: false } }).then(
+        () =>
+          vars.next_role === "agent"
+            ? promote({ data: { user_id: vars.user_id, role: "agent", commission_pct: 10 } })
+            : { ok: true },
+      ),
+    onSuccess: (_, vars) => {
+      toast.success(vars.next_role === "agent" ? "Admin demoted to agent" : "Admin demoted to user");
+      qc.invalidateQueries({ queryKey: ["admin-admins"] });
+      qc.invalidateQueries({ queryKey: ["admin-agents"] });
+      qc.invalidateQueries({ queryKey: ["admin-clients"] });
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Failed to demote admin"),
+  });
+
+  return (
       <div className="bg-card border border-border rounded-xl divide-y divide-border">
         {isLoading && (
           <div className="p-6 text-center text-sm text-muted-foreground">Loading...</div>
@@ -1615,8 +1670,19 @@ function AdminsTab() {
               </div>
               <button
                 onClick={() => {
+                  if (window.confirm("Demote this admin to an agent?")) {
+                    demoteMut.mutate({ user_id: admin.id, next_role: "agent" });
+                  }
+                }}
+                disabled={demoteMut.isPending}
+                className="rounded border border-primary/40 px-1.5 py-0.5 text-[9px] font-bold text-primary disabled:opacity-50"
+              >
+                <UserMinus className="mr-0.5 inline h-2.5 w-2.5" /> Agent
+              </button>
+              <button
+                onClick={() => {
                   if (window.confirm("Demote this admin to a normal user?")) {
-                    demoteMut.mutate({ user_id: admin.id });
+                    demoteMut.mutate({ user_id: admin.id, next_role: "client" });
                   }
                 }}
                 disabled={demoteMut.isPending}
@@ -1628,7 +1694,6 @@ function AdminsTab() {
           </div>
         ))}
       </div>
-    </div>
   );
 }
 
