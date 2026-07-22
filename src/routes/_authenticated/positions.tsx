@@ -65,15 +65,32 @@ function PositionsPage() {
   useEffect(() => {
     let stopped = false;
     async function releaseStuckContracts() {
-      try {
-        const result = await releaseStale({});
-        if (!stopped && Number(result?.released ?? 0) > 0) {
-          qc.invalidateQueries({ queryKey: ["trades"] });
-          qc.invalidateQueries({ queryKey: ["binary-positions"] });
-          qc.invalidateQueries({ queryKey: ["profile"] });
+      // Exponential backoff on transient failure reported by server
+      const maxAttempts = 3;
+      let attempt = 0;
+      let delay = 300;
+      while (!stopped && attempt < maxAttempts) {
+        attempt += 1;
+        try {
+          const result = await releaseStale({});
+          if (result?.ok === false) throw new Error('stale-release-failed');
+          const released = Number(result?.released ?? 0);
+          if (!stopped && released > 0) {
+            qc.invalidateQueries({ queryKey: ["trades"] });
+            qc.invalidateQueries({ queryKey: ["binary-positions"] });
+            qc.invalidateQueries({ queryKey: ["profile"] });
+          }
+          return;
+        } catch (err) {
+          attempt += 0; // keep eslint quiet
+          if (attempt >= maxAttempts) {
+            // final failure — log and stop
+            console.warn('[Positions] releaseStaleBinaryTrades failed after retries', err);
+            return;
+          }
+          await new Promise((r) => setTimeout(r, delay));
+          delay *= 2;
         }
-      } catch {
-        // The UI still removes expired binary rows from Open while the next sweep retries.
       }
     }
 

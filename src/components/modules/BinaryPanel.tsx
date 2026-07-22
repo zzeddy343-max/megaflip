@@ -461,7 +461,20 @@ export function BinaryPanel() {
         qc.invalidateQueries({ queryKey: ["profile"] });
         qc.invalidateQueries({ queryKey: ["binary-positions"] });
       } catch (error) {
-        logDebugEvent("error", "binary.trade", "Stale binary sweep failed", serializeError(error));
+        // On failure, do a single retry with exponential backoff
+        logDebugEvent("warn", "binary.trade", "Stale binary sweep failed, retrying once", serializeError(error));
+        try {
+          await new Promise((r) => setTimeout(r, 500));
+          const result2 = await releaseStale({});
+          const released2 = Number(result2?.released ?? 0);
+          if (released2 > 0) {
+            toast.error(`Released ${released2} binary trade${released2 === 1 ? "" : "s"} on retry`);
+            qc.invalidateQueries({ queryKey: ["profile"] });
+            qc.invalidateQueries({ queryKey: ["binary-positions"] });
+          }
+        } catch (err2) {
+          logDebugEvent("error", "binary.trade", "Stale binary sweep failed after retry", serializeError(err2));
+        }
       }
     }
 
@@ -1003,7 +1016,7 @@ export function BinaryPanel() {
                 (placing || pendingTrade?.status === 'open' ? " opacity-60 cursor-not-allowed" : "")
               }
             >
-              {placing && !botMode ? "Placing…" : botMode ? `BOT ${actions[0][0]}` : actions[0][0]}
+              {placing && !botMode ? <span className="inline-flex items-center gap-2"><span className="animate-pulse">⏳</span>Placing…</span> : botMode ? `BOT ${actions[0][0]}` : actions[0][0]}
             </button>
             <button
               onClick={() => (botMode ? startBot(actions[1][0]) : fireManual(actions[1][0]))}
@@ -1014,7 +1027,7 @@ export function BinaryPanel() {
                 (placing || pendingTrade?.status === 'open' ? " opacity-60 cursor-not-allowed" : "")
               }
             >
-              {placing && !botMode ? "Placing…" : botMode ? `BOT ${actions[1][0]}` : actions[1][0]}
+              {placing && !botMode ? <span className="inline-flex items-center gap-2"><span className="animate-pulse">⏳</span>Placing…</span> : botMode ? `BOT ${actions[1][0]}` : actions[1][0]}
             </button>
           </div>
         </div>
