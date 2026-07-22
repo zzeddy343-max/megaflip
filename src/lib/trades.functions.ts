@@ -131,8 +131,22 @@ export const releaseStaleBinaryTrades = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const supabase = context.supabase as unknown as RpcClient & { from: (table: string) => any };
-    const released = await cancelStaleBinaryTrades(supabase, context.userId);
-    return { ok: true, released };
+    // Make the stale-release more resilient: attempt once, on error retry once after small delay
+    try {
+      const released = await cancelStaleBinaryTrades(supabase, context.userId);
+      return { ok: true, released };
+    } catch (err) {
+      console.warn('[Trades] releaseStaleBinaryTrades failed, retrying once', { userId: context.userId, error: err instanceof Error ? err.message : String(err) });
+      try {
+        await new Promise((r) => setTimeout(r, 250));
+        const released = await cancelStaleBinaryTrades(supabase, context.userId);
+        return { ok: true, released };
+      } catch (err2) {
+        console.error('[Trades] releaseStaleBinaryTrades failed after retry', { userId: context.userId, error: err2 instanceof Error ? err2.message : String(err2) });
+        // Return ok=false to allow client to handle gracefully
+        return { ok: false, released: 0 };
+      }
+    }
   });
 
 async function enforceTradeRiskRules(
