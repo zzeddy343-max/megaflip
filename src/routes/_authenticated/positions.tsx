@@ -130,7 +130,7 @@ function PositionsPage() {
         ))}
       </div>
 
-      <main className="min-h-0 flex-1 overflow-y-auto bg-[#090D14]">
+      <main className="min-h-0 flex-1 overflow-y-auto bg-[var(--color-background)]">
         {tab === "tx" ? (
           transactionRows.length > 0 ? (
             <div className="mx-auto max-w-5xl space-y-3 px-3 py-4 pb-32">
@@ -139,8 +139,8 @@ function PositionsPage() {
               ))}
             </div>
           ) : (
-            <div className="mx-auto max-w-5xl px-3 py-8 text-center text-sm text-[#7F8899]">
-              <div className="mb-2 font-semibold text-[#F4F7FB]">No transactions yet</div>
+            <div className="mx-auto max-w-5xl px-3 py-8 text-center text-sm text-[var(--muted-foreground)]">
+              <div className="mb-2 font-semibold text-[var(--color-foreground)]">No transactions yet</div>
               <div>Transactions will appear here when trades are placed or settled.</div>
             </div>
           )
@@ -151,8 +151,8 @@ function PositionsPage() {
             ))}
           </div>
         ) : (
-          <div className="mx-auto max-w-5xl px-3 py-8 text-center text-sm text-[#7F8899]">
-            <div className="mb-2 font-semibold text-[#F4F7FB]">No {tab === 'open' ? 'open positions' : 'closed positions'}</div>
+            <div className="mx-auto max-w-5xl px-3 py-8 text-center text-sm text-[var(--muted-foreground)]">
+            <div className="mb-2 font-semibold text-[var(--color-foreground)]">No {tab === 'open' ? 'open positions' : 'closed positions'}</div>
             <div>{tab === 'open' ? 'Open binary contracts will appear here while waiting to settle.' : 'Closed contracts will appear here once settled.'}</div>
           </div>
         )}
@@ -165,22 +165,22 @@ function PositionsPage() {
 
 function PositionsHeader({ balance }: { balance: number }) {
   return (
-    <header className="flex h-[74px] shrink-0 items-center gap-3 border-b border-[#1F2633] bg-[#10161F] px-4">
-      <button className="grid h-11 w-11 place-items-center rounded-xl text-[#A8B0C0]" aria-label="Menu">
+    <header className="flex h-[74px] shrink-0 items-center gap-3 border-b border-[var(--color-border)] bg-[var(--surface)] px-4">
+      <button className="grid h-11 w-11 place-items-center rounded-xl text-[var(--muted-foreground)]" aria-label="Menu">
         <Menu className="h-7 w-7" />
       </button>
       <Link to="/binary" className="flex min-w-0 items-center gap-3">
-        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-[#05CFAA] text-lg font-black text-white">
+        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-[var(--bull)] text-lg font-black text-[var(--color-foreground)]">
           B
         </span>
         <span className="hidden text-xl font-extrabold text-white sm:inline">Beta</span>
       </Link>
       <div className="ml-auto flex items-center gap-3">
-        <button className="hidden h-10 rounded-full bg-[#05CFAA] px-5 text-sm font-extrabold text-white sm:inline-flex sm:items-center">
+        <button className="hidden h-10 rounded-full bg-[var(--bull)] px-5 text-sm font-extrabold text-[var(--color-foreground)] sm:inline-flex sm:items-center">
           Deposit
         </button>
-        <div className="flex h-10 items-center gap-2 rounded-full border border-[#2B3341] bg-[#1B222E] px-3">
-          <span className="grid h-7 w-7 place-items-center rounded-full bg-[#3A3121] text-xs font-black text-[#D7A822]">
+        <div className="flex h-10 items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-card)] px-3">
+          <span className="grid h-7 w-7 place-items-center rounded-full bg-[var(--color-card)] text-xs font-black text-[var(--gold)]">
             D
           </span>
           <span className="text-sm font-extrabold tabular-nums text-white sm:text-base">${balance.toFixed(2)}</span>

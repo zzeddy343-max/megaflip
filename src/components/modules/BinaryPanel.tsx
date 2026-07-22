@@ -1022,14 +1022,14 @@ export function BinaryPanel() {
       </div>
 
       {/* Mobile stacks vertically; desktop uses 3-column grid */}
-      <div className="hidden md:grid md:grid-cols-[338px_minmax(0,1fr)_320px] xl:grid-cols-[338px_minmax(0,1fr)_320px] md:h-[calc(100dvh-3.5rem)] md:overflow-hidden bg-[#111827]">
+      <div className="hidden md:grid md:grid-cols-[338px_minmax(0,1fr)_320px] xl:grid-cols-[338px_minmax(0,1fr)_320px] md:h-[calc(100dvh-3.5rem)] md:overflow-hidden bg-[var(--color-background)]">
         {/* Left column - appears second on mobile (order-2), sticky on desktop */}
-        <div className="space-y-3 w-full md:w-auto md:h-full md:overflow-auto order-2 md:order-3 border-l border-[#2A3447] bg-[#202939] p-3 text-[#D8DEE9]">
+        <div className="space-y-3 w-full md:w-auto md:h-full md:overflow-auto order-2 md:order-3 border-l border-[var(--color-border)] bg-[var(--color-card)] p-3 text-[var(--color-card-foreground)]">
           {(placing || pendingTrade?.status === "open" || settleNote) && (
             <div className="bg-card border border-border rounded-xl p-3 text-sm space-y-1 text-foreground">
               {placing && <div className="text-muted-foreground">Placing trade… please wait.</div>}
               {tradeIntent && (
-                <div className="rounded-xl border border-[#47D6D9]/30 bg-[#47D6D9]/10 px-3 py-2 font-semibold text-[#47D6D9]">
+                <div className="rounded-xl border border-[var(--accent)]/30 bg-[var(--accent)]/10 px-3 py-2 font-semibold text-[var(--accent)]">
                   {tradeIntent.mode === "manual" ? "Manual" : tradeIntent.mode === "scanner" ? "Scanner" : "Bot"} {tradeIntent.direction} accepted.
                 </div>
               )}
@@ -1051,15 +1051,15 @@ export function BinaryPanel() {
             </div>
           )}
 
-          <div className="rounded border border-[#2A3447] bg-[#151D2C] p-1 grid grid-cols-2 gap-1">
+          <div className="rounded border border-[var(--color-border)] bg-[var(--card)] p-1 grid grid-cols-2 gap-1">
             <button
               onClick={() => setBotMode(false)}
               disabled={botRunning}
               className={
                 "py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 " +
                 (!botMode
-                  ? "bg-[#253145] text-[#F4F7FB]"
-                  : "text-[#7F8BA4]")
+                  ? "bg-[var(--secondary)] text-[var(--color-foreground)]"
+                    : "text-[var(--muted-foreground)]")
               }
             >
               <User className="h-4 w-4" /> Manual
@@ -1070,21 +1070,21 @@ export function BinaryPanel() {
               className={
                 "py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 " +
                 (botMode
-                  ? "bg-[#253145] text-[#F4F7FB]"
-                  : "text-[#7F8BA4]")
+                  ? "bg-[var(--secondary)] text-[var(--color-foreground)]"
+                  : "text-[var(--muted-foreground)]")
               }
             >
               <Bot className="h-4 w-4" /> Bot
             </button>
           </div>
 
-          <div className="rounded border border-[#2A3447] bg-[#151D2C] p-3">
+            <div className="rounded border border-[var(--color-border)] bg-[var(--card)] p-3">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <div className="text-[10px] uppercase tracking-[0.2em] text-[#7F8BA4]">Bot status</div>
+                <div className="text-[10px] uppercase tracking-[0.2em] text-[var(--muted-foreground)]">Bot status</div>
                 <div className="text-sm font-semibold">{botMode ? (botRunning ? "Auto trading live" : "Ready to auto") : "Manual mode"}</div>
               </div>
-              <div className={"rounded px-2.5 py-1 text-[10px] font-semibold " + (botRunning ? "bg-[#24505D] text-[#47D6D9]" : "bg-[#202939] text-[#7F8BA4]")}>
+              <div className={"rounded px-2.5 py-1 text-[10px] font-semibold " + (botRunning ? "bg-[var(--bull)]/10 text-[var(--accent)]" : "bg-[var(--card)] text-[var(--muted-foreground)]") }>
                 {botRunning ? "LIVE" : "STANDBY"}
               </div>
             </div>
