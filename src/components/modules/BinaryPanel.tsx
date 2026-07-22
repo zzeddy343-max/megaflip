@@ -993,18 +993,28 @@ export function BinaryPanel() {
             </div>
           </div>
 
-          <div className="grid shrink-0 grid-cols-2 gap-2">
+            <div className="grid shrink-0 grid-cols-2 gap-2">
             <button
               onClick={() => (botMode ? startBot(actions[0][0]) : fireManual(actions[0][0]))}
-              className="rounded-2xl bg-bull text-bull-foreground py-2.5 text-sm font-extrabold"
+              disabled={placing || botRunning || pendingTrade?.status === 'open'}
+              className={
+                "rounded-2xl py-2.5 text-sm font-extrabold " +
+                (botMode ? "bg-bull text-bull-foreground" : "bg-bull text-bull-foreground") +
+                (placing || pendingTrade?.status === 'open' ? " opacity-60 cursor-not-allowed" : "")
+              }
             >
-              {botMode ? `BOT ${actions[0][0]}` : actions[0][0]}
+              {placing && !botMode ? "Placing…" : botMode ? `BOT ${actions[0][0]}` : actions[0][0]}
             </button>
             <button
               onClick={() => (botMode ? startBot(actions[1][0]) : fireManual(actions[1][0]))}
-              className="rounded-2xl bg-bear text-bear-foreground py-2.5 text-sm font-extrabold"
+              disabled={placing || botRunning || pendingTrade?.status === 'open'}
+              className={
+                "rounded-2xl py-2.5 text-sm font-extrabold " +
+                (botMode ? "bg-bear text-bear-foreground" : "bg-bear text-bear-foreground") +
+                (placing || pendingTrade?.status === 'open' ? " opacity-60 cursor-not-allowed" : "")
+              }
             >
-              {botMode ? `BOT ${actions[1][0]}` : actions[1][0]}
+              {placing && !botMode ? "Placing…" : botMode ? `BOT ${actions[1][0]}` : actions[1][0]}
             </button>
           </div>
         </div>
@@ -1173,17 +1183,21 @@ export function BinaryPanel() {
             <div className="space-y-3">
               <button
                 onClick={() => fireManual("OVER")}
-                className="w-full py-4 rounded-2xl bg-gradient-to-r from-teal-400 to-teal-600 text-white font-extrabold text-lg flex items-center justify-between px-4 shadow-md hover:scale-[1.01] transition-transform"
+                disabled={placing || botRunning || pendingTrade?.status === 'open'}
+                className={"w-full py-4 rounded-2xl text-white font-extrabold text-lg flex items-center justify-between px-4 shadow-md transition-transform " +
+                  (placing || pendingTrade?.status === 'open' ? "opacity-60 cursor-not-allowed bg-gradient-to-r from-teal-400 to-teal-600" : "bg-gradient-to-r from-teal-400 to-teal-600 hover:scale-[1.01]")}
               >
-                <span className="flex items-center gap-3"><svg className="h-4 w-4 opacity-90" viewBox="0 0 24 24" fill="none"><path d="M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M12 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>Over</span>
-                <span className="text-base font-mono">{((1 + overRate) * 100).toFixed(2)}%</span>
+                <span className="flex items-center gap-3">Over</span>
+                <span className="text-base font-mono">{placing ? '…' : ((1 + overRate) * 100).toFixed(2) + '%'}</span>
               </button>
               <button
                 onClick={() => fireManual("UNDER")}
-                className="w-full py-4 rounded-2xl bg-gradient-to-r from-red-500 to-red-700 text-white font-extrabold text-lg flex items-center justify-between px-4 shadow-md hover:scale-[1.01] transition-transform"
+                disabled={placing || botRunning || pendingTrade?.status === 'open'}
+                className={"w-full py-4 rounded-2xl text-white font-extrabold text-lg flex items-center justify-between px-4 shadow-md transition-transform " +
+                  (placing || pendingTrade?.status === 'open' ? "opacity-60 cursor-not-allowed bg-gradient-to-r from-red-500 to-red-700" : "bg-gradient-to-r from-red-500 to-red-700 hover:scale-[1.01]")}
               >
-                <span className="flex items-center gap-3"><svg className="h-4 w-4 opacity-90" viewBox="0 0 24 24" fill="none"><path d="M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M12 19l-7-7 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>Under</span>
-                <span className="text-base font-mono">{((1 + underRate) * 100).toFixed(2)}%</span>
+                <span className="flex items-center gap-3">Under</span>
+                <span className="text-base font-mono">{placing ? '…' : ((1 + underRate) * 100).toFixed(2) + '%'}</span>
               </button>
             </div>
           )}

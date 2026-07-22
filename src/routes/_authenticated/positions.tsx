@@ -130,11 +130,16 @@ function PositionsPage() {
 
       <main className="min-h-0 flex-1 overflow-y-auto bg-[#090D14]">
         {tab === "tx" ? (
-          transactionRows.length > 0 && (
+          transactionRows.length > 0 ? (
             <div className="mx-auto max-w-5xl space-y-3 px-3 py-4 pb-32">
               {transactionRows.map((row) => (
                 <TransactionRow key={row.id} row={row} />
               ))}
+            </div>
+          ) : (
+            <div className="mx-auto max-w-5xl px-3 py-8 text-center text-sm text-[#7F8899]">
+              <div className="mb-2 font-semibold text-[#F4F7FB]">No transactions yet</div>
+              <div>Transactions will appear here when trades are placed or settled.</div>
             </div>
           )
         ) : visibleTrades.length > 0 ? (
@@ -143,7 +148,12 @@ function PositionsPage() {
               <PositionCard key={trade.id} trade={trade} active={tab === "open"} />
             ))}
           </div>
-        ) : null}
+        ) : (
+          <div className="mx-auto max-w-5xl px-3 py-8 text-center text-sm text-[#7F8899]">
+            <div className="mb-2 font-semibold text-[#F4F7FB]">No {tab === 'open' ? 'open positions' : 'closed positions'}</div>
+            <div>{tab === 'open' ? 'Open binary contracts will appear here while waiting to settle.' : 'Closed contracts will appear here once settled.'}</div>
+          </div>
+        )}
       </main>
 
       <PositionsFooter openCount={liveOpenTrades.length} trades={trades} />
