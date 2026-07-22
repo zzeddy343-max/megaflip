@@ -454,27 +454,14 @@ export function BinaryPanel() {
     let stopped = false;
     async function sweepStaleBinaryTrades(showToast = false) {
       try {
-        const result = await releaseStale({});
+        const result = await releaseStaleWithBackoff(releaseStale);
         const released = Number(result?.released ?? 0);
         if (stopped || released <= 0) return;
         if (showToast) toast.error(`Released ${released} binary trade${released === 1 ? "" : "s"} open past 1 minute`);
         qc.invalidateQueries({ queryKey: ["profile"] });
         qc.invalidateQueries({ queryKey: ["binary-positions"] });
       } catch (error) {
-        // On failure, do a single retry with exponential backoff
-        logDebugEvent("warn", "binary.trade", "Stale binary sweep failed, retrying once", serializeError(error));
-        try {
-          await new Promise((r) => setTimeout(r, 500));
-          const result2 = await releaseStale({});
-          const released2 = Number(result2?.released ?? 0);
-          if (released2 > 0) {
-            toast.error(`Released ${released2} binary trade${released2 === 1 ? "" : "s"} on retry`);
-            qc.invalidateQueries({ queryKey: ["profile"] });
-            qc.invalidateQueries({ queryKey: ["binary-positions"] });
-          }
-        } catch (err2) {
-          logDebugEvent("error", "binary.trade", "Stale binary sweep failed after retry", serializeError(err2));
-        }
+        logDebugEvent("error", "binary.trade", "Stale binary sweep failed after retries", serializeError(error));
       }
     }
 

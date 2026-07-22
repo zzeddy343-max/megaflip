@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowDownRight, ArrowUpRight, BarChart3, Bell, Clock3, Menu } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getMyProfile, releaseStaleBinaryTrades } from "@/lib/trades.functions";
+import releaseStaleWithBackoff from '@/lib/trades.client';
 
 export const Route = createFileRoute("/_authenticated/positions")({
   component: PositionsPage,
@@ -65,32 +66,16 @@ function PositionsPage() {
   useEffect(() => {
     let stopped = false;
     async function releaseStuckContracts() {
-      // Exponential backoff on transient failure reported by server
-      const maxAttempts = 3;
-      let attempt = 0;
-      let delay = 300;
-      while (!stopped && attempt < maxAttempts) {
-        attempt += 1;
-        try {
-          const result = await releaseStale({});
-          if (result?.ok === false) throw new Error('stale-release-failed');
-          const released = Number(result?.released ?? 0);
-          if (!stopped && released > 0) {
-            qc.invalidateQueries({ queryKey: ["trades"] });
-            qc.invalidateQueries({ queryKey: ["binary-positions"] });
-            qc.invalidateQueries({ queryKey: ["profile"] });
-          }
-          return;
-        } catch (err) {
-          attempt += 0; // keep eslint quiet
-          if (attempt >= maxAttempts) {
-            // final failure — log and stop
-            console.warn('[Positions] releaseStaleBinaryTrades failed after retries', err);
-            return;
-          }
-          await new Promise((r) => setTimeout(r, delay));
-          delay *= 2;
+      try {
+        const result = await releaseStaleWithBackoff(releaseStale);
+        const released = Number(result?.released ?? 0);
+        if (!stopped && released > 0) {
+          qc.invalidateQueries({ queryKey: ["trades"] });
+          qc.invalidateQueries({ queryKey: ["binary-positions"] });
+          qc.invalidateQueries({ queryKey: ["profile"] });
         }
+      } catch (err) {
+        console.warn('[Positions] releaseStaleBinaryTrades failed after retries', err);
       }
     }
 
