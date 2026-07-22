@@ -136,13 +136,13 @@ export function LiveChart({
   const noteBg = noteTone === "bull" ? "bg-bull/10 text-bull border border-bull/30" : noteTone === "bear" ? "bg-bear/10 text-bear border border-bear/30" : "bg-surface/95 text-foreground border border-border";
 
   return (
-    <div className={"relative w-full overflow-hidden bg-[#111827] text-slate-500 " + (className ?? "")}>
+    <div className={"relative w-full overflow-hidden bg-[var(--color-surface)] text-[var(--muted-foreground)] " + (className ?? "")}>
       <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="w-full h-full">
         <defs>
           <linearGradient id="lc-fill" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="#d8dde7" stopOpacity="0.20" />
-            <stop offset="72%" stopColor="#d8dde7" stopOpacity="0.06" />
-            <stop offset="100%" stopColor="#d8dde7" stopOpacity="0" />
+            <stop offset="0%" stopColor="var(--color-foreground)" stopOpacity="0.20" />
+            <stop offset="72%" stopColor="var(--color-foreground)" stopOpacity="0.06" />
+            <stop offset="100%" stopColor="var(--color-foreground)" stopOpacity="0" />
           </linearGradient>
         </defs>
         {[0, 0.25, 0.5, 0.75, 1].map((t) => (
@@ -157,12 +157,12 @@ export function LiveChart({
             {smaPath && <path d={smaPath} fill="none" stroke={getIndicatorColor("SMA")} strokeWidth="0.5" vectorEffect="non-scaling-stroke" />}
             {emaPath && <path d={emaPath} fill="none" stroke={getIndicatorColor("EMA")} strokeWidth="0.5" vectorEffect="non-scaling-stroke" />}
             <path d={area} fill="url(#lc-fill)" />
-            <path d={path} fill="none" stroke="#d8dde7" strokeWidth="1.25" vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" />
+            <path d={path} fill="none" stroke="var(--color-foreground)" strokeWidth="1.25" vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" />
             <circle
               cx={w}
               cy={h - ((last - min) / range) * h}
               r="1.35"
-              fill="#f8fafc"
+              fill="var(--color-foreground)"
               vectorEffect="non-scaling-stroke"
             />
           </>
@@ -199,11 +199,11 @@ export function LiveChart({
           </>
         )}
       </svg>
-      <div className="pointer-events-none absolute inset-y-0 right-0 w-20 border-l border-white/5 bg-[#111827]/45">
+      <div className="pointer-events-none absolute inset-y-0 right-0 w-20 border-l border-[var(--color-border)] bg-[var(--color-surface)]">
         {axisValues.map((value, i) => (
           <div
             key={i}
-            className="absolute right-2 translate-y-[-50%] text-[11px] font-medium tabular-nums text-[#AAB4C5]"
+            className="absolute right-2 translate-y-[-50%] text-[11px] font-medium tabular-nums text-[var(--muted-foreground)]"
             style={{ top: `${i * 25}%` }}
           >
             {value.toFixed(2)}
@@ -211,12 +211,12 @@ export function LiveChart({
         ))}
       </div>
       <div
-        className="pointer-events-none absolute right-2 rounded border border-[#00C8FF] bg-[#131A2C] px-2 py-0.5 text-[11px] font-extrabold text-white shadow-[0_0_18px_rgba(0,200,255,0.18)]"
+        className="pointer-events-none absolute right-2 rounded border border-[var(--primary)] bg-[var(--surface-2)] px-2 py-0.5 text-[11px] font-extrabold text-[var(--color-foreground)] shadow-[0_0_18px_rgba(0,200,255,0.18)]"
         style={{ top: `calc(${priceY}% - 10px)` }}
       >
         {priceLabel}
       </div>
-      <div className="pointer-events-none absolute bottom-1 left-0 right-20 flex justify-between px-3 text-[10px] tabular-nums text-[#AAB4C5]">
+      <div className="pointer-events-none absolute bottom-1 left-0 right-20 flex justify-between px-3 text-[10px] tabular-nums text-[var(--muted-foreground)]">
         {timeLabels.map((label) => (
           <span key={label}>{label}</span>
         ))}

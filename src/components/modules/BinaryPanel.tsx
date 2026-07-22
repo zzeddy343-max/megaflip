@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { placeTrade, settleTrade, cancelTrade, releaseStaleBinaryTrades, getMyProfile } from "@/lib/trades.functions";
+import releaseStaleWithBackoff from '@/lib/trades.client';
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { logDebugEvent, serializeError } from "@/lib/debug-logger";
