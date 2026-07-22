@@ -104,10 +104,10 @@ function PositionsPage() {
   );
 
   return (
-    <div className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-[#090D14] text-[#F4F7FB]">
+    <div className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-[var(--color-background)] text-[var(--color-foreground)]">
       <PositionsHeader balance={balance} />
 
-      <div className="grid h-[74px] shrink-0 grid-cols-3 border-y border-[#1F2633] bg-[#121720] text-[15px] font-extrabold sm:text-lg">
+      <div className="grid h-[74px] shrink-0 grid-cols-3 border-y border-[var(--color-border)] bg-[var(--color-surface)] text-[15px] font-extrabold sm:text-lg">
         {[
           { k: "open" as const, label: `Open (${liveOpenTrades.length})` },
           { k: "closed" as const, label: `Closed (${closedTrades.length})` },
@@ -119,8 +119,8 @@ function PositionsPage() {
             className={
               "relative text-center transition " +
               (tab === item.k
-                ? "text-[#16C99A] after:absolute after:inset-x-3 after:bottom-0 after:h-1 after:rounded-full after:bg-[#16C99A]"
-                : "text-[#6F7889]")
+                ? "text-[var(--color-bull)] after:absolute after:inset-x-3 after:bottom-0 after:h-1 after:rounded-full after:bg-[var(--color-bull)]"
+                  : "text-[var(--muted-foreground)]"
             }
           >
             {item.label}
