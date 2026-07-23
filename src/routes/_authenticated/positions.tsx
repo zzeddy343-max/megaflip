@@ -2,14 +2,25 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, TrendingUp } from "lucide-react";
+import { ArrowLeft, CheckCircle2, TrendingUp, XCircle } from "lucide-react";
+import { toast } from "sonner";
 import {
+  cancelTrade,
   listMyTrades,
   listMyTransactions,
   releaseStaleBinaryTrades,
+  settleTrade,
 } from "@/lib/trades.functions";
 import { formatUSD, formatPrice } from "@/lib/format";
-import { MARKETS, type MarketId } from "@/lib/markets";
+import {
+  lastDigit,
+  MARKETS,
+  payoutMultiplier,
+  priceAt,
+  type ContractType,
+  type Direction,
+  type MarketId,
+} from "@/lib/markets";
 
 export const Route = createFileRoute("/_authenticated/positions")({
   head: () => ({
@@ -34,6 +45,9 @@ function Positions() {
   const fetchTrades = useServerFn(listMyTrades);
   const fetchTxns = useServerFn(listMyTransactions);
   const releaseStale = useServerFn(releaseStaleBinaryTrades);
+  const cancel = useServerFn(cancelTrade);
+  const settle = useServerFn(settleTrade);
+  const [busyTradeId, setBusyTradeId] = useState<string | null>(null);
 
   const trades = useQuery({
     queryKey: ["my-trades"],
@@ -72,6 +86,65 @@ function Positions() {
         ? "No settled trades yet."
         : "No transactions yet.";
 
+  const refreshPositions = () => {
+    qc.invalidateQueries({ queryKey: ["my-trades"] });
+    qc.invalidateQueries({ queryKey: ["wallet"] });
+    qc.invalidateQueries({ queryKey: ["my-txns"] });
+  };
+
+  async function handleCancelTrade(trade: any) {
+    setBusyTradeId(trade.id);
+    try {
+      await cancel({ data: { trade_id: trade.id } });
+      toast.success("Trade cancelled");
+      refreshPositions();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not cancel trade");
+    } finally {
+      setBusyTradeId(null);
+    }
+  }
+
+  async function handleCloseTrade(trade: any) {
+    const market = trade.market as MarketId;
+    const spec = MARKETS[market];
+    const entryPrice = Number(trade.entry_price);
+    if (!spec || !Number.isFinite(entryPrice)) {
+      toast.error("This trade cannot be closed from positions yet");
+      return;
+    }
+
+    setBusyTradeId(trade.id);
+    try {
+      const exitPrice = priceAt(market, Date.now());
+      const contractType = String(trade.contract_type ?? "even_odd") as ContractType;
+      const direction = String(trade.direction ?? "even") as Direction;
+      const won = binaryContractWon(
+        contractType,
+        direction,
+        entryPrice,
+        exitPrice,
+        trade.digit_target == null ? null : Number(trade.digit_target),
+        spec.decimals,
+      );
+
+      await settle({
+        data: {
+          trade_id: trade.id,
+          won,
+          exit_price: exitPrice,
+          multiplier: payoutMultiplier(contractType, direction),
+        },
+      });
+      toast.success(won ? "Trade closed in profit" : "Trade closed");
+      refreshPositions();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not close trade");
+    } finally {
+      setBusyTradeId(null);
+    }
+  }
+
   return (
     <div className="flex h-full min-h-0 flex-col px-3 py-4 sm:block sm:overflow-y-auto sm:px-6 sm:py-6">
       <div className="mb-5 flex items-center gap-3 sm:mb-6">
@@ -96,7 +169,14 @@ function Positions() {
       </div>
 
       <div className="hidden sm:block">
-        {tab === "open" && (open.length === 0 ? <Empty>{emptyText}</Empty> : <TradeList list={open} />)}
+        {tab === "open" && (open.length === 0 ? <Empty>{emptyText}</Empty> : (
+          <TradeList
+            list={open}
+            busyTradeId={busyTradeId}
+            onClose={handleCloseTrade}
+            onCancel={handleCancelTrade}
+          />
+        ))}
         {tab === "closed" && (closed.length === 0 ? <Empty>{emptyText}</Empty> : <TradeList list={closed} />)}
         {tab === "transactions" && (txList.length === 0 ? <Empty>{emptyText}</Empty> : <TxnList list={txList} />)}
       </div>
@@ -109,7 +189,15 @@ function Positions() {
             </div>
           )}
           {tab !== "transactions" &&
-            activeList.map((trade: any) => <MobileTradeCard key={trade.id} trade={trade} />)}
+            activeList.map((trade: any) => (
+              <MobileTradeCard
+                key={trade.id}
+                trade={trade}
+                busy={busyTradeId === trade.id}
+                onClose={tab === "open" ? handleCloseTrade : undefined}
+                onCancel={tab === "open" ? handleCancelTrade : undefined}
+              />
+            ))}
           {tab === "transactions" &&
             activeList.map((txn: any) => <MobileTxnRow key={txn.id} txn={txn} />)}
         </div>
@@ -142,7 +230,17 @@ function Empty({ children }: { children: React.ReactNode }) {
   );
 }
 
-function TradeList({ list }: { list: any[] }) {
+function TradeList({
+  list,
+  busyTradeId,
+  onClose,
+  onCancel,
+}: {
+  list: any[];
+  busyTradeId?: string | null;
+  onClose?: (trade: any) => void;
+  onCancel?: (trade: any) => void;
+}) {
   return (
     <div className="space-y-2 overflow-x-auto">
       {list.map((t) => {
@@ -154,8 +252,10 @@ function TradeList({ list }: { list: any[] }) {
                     : t.status === "lost" ? "text-bear"
                     : t.status === "open" ? "text-primary"
                     : "text-muted-foreground";
+        const showActions = t.status === "open" && onClose && onCancel;
+        const busy = busyTradeId === t.id;
         return (
-          <div key={t.id} className="grid min-w-[760px] grid-cols-5 gap-3 rounded-xl border border-border bg-surface p-4">
+          <div key={t.id} className="grid min-w-[880px] grid-cols-[1fr_1.2fr_0.8fr_1.2fr_1fr_1.2fr] gap-3 rounded-xl border border-border bg-surface p-4">
             <div>
               <div className="text-xs text-muted-foreground">Market</div>
               <div className="font-medium">{spec?.label ?? t.market}</div>
@@ -181,6 +281,32 @@ function TradeList({ list }: { list: any[] }) {
               <div className={`font-mono font-semibold ${color}`}>
                 {pnl == null ? "—" : (pnl >= 0 ? "+" : "") + formatUSD(pnl)}
               </div>
+            </div>
+            <div className="flex items-center justify-end gap-2">
+              {showActions ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => onClose?.(t)}
+                    disabled={busy}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-bull/40 bg-bull/10 px-3 py-2 text-xs font-bold text-bull transition hover:bg-bull/20 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    Close
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onCancel?.(t)}
+                    disabled={busy}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-bear/40 bg-bear/10 px-3 py-2 text-xs font-bold text-bear transition hover:bg-bear/20 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <XCircle className="h-4 w-4" />
+                    Cancel
+                  </button>
+                </>
+              ) : (
+                <span className="text-xs text-muted-foreground">-</span>
+              )}
             </div>
           </div>
         );
@@ -218,7 +344,17 @@ function TxnList({ list }: { list: any[] }) {
   );
 }
 
-function MobileTradeCard({ trade }: { trade: any }) {
+function MobileTradeCard({
+  trade,
+  busy,
+  onClose,
+  onCancel,
+}: {
+  trade: any;
+  busy?: boolean;
+  onClose?: (trade: any) => void;
+  onCancel?: (trade: any) => void;
+}) {
   const spec = MARKETS[trade.market as MarketId];
   const status = String(trade.status ?? "open");
   const isOpen = status === "open";
@@ -238,6 +374,7 @@ function MobileTradeCard({ trade }: { trade: any }) {
       ? "bg-bear/15 text-bear"
       : "bg-primary/15 text-primary";
   const contract = `${formatContract(trade.contract_type)} / ${String(trade.direction ?? "").toUpperCase()}`;
+  const showActions = isOpen && onClose && onCancel;
 
   return (
     <div className="border-b border-border px-4 py-4">
@@ -273,6 +410,28 @@ function MobileTradeCard({ trade }: { trade: any }) {
         <MobileStat label="Stake:" value={formatUSD(trade.stake_cents)} />
         <MobileStat label="Potential payout:" value={formatUSD(Math.floor(trade.stake_cents * Number(trade.payout_multiplier ?? 1.95)))} />
       </div>
+      {showActions && (
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => onClose?.(trade)}
+            disabled={busy}
+            className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-bull/40 bg-bull/10 px-3 py-2.5 text-xs font-extrabold text-bull transition hover:bg-bull/20 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <CheckCircle2 className="h-4 w-4" />
+            Close
+          </button>
+          <button
+            type="button"
+            onClick={() => onCancel?.(trade)}
+            disabled={busy}
+            className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-bear/40 bg-bear/10 px-3 py-2.5 text-xs font-extrabold text-bear transition hover:bg-bear/20 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <XCircle className="h-4 w-4" />
+            Cancel
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -360,6 +519,29 @@ function getSessionStats(closedTrades: any[]) {
   }
 
   return { pl, wins, losses, total: wins + losses };
+}
+
+function binaryContractWon(
+  type: ContractType,
+  direction: Direction,
+  entry: number,
+  exit: number,
+  digitTarget: number | null,
+  decimals: number,
+) {
+  const exitDigit = lastDigit(exit, decimals);
+  const target = digitTarget ?? 0;
+  switch (type) {
+    case "rise_fall":
+      return direction === "rise" ? exit > entry : exit < entry;
+    case "over_under":
+      return direction === "over" ? exitDigit > target : exitDigit < target;
+    case "matches_differs":
+      return direction === "matches" ? exitDigit === target : exitDigit !== target;
+    case "even_odd":
+    default:
+      return direction === "even" ? exitDigit % 2 === 0 : exitDigit % 2 === 1;
+  }
 }
 
 function formatContract(value: string) {

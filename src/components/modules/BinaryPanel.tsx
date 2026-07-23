@@ -68,7 +68,7 @@ type LastOutcome = {
 };
 
 // Per-tick outcome during a running contract (used to glow the digit circles as ticks land)
-type TickOutcome = { tickIndex: number; digit: number; won: boolean };
+type TickOutcome = { tickIndex: number; digit: number; won: boolean; final: boolean };
 
 type LoadedAutoBot = {
   source: "builder" | "scanner";
@@ -287,6 +287,40 @@ export function BinaryPanel() {
     }, wait);
     return () => clearTimeout(t);
   }, [pendingTrade, settleFn, qc, spec.decimals, marketId, spec.intervalMs]);
+
+  useEffect(() => {
+    if (!pendingTrade) {
+      setTickOutcomes([]);
+      return;
+    }
+
+    const landedTicks = Math.max(
+      0,
+      Math.min(seriesEnd, pendingTrade.exitTickIndex) - pendingTrade.entryTickIndex,
+    );
+    const outcomes: TickOutcome[] = [];
+    for (let offset = 0; offset <= landedTicks; offset++) {
+      const tickIndex = pendingTrade.entryTickIndex + offset;
+      const price = priceAt(marketId, tickIndex * spec.intervalMs);
+      const isFinal = tickIndex >= pendingTrade.exitTickIndex;
+      outcomes.push({
+        tickIndex,
+        digit: lastDigit(price, spec.decimals),
+        won: isFinal
+          ? contractWon(
+              pendingTrade.contractType,
+              pendingTrade.direction,
+              pendingTrade.entryPrice,
+              price,
+              pendingTrade.digitTarget,
+              spec.decimals,
+            )
+          : false,
+        final: isFinal,
+      });
+    }
+    setTickOutcomes(outcomes);
+  }, [pendingTrade, seriesEnd, marketId, spec.intervalMs, spec.decimals]);
 
   // Fade the last-outcome glow after 4s
   useEffect(() => {
@@ -877,18 +911,17 @@ function DigitStrip({
           const isMax = d === maxDigit;
 
           // Glow rules:
-          //  - When a contract is running, keep the ORANGE/primary glow on the
-          //    target digit (or on the currently-landed digit for non-digit contracts).
-          //  - Only when the trade has settled show the final green (won) or red
-          //    (lost) glow on the exit digit, then fade back to orange on the
-          //    current live digit.
+          //  - During a contract, the glow follows each landed tick digit.
+          //  - The final landed digit switches to green/red because it decides
+          //    the result.
           let glow: "bull" | "bear" | "primary" | null = null;
-          if (lastOutcome && lastOutcome.digit === d) {
+          const landed = [...tickOutcomes]
+            .reverse()
+            .find((outcome) => outcome.digit === d);
+          if (pending && landed) {
+            glow = landed.final ? (landed.won ? "bull" : "bear") : "primary";
+          } else if (lastOutcome && lastOutcome.digit === d) {
             glow = lastOutcome.won ? "bull" : "bear";
-          } else if (pending) {
-            if (pending.digitTarget != null ? pending.digitTarget === d : isCurrent) {
-              glow = "primary";
-            }
           } else if (isCurrent) {
             glow = "primary";
           }

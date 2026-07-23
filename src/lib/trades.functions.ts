@@ -216,6 +216,7 @@ export const listMyTrades = createServerFn({ method: "GET" })
         payout_multiplier: multiplier,
         ticks: Number(trade.meta?.settlement_ticks ?? trade.meta?.ticks ?? 1),
         contract_type: trade.meta?.contract_type ?? "even_odd",
+        digit_target: trade.meta?.digit_target ?? null,
         opened_at: trade.created_at,
         settled_at: trade.closed_at,
         entry_price: trade.entry_price,
