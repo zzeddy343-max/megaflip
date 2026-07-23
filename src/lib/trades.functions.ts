@@ -404,40 +404,98 @@ async function enforceTradeRiskRules(
 
 async function cancelStaleBinaryTrades(supabase: any, userId: string, accountType?: string) {
   const staleBefore = new Date(Date.now() - 60_000).toISOString();
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  let query = supabase
-    .from("trades")
-    .select("id,stake,account_type")
-    .eq("user_id", userId)
-    .eq("module", "binary")
-    .eq("status", "open")
-    .lt("created_at", staleBefore)
-    .limit(1000);
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    let query = supabaseAdmin
+      .from("trades")
+      .select("id,stake,account_type")
+      .eq("user_id", userId)
+      .eq("module", "binary")
+      .eq("status", "open")
+      .lt("created_at", staleBefore)
+      .limit(1000);
 
-  if (accountType) query = query.eq("account_type", accountType);
+    if (accountType) query = query.eq("account_type", accountType);
 
-  const { data: staleTrades } = await query;
+    const { data: staleTrades, error: staleError } = await query;
+    if (staleError) throw new Error(staleError.message);
 
-  let released = 0;
-  for (const trade of staleTrades ?? []) {
-    try {
+    let released = 0;
+    for (const trade of staleTrades ?? []) {
       const cancelled = await cancelOpenTradeWithRefund(
         supabaseAdmin,
         userId,
         trade.id,
         "stale_binary_timeout",
       );
-      if (!cancelled) continue;
-      released += 1;
-    } catch (error) {
-      console.warn("[Trades] stale binary cancellation skipped", {
-        userId,
-        tradeId: trade.id,
-        error: error instanceof Error ? error.message : String(error),
-      });
+      if (cancelled) released += 1;
     }
+    released += await cancelDuplicateOpenBinaryTrades(supabaseAdmin, userId, accountType);
+    return released;
+  } catch (error) {
+    if (!isAdminClientUnavailable(error)) throw error;
+
+    console.warn("[Trades] admin stale cancellation unavailable, using RPC fallback", {
+      userId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return cancelStaleBinaryTradesWithRpc(supabase, staleBefore, accountType);
   }
-  released += await cancelDuplicateOpenBinaryTrades(supabaseAdmin, userId, accountType);
+}
+
+function isAdminClientUnavailable(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  return /Missing Supabase environment variable|SUPABASE_SERVICE_ROLE_KEY|SUPABASE_URL/i.test(message);
+}
+
+async function cancelStaleBinaryTradesWithRpc(
+  supabase: any,
+  staleBefore: string,
+  accountType?: string,
+) {
+  let staleQuery = supabase
+    .from("trades")
+    .select("id,account_type")
+    .eq("module", "binary")
+    .eq("status", "open")
+    .lt("created_at", staleBefore)
+    .limit(1000);
+  if (accountType) staleQuery = staleQuery.eq("account_type", accountType);
+
+  const { data: staleTrades, error: staleError } = await staleQuery;
+  if (staleError) throw new Error(staleError.message);
+
+  let released = 0;
+  for (const trade of staleTrades ?? []) {
+    const { error } = await supabase.rpc("cancel_open_trade", { _trade_id: trade.id });
+    if (error) throw new Error(`Could not cancel stale trade ${trade.id}: ${error.message ?? String(error)}`);
+    released += 1;
+  }
+
+  let openQuery = supabase
+    .from("trades")
+    .select("id,account_type,created_at")
+    .eq("module", "binary")
+    .eq("status", "open")
+    .order("created_at", { ascending: false });
+  if (accountType) openQuery = openQuery.eq("account_type", accountType);
+
+  const { data: openTrades, error: openError } = await openQuery;
+  if (openError) throw new Error(openError.message);
+
+  const seenAccounts = new Set<string>();
+  for (const trade of openTrades ?? []) {
+    const account = trade.account_type === "demo" ? "demo" : "real";
+    if (!seenAccounts.has(account)) {
+      seenAccounts.add(account);
+      continue;
+    }
+
+    const { error } = await supabase.rpc("cancel_open_trade", { _trade_id: trade.id });
+    if (error) throw new Error(`Could not cancel duplicate trade ${trade.id}: ${error.message ?? String(error)}`);
+    released += 1;
+  }
+
   return released;
 }
 

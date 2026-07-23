@@ -62,6 +62,8 @@ function BotBuilderPage() {
     window.sessionStorage.setItem(
       "megaflip-scanner-bot",
       JSON.stringify({
+        source: "builder",
+        name: botName,
         category: tradeType,
         market,
         volatility,

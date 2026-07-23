@@ -16,6 +16,7 @@ import {
   CandlestickChart,
   LineChart as LineIcon,
   Sparkles,
+  StopCircle,
 } from "lucide-react";
 
 
@@ -41,6 +42,7 @@ import {
   getWallet,
   listMyTrades,
   listMyTransactions,
+  cancelTrade,
 } from "@/lib/trades.functions";
 import { formatUSD, formatPrice } from "@/lib/format";
 
@@ -68,6 +70,17 @@ type LastOutcome = {
 // Per-tick outcome during a running contract (used to glow the digit circles as ticks land)
 type TickOutcome = { tickIndex: number; digit: number; won: boolean };
 
+type LoadedAutoBot = {
+  source: "builder" | "scanner";
+  label: string;
+  market: MarketId;
+  contractType: ContractType;
+  direction: Direction;
+  digit: number | null;
+  stake: string;
+  ticks: number;
+};
+
 
 export function BinaryPanel() {
   const qc = useQueryClient();
@@ -94,6 +107,8 @@ export function BinaryPanel() {
   const [showDots, setShowDots] = useState(false);
   const [drawGuide, setDrawGuide] = useState(false);
   const [chartType, setChartType] = useState<"candles" | "line">("candles");
+  const [autoBot, setAutoBot] = useState<LoadedAutoBot | null>(null);
+  const [autoTrading, setAutoTrading] = useState(false);
 
 
   const spec = MARKETS[marketId];
@@ -159,6 +174,7 @@ export function BinaryPanel() {
   const placeFn = useServerFn(placeTrade);
   const settleFn = useServerFn(settleTrade);
   const settleDueFn = useServerFn(settleDueTrades);
+  const cancelFn = useServerFn(cancelTrade);
   const walletFn = useServerFn(getWallet);
   const tradesFn = useServerFn(listMyTrades);
   const txnsFn = useServerFn(listMyTransactions);
@@ -168,6 +184,22 @@ export function BinaryPanel() {
   const { data: wallet } = useQuery({ queryKey: ["wallet"], queryFn: () => walletFn(), refetchInterval: 3000 });
   const { data: trades } = useQuery({ queryKey: ["my-trades"], queryFn: () => tradesFn(), refetchInterval: 2500 });
   const { data: txns } = useQuery({ queryKey: ["my-txns"], queryFn: () => txnsFn(), refetchInterval: 4000 });
+
+  useEffect(() => {
+    const loaded = readLoadedAutoBot();
+    if (!loaded) return;
+
+    setAutoBot(loaded);
+    setAutoTrading(true);
+    setMode("auto");
+    setMarketId(loaded.market);
+    setContractType(loaded.contractType);
+    setDirection(loaded.direction);
+    setStake(loaded.stake);
+    setTicks(loaded.ticks);
+    if (loaded.digit != null) setDigit(loaded.digit);
+    toast.success(`${loaded.source === "scanner" ? "AI scanner" : "Bot"} loaded for auto trading`);
+  }, []);
 
   // Auto-settle any due open trades (covers bot-placed trades too)
   useEffect(() => {
@@ -269,18 +301,24 @@ export function BinaryPanel() {
 
 
 
-  async function handlePlace(dir: Direction) {
+  async function handlePlace(
+    dir: Direction,
+    options: { automated?: boolean; tickCount?: number; source?: string } = {},
+  ) {
     if (placing || pendingTrade) return;
     if (openTrades.length > 0) {
-      toast.error("You already have one open binary contract. Wait for it to settle first.");
+      if (!options.automated) {
+        toast.error("You already have one open binary contract. Wait for it to settle first.");
+      }
       return;
     }
     if (stakeCents < 35) { toast.error("Minimum stake is $0.35"); return; }
     setPlacing(true);
     setDirection(dir);
     try {
+      const tradeTicks = Math.max(1, Number(options.tickCount ?? ticks));
       const entryTickIndex = seriesEnd;
-      const exitTickIndex = seriesEnd + ticks;
+      const exitTickIndex = seriesEnd + tradeTicks;
       const res = await placeFn({
         data: {
           module: "binary",
@@ -292,10 +330,12 @@ export function BinaryPanel() {
             account_mode: accountMode,
             contract_type: contractType,
             digit_target: contract.needsDigit ? digit : null,
-            settlement_ticks: ticks,
+            settlement_ticks: tradeTicks,
             tick_ms: spec.intervalMs,
             entry_tick_index: entryTickIndex,
             exit_tick_index: exitTickIndex,
+            automated: !!options.automated,
+            automation_source: options.source ?? null,
           },
         },
       });
@@ -320,6 +360,58 @@ export function BinaryPanel() {
     } finally {
       setPlacing(false);
     }
+  }
+
+  useEffect(() => {
+    if (!autoTrading || !autoBot || pendingTrade || placing || openTrades.length > 0) return;
+
+    const id = window.setTimeout(() => {
+      void handlePlace(autoBot.direction, {
+        automated: true,
+        tickCount: autoBot.ticks,
+        source: autoBot.source,
+      });
+    }, 650);
+
+    return () => window.clearTimeout(id);
+  }, [
+    autoTrading,
+    autoBot,
+    pendingTrade,
+    placing,
+    openTrades.length,
+    marketId,
+    contractType,
+    direction,
+    stake,
+    digit,
+    ticks,
+    currentPrice,
+    seriesEnd,
+  ]);
+
+  async function stopAutoTrading() {
+    setAutoTrading(false);
+    setAutoBot(null);
+    setMode("manual");
+    window.sessionStorage.removeItem("megaflip-scanner-bot");
+
+    const cancelIds = new Set<string>(openTrades.map((trade: any) => trade.id).filter(Boolean));
+    if (pendingTrade?.id) cancelIds.add(pendingTrade.id);
+    setPendingTrade(null);
+    if (cancelIds.size === 0) {
+      toast.success("Auto trading stopped");
+      return;
+    }
+
+    const results = await Promise.allSettled(
+      [...cancelIds].map((tradeId) => cancelFn({ data: { trade_id: tradeId } })),
+    );
+    const cancelled = results.filter((result) => result.status === "fulfilled").length;
+    qc.invalidateQueries({ queryKey: ["wallet"] });
+    qc.invalidateQueries({ queryKey: ["my-trades"] });
+    qc.invalidateQueries({ queryKey: ["my-txns"] });
+    toast.success(`Auto trading stopped${cancelled ? ` and ${cancelled} open trade${cancelled === 1 ? "" : "s"} cancelled` : ""}`);
   }
 
   function zoomIn() {
@@ -537,6 +629,33 @@ export function BinaryPanel() {
 
         {/* RIGHT — trade config (scrolls internally on tight viewports) */}
         <div className="min-h-0 flex-1 overflow-y-auto lg:flex-none">
+          {autoBot && (
+            <div className="mb-2 rounded-xl border border-primary/40 bg-primary/10 p-3 text-xs text-primary shadow-[0_0_18px_color-mix(in_oklab,var(--gold)_18%,transparent)]">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 font-extrabold">
+                    <span className="live-dot" />
+                    {autoBot.source === "scanner" ? "AI position loaded" : "Bot loaded"}
+                  </div>
+                  <div className="mt-1 truncate text-muted-foreground">
+                    {autoBot.label} / {MARKETS[autoBot.market].label} / {autoBot.direction}
+                  </div>
+                  <div className="mt-1 font-mono text-[11px] text-muted-foreground">
+                    Auto trades: {((autoBot.ticks * MARKETS[autoBot.market].intervalMs) / 1000).toFixed(1)}s each
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={stopAutoTrading}
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-bear/50 bg-bear/15 px-3 py-2 font-bold text-bear transition hover:bg-bear/25"
+                >
+                  <StopCircle className="h-4 w-4" />
+                  Stop
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Mobile-only pending/last outcome banner */}
           {(pendingTrade || lastOutcome) && (
             <div className={`mb-2 flex items-center justify-between rounded-lg border px-3 py-2 text-xs lg:hidden ${
@@ -599,6 +718,83 @@ function normalizePlacedTradeId(value: unknown): string | null {
   const record = value as Record<string, unknown>;
   if (typeof record.id === "string") return record.id;
   return normalizePlacedTradeId(record.trade ?? record.data ?? null);
+}
+
+function readLoadedAutoBot(): LoadedAutoBot | null {
+  if (typeof window === "undefined") return null;
+  const raw = window.sessionStorage.getItem("megaflip-scanner-bot");
+  if (!raw) return null;
+
+  try {
+    const data = JSON.parse(raw) as Record<string, unknown>;
+    if (!data.autotrade) return null;
+
+    const market = mapLoadedMarket(data.market, data.volatility);
+    const contractType = mapLoadedContract(data.category);
+    const contract = contractFor(contractType);
+    const direction = mapLoadedDirection(data.direction, contractType);
+    const fallbackDirection = contract.directions[0].key as Direction;
+    const source = data.source === "builder" ? "builder" : "scanner";
+    const stake = Math.max(0.35, Number(data.stake ?? 10));
+    const digit = Number.isFinite(Number(data.digit)) ? Math.max(0, Math.min(9, Number(data.digit))) : null;
+
+    return {
+      source,
+      label:
+        typeof data.name === "string" && data.name.trim()
+          ? data.name.trim()
+          : source === "scanner"
+            ? "AI scanner setup"
+            : "Builder bot",
+      market,
+      contractType,
+      direction: contract.directions.some((item) => item.key === direction)
+        ? direction
+        : fallbackDirection,
+      digit,
+      stake: stake.toFixed(2),
+      ticks: getAutoTradeTicks(market),
+    };
+  } catch {
+    window.sessionStorage.removeItem("megaflip-scanner-bot");
+    return null;
+  }
+}
+
+function mapLoadedMarket(value: unknown, volatility: unknown): MarketId {
+  const text = String(value ?? "").toLowerCase();
+  const volText = String(volatility ?? "").toLowerCase();
+  const number = text.match(/100|75|50|25|10/)?.[0] ?? "10";
+  const wantsOneSecond = text.includes("1s") || volText.includes("1s");
+  const candidate = `V${number}${wantsOneSecond ? "_1S" : ""}` as MarketId;
+  if (MARKETS[candidate]) return candidate;
+
+  const byLabel = MARKET_LIST.find((market) => market.label.toLowerCase() === text);
+  return byLabel?.id ?? "V10_1S";
+}
+
+function mapLoadedContract(value: unknown): ContractType {
+  const text = String(value ?? "").toLowerCase();
+  if (text.includes("buy") || text.includes("sell") || text.includes("rise") || text.includes("fall")) return "rise_fall";
+  if (text.includes("over") || text.includes("under")) return "over_under";
+  if (text.includes("match") || text.includes("differ")) return "matches_differs";
+  return "even_odd";
+}
+
+function mapLoadedDirection(value: unknown, contractType: ContractType): Direction {
+  const text = String(value ?? "").toLowerCase();
+  if (contractType === "rise_fall") return text.includes("sell") || text.includes("fall") ? "fall" : "rise";
+  if (contractType === "over_under") return text.includes("under") ? "under" : "over";
+  if (contractType === "matches_differs") return text.includes("differ") ? "differs" : "matches";
+  return text.includes("odd") ? "odd" : "even";
+}
+
+function getAutoTradeTicks(market: MarketId) {
+  const interval = MARKETS[market].intervalMs;
+  const minTicks = Math.max(1, Math.ceil(2000 / interval));
+  const maxTicks = Math.max(minTicks, Math.floor(4000 / interval));
+  const targetTicks = Math.max(1, Math.round(3000 / interval));
+  return Math.max(minTicks, Math.min(maxTicks, targetTicks));
 }
 
 function contractWon(

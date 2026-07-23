@@ -53,6 +53,7 @@ function ScannerPage() {
     window.sessionStorage.setItem(
       "megaflip-scanner-bot",
       JSON.stringify({
+        source: "scanner",
         category: cat,
         market: result.bestMarket,
         direction: result.bias,
