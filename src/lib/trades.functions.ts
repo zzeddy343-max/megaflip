@@ -8,6 +8,8 @@ import {
   readSystemSettings,
   type SystemSettings,
 } from "@/lib/system-settings";
+export { isTradeStatusCompletedEnumError } from "@/lib/trade-errors";
+import { isTradeStatusCompletedEnumError } from "@/lib/trade-errors";
 
 type RpcClient = {
   rpc: (
@@ -26,10 +28,6 @@ type TradeCloseResult = {
   pnl?: number;
   status?: string;
 };
-
-function isTradeStatusCompletedEnumError(message: string) {
-  return /invalid input value/i.test(message) && /trade_status/i.test(message) && /completed/i.test(message);
-}
 
 const PlaceTradeInput = z.object({
   module: z.enum(["forex", "binary", "aviator", "predict", "crypto"]),
@@ -627,6 +625,21 @@ async function settleTradeWithAdminFallback(
   multiplier: number | null,
 ) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: rpcResult, error: rpcError } = await supabaseAdmin.rpc(
+    "admin_settle_open_trade",
+    {
+      _user_id: userId,
+      _trade_id: tradeId,
+      _won: won,
+      _exit_price: exitPrice,
+      _multiplier: multiplier,
+    },
+  );
+  if (!rpcError) return rpcResult as TradeCloseResult;
+  if (!/function public\.admin_settle_open_trade|Could not find the function|schema cache/i.test(rpcError.message ?? "")) {
+    throw new Error(`Could not settle trade with admin fallback: ${rpcError.message ?? String(rpcError)}`);
+  }
+
   const { data: trade, error: tradeError } = await supabaseAdmin
     .from("trades")
     .select("id,user_id,stake,payout,account_type,status")
