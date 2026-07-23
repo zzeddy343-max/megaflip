@@ -97,17 +97,25 @@ function PredictPage() {
         </div>
         <div>
           <h1 className="font-bold text-base">Polymarket</h1>
-          <p className="text-[11px] text-muted-foreground">Trade real-world event outcomes with YES/NO shares priced by the crowd.</p>
+          <p className="text-[11px] text-muted-foreground">
+            Trade real-world event outcomes with YES/NO shares priced by the crowd.
+          </p>
         </div>
       </div>
 
       <div className="flex items-center justify-between text-[10px] text-muted-foreground px-1">
-        <span className="flex items-center gap-1"><TrendingUp className="h-3 w-3" /> {events.length} active</span>
-        <span className="flex items-center gap-1"><Users className="h-3 w-3" /> 12,481 traders</span>
+        <span className="flex items-center gap-1">
+          <TrendingUp className="h-3 w-3" /> {events.length} active
+        </span>
+        <span className="flex items-center gap-1">
+          <Users className="h-3 w-3" /> 12,481 traders
+        </span>
       </div>
 
       {events.length === 0 && (
-        <div className="bg-card border border-border rounded-2xl p-8 text-center text-sm text-muted-foreground">Loading markets...</div>
+        <div className="bg-card border border-border rounded-2xl p-8 text-center text-sm text-muted-foreground">
+          Loading markets...
+        </div>
       )}
 
       {events.map((m) => {
@@ -116,7 +124,12 @@ function PredictPage() {
           <div key={m.id} className="bg-card border border-border rounded-2xl p-3 space-y-2.5">
             <div className="flex justify-between items-start gap-2">
               <p className="font-semibold leading-snug flex-1 text-sm">{m.question}</p>
-              <span className={"text-[10px] whitespace-nowrap flex items-center gap-1 px-1.5 py-0.5 rounded-md " + (cd.urgent ? "bg-bear/15 text-bear" : "bg-surface text-muted-foreground")}>
+              <span
+                className={
+                  "text-[10px] whitespace-nowrap flex items-center gap-1 px-1.5 py-0.5 rounded-md " +
+                  (cd.urgent ? "bg-bear/15 text-bear" : "bg-surface text-muted-foreground")
+                }
+              >
                 <Clock className="h-2.5 w-2.5" /> {cd.label}
               </span>
             </div>
@@ -129,7 +142,9 @@ function PredictPage() {
               <div className="bg-bear" style={{ width: `${m.no_price}%` }} />
             </div>
             <div>
-              <div className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground mb-1">Amount USD</div>
+              <div className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground mb-1">
+                Amount USD
+              </div>
               <div className="flex items-center bg-surface border border-border rounded-xl px-3 py-2">
                 <span className="font-bold text-muted-foreground mr-2 text-sm">$</span>
                 <input
@@ -142,11 +157,19 @@ function PredictPage() {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <button onClick={() => tradeOutcome(m, "YES")} className="py-2.5 rounded-xl bg-bull/15 border border-bull/40 text-bull font-bold flex items-center justify-between px-3 text-sm">
-                <span>YES</span><span className="tabular-nums">{Number(m.yes_price).toFixed(0)}c</span>
+              <button
+                onClick={() => tradeOutcome(m, "YES")}
+                className="py-2.5 rounded-xl bg-bull/15 border border-bull/40 text-bull font-bold flex items-center justify-between px-3 text-sm"
+              >
+                <span>YES</span>
+                <span className="tabular-nums">{Number(m.yes_price).toFixed(0)}c</span>
               </button>
-              <button onClick={() => tradeOutcome(m, "NO")} className="py-2.5 rounded-xl bg-bear/15 border border-bear/40 text-bear font-bold flex items-center justify-between px-3 text-sm">
-                <span>NO</span><span className="tabular-nums">{Number(m.no_price).toFixed(0)}c</span>
+              <button
+                onClick={() => tradeOutcome(m, "NO")}
+                className="py-2.5 rounded-xl bg-bear/15 border border-bear/40 text-bear font-bold flex items-center justify-between px-3 text-sm"
+              >
+                <span>NO</span>
+                <span className="tabular-nums">{Number(m.no_price).toFixed(0)}c</span>
               </button>
             </div>
           </div>

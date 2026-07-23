@@ -97,11 +97,15 @@ async function findB2cPaymentRequest(
       .eq("request_type", "b2c")
       .order("created_at", { ascending: false })
       .limit(100);
-    const match = (data ?? []).find((row: { transaction_id?: string; request_payload?: Record<string, unknown> }) => {
-      const occasion = getString(row.request_payload?.Occasion);
-      return row.transaction_id?.toLowerCase().startsWith(transactionRef) ||
-        parseMegaflipRef(occasion) === transactionRef;
-    });
+    const match = (data ?? []).find(
+      (row: { transaction_id?: string; request_payload?: Record<string, unknown> }) => {
+        const occasion = getString(row.request_payload?.Occasion);
+        return (
+          row.transaction_id?.toLowerCase().startsWith(transactionRef) ||
+          parseMegaflipRef(occasion) === transactionRef
+        );
+      },
+    );
     if (match) return match;
   }
 

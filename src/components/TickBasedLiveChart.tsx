@@ -13,7 +13,7 @@ import {
 
 /**
  * TickBasedLiveChart - Optimized for real-time tick-based trading charts
- * 
+ *
  * This chart demonstrates the proper Deriv-style architecture:
  * - Efficient O(1) indicator updates on each tick
  * - Rolling buffer for prices (configurable)
@@ -25,35 +25,35 @@ import {
 interface TickBasedLiveChartProps {
   /** Function to generate/fetch next tick price */
   getNextPrice: () => number | Promise<number>;
-  
+
   /** Ticks per candle (1 = 1-tick candles, 5 = 5-tick candles, etc) */
   ticksPerCandle?: number;
-  
+
   /** Tick interval in milliseconds */
   tickIntervalMs?: number;
-  
+
   /** Display mode: line graph or candle chart */
   mode?: "line" | "candles";
-  
+
   /** Which indicators to display */
   indicators?: string[];
-  
+
   /** Maximum number of prices to keep in buffer */
   maxPrices?: number;
-  
+
   /** Overlay badge text (e.g., "BUY", "SELL") */
   badge?: string;
   badgeTone?: "neutral" | "bull" | "bear";
-  
+
   /** Additional note text */
   note?: string;
   noteTone?: "neutral" | "bull" | "bear";
-  
+
   className?: string;
-  
+
   /** Called when price updates */
   onPrice?: (price: number) => void;
-  
+
   /** Called when new candle completes */
   onCandleComplete?: () => void;
 }
@@ -81,7 +81,7 @@ export function TickBasedLiveChart({
       emaPeriod: 20,
       rsiPeriod: 14,
       bbPeriod: 20,
-    })
+    }),
   );
 
   const [prices, setPrices] = useState<number[]>([]);
@@ -155,13 +155,13 @@ export function TickBasedLiveChart({
   const closes = mode === "line" ? prices : candles.map((c) => c.c);
 
   // Compute and align indicators
-  const smaValues = selected.has("SMA") 
+  const smaValues = selected.has("SMA")
     ? alignIndicatorWithPrices(computeSMA(closes, 20), closes)
     : [];
-  const emaValues = selected.has("EMA") 
+  const emaValues = selected.has("EMA")
     ? alignIndicatorWithPrices(computeEMA(closes, 20), closes)
     : [];
-  const bbValues = selected.has("Bollinger") 
+  const bbValues = selected.has("Bollinger")
     ? {
         middle: alignIndicatorWithPrices(computeBollinger(closes, 20).middle, closes),
         upper: alignIndicatorWithPrices(computeBollinger(closes, 20).upper, closes),
@@ -169,21 +169,13 @@ export function TickBasedLiveChart({
       }
     : null;
 
-  const smaPath = selected.has("SMA")
-    ? buildIndicatorPath(smaValues, w, h, min, range)
-    : "";
-  const emaPath = selected.has("EMA")
-    ? buildIndicatorPath(emaValues, w, h, min, range)
-    : "";
-  const bbFill = selected.has("Bollinger") && bbValues
-    ? buildBandPath(bbValues, w, h, min, range)
-    : "";
+  const smaPath = selected.has("SMA") ? buildIndicatorPath(smaValues, w, h, min, range) : "";
+  const emaPath = selected.has("EMA") ? buildIndicatorPath(emaValues, w, h, min, range) : "";
+  const bbFill =
+    selected.has("Bollinger") && bbValues ? buildBandPath(bbValues, w, h, min, range) : "";
 
   // Build price line
-  const pricePath =
-    mode === "line"
-      ? buildLinePath(prices, w, h, min, range)
-      : "";
+  const pricePath = mode === "line" ? buildLinePath(prices, w, h, min, range) : "";
 
   const y = (v: number) => h - ((v - min) / range) * h;
   const lastCandle = candles[candles.length - 1];
@@ -206,11 +198,7 @@ export function TickBasedLiveChart({
 
   return (
     <div className={"relative w-full " + (className ?? "")}>
-      <svg
-        viewBox={`0 0 ${w} ${h}`}
-        preserveAspectRatio="none"
-        className="w-full h-full"
-      >
+      <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="w-full h-full">
         {/* Grid lines */}
         {[0.25, 0.5, 0.75].map((t) => (
           <line
@@ -229,12 +217,7 @@ export function TickBasedLiveChart({
         {mode === "line" ? (
           <>
             {/* Bollinger Bands background */}
-            {bbFill && (
-              <path
-                d={bbFill}
-                fill="oklch(0.5 0.18 222 / 0.16)"
-              />
-            )}
+            {bbFill && <path d={bbFill} fill="oklch(0.5 0.18 222 / 0.16)" />}
 
             {/* SMA indicator */}
             {smaPath && (
@@ -260,24 +243,23 @@ export function TickBasedLiveChart({
 
             {/* Price line */}
             <defs>
-              <linearGradient
-                id="price-fill"
-                x1="0"
-                x2="0"
-                y1="0"
-                y2="1"
-              >
-                <stop offset="0%" stopColor={currentPrice >= prices[0] ? bullColor : bearColor} stopOpacity="0.3" />
-                <stop offset="100%" stopColor={currentPrice >= prices[0] ? bullColor : bearColor} stopOpacity="0" />
+              <linearGradient id="price-fill" x1="0" x2="0" y1="0" y2="1">
+                <stop
+                  offset="0%"
+                  stopColor={currentPrice >= prices[0] ? bullColor : bearColor}
+                  stopOpacity="0.3"
+                />
+                <stop
+                  offset="100%"
+                  stopColor={currentPrice >= prices[0] ? bullColor : bearColor}
+                  stopOpacity="0"
+                />
               </linearGradient>
             </defs>
 
             {pricePath && (
               <>
-                <path
-                  d={`${pricePath} L${w},${h} L0,${h} Z`}
-                  fill="url(#price-fill)"
-                />
+                <path d={`${pricePath} L${w},${h} L0,${h} Z`} fill="url(#price-fill)" />
                 <path
                   d={pricePath}
                   fill="none"
@@ -302,12 +284,7 @@ export function TickBasedLiveChart({
         ) : (
           <>
             {/* Candle chart mode */}
-            {bbFill && (
-              <path
-                d={bbFill}
-                fill="oklch(0.5 0.18 222 / 0.16)"
-              />
-            )}
+            {bbFill && <path d={bbFill} fill="oklch(0.5 0.18 222 / 0.16)" />}
 
             {smaPath && (
               <path

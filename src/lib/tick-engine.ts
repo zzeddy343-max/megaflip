@@ -1,7 +1,7 @@
 /**
  * Efficient tick-based trading chart engine for Deriv-style charts
  * Implements O(1) incremental indicator updates and proper candle generation
- * 
+ *
  * Architecture:
  * WebSocket Tick Stream → Tick Buffer (ring buffer) → OHLC Builder → Indicators → Render
  */
@@ -36,7 +36,9 @@ export class TickBuffer {
   }
 
   getLast(): number {
-    const idx = this.filled ? (this.index - 1 + this.buffer.length) % this.buffer.length : this.index - 1;
+    const idx = this.filled
+      ? (this.index - 1 + this.buffer.length) % this.buffer.length
+      : this.index - 1;
     return this.buffer[idx];
   }
 
@@ -207,7 +209,15 @@ export class IncrementalIndicatorEngine {
     this.priceHistory.push(price);
 
     // Keep only what we need for calculations
-    const maxHistoryLength = Math.max(this.smaPeriod, this.emaPeriod, this.rsiPeriod, this.bbPeriod, this.macdSlow, this.atrPeriod) + 10;
+    const maxHistoryLength =
+      Math.max(
+        this.smaPeriod,
+        this.emaPeriod,
+        this.rsiPeriod,
+        this.bbPeriod,
+        this.macdSlow,
+        this.atrPeriod,
+      ) + 10;
     if (this.priceHistory.length > maxHistoryLength) {
       this.priceHistory.shift();
     }
@@ -245,7 +255,7 @@ export class IncrementalIndicatorEngine {
 
   private updateEMA(price: number): void {
     const k = 2 / (this.emaPeriod + 1);
-    
+
     if (this.priceHistory.length < this.emaPeriod) {
       // Initialize: use SMA of first N prices
       if (this.priceHistory.length === this.emaPeriod) {
@@ -297,7 +307,7 @@ export class IncrementalIndicatorEngine {
 
     const mean = recent.reduce((sum, p) => sum + p, 0) / this.bbPeriod;
     const variance = recent.reduce((sum, p) => sum + (p - mean) ** 2, 0) / this.bbPeriod;
-    
+
     this.state.bbMiddle = mean;
     this.state.bbStd = Math.sqrt(variance);
   }
@@ -307,13 +317,15 @@ export class IncrementalIndicatorEngine {
     const k26 = 2 / (this.macdSlow + 1);
 
     if (this.priceHistory.length === this.macdFast) {
-      this.state.ema12 = this.priceHistory.slice(0, this.macdFast).reduce((sum, p) => sum + p, 0) / this.macdFast;
+      this.state.ema12 =
+        this.priceHistory.slice(0, this.macdFast).reduce((sum, p) => sum + p, 0) / this.macdFast;
     } else if (this.priceHistory.length > this.macdFast) {
       this.state.ema12 = price * k12 + this.state.ema12 * (1 - k12);
     }
 
     if (this.priceHistory.length === this.macdSlow) {
-      this.state.ema26 = this.priceHistory.slice(0, this.macdSlow).reduce((sum, p) => sum + p, 0) / this.macdSlow;
+      this.state.ema26 =
+        this.priceHistory.slice(0, this.macdSlow).reduce((sum, p) => sum + p, 0) / this.macdSlow;
     } else if (this.priceHistory.length > this.macdSlow) {
       this.state.ema26 = price * k26 + this.state.ema26 * (1 - k26);
     }
@@ -322,9 +334,10 @@ export class IncrementalIndicatorEngine {
       this.state.macdValue = this.state.ema12 - this.state.ema26;
       // Signal line is 9-period EMA of MACD
       const k9 = 2 / 10;
-      this.state.signalLine = this.state.signalLine === 0 
-        ? this.state.macdValue 
-        : this.state.macdValue * k9 + this.state.signalLine * (1 - k9);
+      this.state.signalLine =
+        this.state.signalLine === 0
+          ? this.state.macdValue
+          : this.state.macdValue * k9 + this.state.signalLine * (1 - k9);
     }
   }
 
@@ -332,7 +345,7 @@ export class IncrementalIndicatorEngine {
     const trueRange = Math.max(
       price - prevPrice,
       Math.abs(price - prevPrice),
-      Math.abs(prevPrice - price)
+      Math.abs(prevPrice - price),
     );
 
     if (this.priceHistory.length === this.atrPeriod + 1) {
@@ -340,7 +353,8 @@ export class IncrementalIndicatorEngine {
       this.state.atrValue = trueRange;
     } else if (this.priceHistory.length > this.atrPeriod + 1) {
       // Wilder's smoothing for ATR
-      this.state.atrValue = (this.state.atrValue * (this.atrPeriod - 1) + trueRange) / this.atrPeriod;
+      this.state.atrValue =
+        (this.state.atrValue * (this.atrPeriod - 1) + trueRange) / this.atrPeriod;
     }
   }
 
@@ -456,7 +470,7 @@ export class TickChartEngine {
    */
   onTick(price: number): OHLC | null {
     const timestamp = Date.now();
-    
+
     this.tickBuffer.push(price);
     this.indicatorEngine.updateTick(price, this.lastPrice);
     this.lastPrice = price;

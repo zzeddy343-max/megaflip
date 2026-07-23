@@ -10,7 +10,8 @@ export function getTickLabel(tickCount) {
 
 export function getProfitRateForContract(type, direction, tickCount = 1) {
   const normalizedTickCount = normalizeTickCount(tickCount);
-  const tickPremium = normalizedTickCount > 1 ? Math.min(0.08, (normalizedTickCount - 1) * 0.02) : 0;
+  const tickPremium =
+    normalizedTickCount > 1 ? Math.min(0.08, (normalizedTickCount - 1) * 0.02) : 0;
 
   if (type === "Buy/Sell" || type === "Even/Odd") return 0.7 + tickPremium;
   if (type === "Matches/Differs") return direction === "MATCH" ? 4 : 0.06;

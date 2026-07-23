@@ -40,9 +40,19 @@ function scriptedScan(category: ScannerCategory) {
   const top = scored[0];
   const second = scored[1];
   const bias = pickBias(category, top.momentum, top.pressure, minute);
-  const edge = clamp(Math.round(54 + top.score * 0.38 + Math.abs(top.momentum - top.pressure) * 10), 58, 91);
+  const edge = clamp(
+    Math.round(54 + top.score * 0.38 + Math.abs(top.momentum - top.pressure) * 10),
+    58,
+    91,
+  );
   const buyCount = clamp(Math.round(6 + top.momentum * 4 + top.volatility * 2), 0, 12);
-  const sellCount = clamp(12 - buyCount + (bias === "SELL" || bias === "UNDER" || bias === "ODD" || bias === "DIFFER" ? 1 : -1), 0, 12);
+  const sellCount = clamp(
+    12 -
+      buyCount +
+      (bias === "SELL" || bias === "UNDER" || bias === "ODD" || bias === "DIFFER" ? 1 : -1),
+    0,
+    12,
+  );
 
   return {
     bestMarket: top.market,
@@ -55,7 +65,12 @@ function scriptedScan(category: ScannerCategory) {
   };
 }
 
-function pickBias(category: ScannerCategory, momentum: number, pressure: number, minute: number): ScannerBias {
+function pickBias(
+  category: ScannerCategory,
+  momentum: number,
+  pressure: number,
+  minute: number,
+): ScannerBias {
   const bullish = momentum + pressure + wave(minute, 17) > 0;
   if (category === "Buy/Sell") return bullish ? "BUY" : "SELL";
   if (category === "Over/Under") return bullish ? "OVER" : "UNDER";
@@ -64,7 +79,7 @@ function pickBias(category: ScannerCategory, momentum: number, pressure: number,
 }
 
 function wave(seed: number, cycle: number) {
-  return Math.sin((seed % cycle) / cycle * Math.PI * 2);
+  return Math.sin(((seed % cycle) / cycle) * Math.PI * 2);
 }
 
 function clamp(value: number, min: number, max: number) {

@@ -234,7 +234,9 @@ export const getAdminNotifications = createServerFn({ method: "GET" })
         .limit(8),
       supabaseAdmin
         .from("transactions")
-        .select("id,user_id,kind,amount_usd,created_at,profiles:user_id(id,email,full_name,username)")
+        .select(
+          "id,user_id,kind,amount_usd,created_at,profiles:user_id(id,email,full_name,username)",
+        )
         .in("status", ["pending", "processing"])
         .order("created_at", { ascending: false })
         .limit(8),

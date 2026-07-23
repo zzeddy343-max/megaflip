@@ -65,7 +65,9 @@ export function AdminNotifications({ isAdmin }: { isAdmin: boolean }) {
                     </div>
                     <div className="min-w-0 flex-1 overflow-hidden">
                       <div className="truncate font-semibold">{item.title}</div>
-                      <div className="break-words text-[11px] text-muted-foreground">{item.detail}</div>
+                      <div className="break-words text-[11px] text-muted-foreground">
+                        {item.detail}
+                      </div>
                       <div className="mt-1 break-words text-[10px] text-muted-foreground">
                         {item.user_name || "system"} · {new Date(item.created_at).toLocaleString()}
                       </div>

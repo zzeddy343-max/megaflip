@@ -23,7 +23,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 type ChartType = "area" | "candle" | "hollow" | "ohlc";
-type TimeInterval = "1tick" | "1min" | "2min" | "3min" | "5min" | "10min" | "15min" | "30min" | "1h" | "1d";
+type TimeInterval =
+  "1tick" | "1min" | "2min" | "3min" | "5min" | "10min" | "15min" | "30min" | "1h" | "1d";
 
 interface ChartToolbarProps {
   chartType?: ChartType;
@@ -132,7 +133,9 @@ export function ChartToolbar({
                   <Zap className="h-4 w-4 text-primary" />
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="right">Time Interval: {TIME_INTERVALS.find(t => t.id === timeInterval)?.label}</TooltipContent>
+              <TooltipContent side="right">
+                Time Interval: {TIME_INTERVALS.find((t) => t.id === timeInterval)?.label}
+              </TooltipContent>
             </Tooltip>
           </DropdownMenuTrigger>
           <DropdownMenuContent side="right" align="start" className="w-44">

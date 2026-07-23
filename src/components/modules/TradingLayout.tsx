@@ -5,67 +5,68 @@ import { TickStatistics } from "./TickStatistics";
 import { ExecutionPanel } from "./ExecutionPanel";
 
 type ChartType = "area" | "candle" | "hollow" | "ohlc";
-type TimeInterval = "1tick" | "1min" | "2min" | "3min" | "5min" | "10min" | "15min" | "30min" | "1h" | "1d";
+type TimeInterval =
+  "1tick" | "1min" | "2min" | "3min" | "5min" | "10min" | "15min" | "30min" | "1h" | "1d";
 type TradeType = "over-under" | "rise-fall" | "higher-lower";
 type Duration = "1tick" | "5ticks" | "1min" | "5min" | "15min" | "1hour";
 
 interface TradingLayoutProps {
   /** The main chart component to display in the center */
   chart: ReactNode;
-  
+
   /** Current asset symbol */
   assetSymbol?: string;
-  
+
   /** Current price */
   currentPrice?: number;
-  
+
   /** Price change */
   priceChange?: number;
-  
+
   /** Account balance */
   accountBalance?: number;
-  
+
   /** Selected chart type */
   chartType?: ChartType;
   onChartTypeChange?: (type: ChartType) => void;
-  
+
   /** Selected time interval */
   timeInterval?: TimeInterval;
   onTimeIntervalChange?: (interval: TimeInterval) => void;
-  
+
   /** Active indicators */
   indicators?: string[];
   onIndicatorToggle?: (indicator: string) => void;
-  
+
   /** Trade type */
   tradeType?: TradeType;
   onTradeTypeChange?: (type: TradeType) => void;
-  
+
   /** Duration */
   duration?: Duration;
   onDurationChange?: (duration: Duration) => void;
-  
+
   /** Stake amount */
   stake?: number;
   onStakeChange?: (stake: number) => void;
-  
+
   /** Payout percentage */
   payoutPercentage?: number;
-  
+
   /** Ticks for statistics */
   ticks?: { close: number; timestamp: number }[];
-  
+
   /** Trade callbacks */
   onBuy?: (stake: number) => void;
   onSell?: (stake: number) => void;
-  
+
   /** Loading state */
   isLoading?: boolean;
 }
 
 /**
  * Professional Three-Column Trading Layout
- * 
+ *
  * Architecture:
  * ┌─────────────────────────────────────────────────────┐
  * │                   Top Navigation Bar                  │
@@ -80,7 +81,7 @@ interface TradingLayoutProps {
  * │          │     • Last Digit Freq        │ • Buttons  │
  * │          │                              │            │
  * └──────────┴──────────────────────────────┴────────────┘
- * 
+ *
  * Key Features:
  * - Fixed, non-scrolling layout for responsive trading
  * - Dark theme optimized for long-session trading
@@ -93,7 +94,7 @@ export function TradingLayout({
   assetSymbol = "Vol 75",
   currentPrice = 9554.32,
   priceChange = 0.14,
-  accountBalance = 5000.00,
+  accountBalance = 5000.0,
   chartType = "area",
   onChartTypeChange,
   timeInterval = "1tick",
@@ -140,9 +141,7 @@ export function TradingLayout({
         {/* CENTER WORKSPACE - Main Chart */}
         <div className="flex-1 ml-16 mr-80 flex flex-col relative">
           {/* Chart Area - 70% of vertical space */}
-          <div className="flex-1 overflow-hidden relative bg-background">
-            {chart}
-          </div>
+          <div className="flex-1 overflow-hidden relative bg-background">{chart}</div>
 
           {/* Bottom Statistics Widget - 30% of vertical space */}
           <TickStatistics

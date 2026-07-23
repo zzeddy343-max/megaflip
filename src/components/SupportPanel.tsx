@@ -74,7 +74,8 @@ export function SupportPanel({ adminMode = false }: { adminMode?: boolean }) {
   });
 
   const broadcastMut = useMutation({
-    mutationFn: () => broadcastFn({ data: { body: body.trim(), subject: broadcastSubject.trim() } }),
+    mutationFn: () =>
+      broadcastFn({ data: { body: body.trim(), subject: broadcastSubject.trim() } }),
     onSuccess: (result) => {
       toast.success(`Broadcast sent to ${result.sent} user${result.sent === 1 ? "" : "s"}`);
       setBody("");
@@ -213,7 +214,12 @@ export function SupportPanel({ adminMode = false }: { adminMode?: boolean }) {
                 sendMut.mutate();
               }
             }}
-            disabled={sendMut.isPending || broadcastMut.isPending || !body.trim() || (adminMode && !showBroadcast && !activeThreadId)}
+            disabled={
+              sendMut.isPending ||
+              broadcastMut.isPending ||
+              !body.trim() ||
+              (adminMode && !showBroadcast && !activeThreadId)
+            }
             className="grid h-10 w-10 place-items-center rounded-lg bg-primary text-primary-foreground disabled:opacity-50"
           >
             <Send className="h-4 w-4" />

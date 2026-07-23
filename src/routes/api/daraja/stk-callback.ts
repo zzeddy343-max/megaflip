@@ -81,7 +81,10 @@ async function handleStkCallback(payload: Record<string, unknown>) {
 }
 
 async function queryStkStatusLocal(checkoutRequestId: string) {
-  const baseUrl = (process.env.DARAJA_BASE_URL || "https://sandbox.safaricom.co.ke").replace(/\/+$/, "");
+  const baseUrl = (process.env.DARAJA_BASE_URL || "https://sandbox.safaricom.co.ke").replace(
+    /\/+$/,
+    "",
+  );
   const consumerKey = process.env.DARAJA_CONSUMER_KEY ?? "";
   const consumerSecret = process.env.DARAJA_CONSUMER_SECRET ?? "";
   const stkShortcode = process.env.DARAJA_STK_SHORTCODE ?? "";

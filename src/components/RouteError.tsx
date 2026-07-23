@@ -12,7 +12,10 @@ export function RouteError({ error, reset }: { error: Error; reset: () => void }
     try {
       if (typeof window !== "undefined") {
         if (navigator && "serviceWorker" in navigator) {
-          navigator.serviceWorker.getRegistrations().then((regs) => regs.forEach((r) => r.unregister())).catch(() => {});
+          navigator.serviceWorker
+            .getRegistrations()
+            .then((regs) => regs.forEach((r) => r.unregister()))
+            .catch(() => {});
         }
         const u = new URL(window.location.href);
         u.searchParams.set("_tbust", String(Date.now()));
@@ -24,7 +27,9 @@ export function RouteError({ error, reset }: { error: Error; reset: () => void }
     }
   }
 
-  const isDynamicImportFailure = error?.message?.includes?.("Failed to fetch dynamically imported module");
+  const isDynamicImportFailure = error?.message?.includes?.(
+    "Failed to fetch dynamically imported module",
+  );
 
   return (
     <div className="min-h-[60vh] grid place-items-center px-4">
@@ -50,7 +55,7 @@ export function RouteError({ error, reset }: { error: Error; reset: () => void }
           <button
             onClick={() => {
               if (isDynamicImportFailure) return doHardReload();
-              router.push('/binary');
+              router.push("/binary");
             }}
             className="flex-1 py-2.5 rounded-lg bg-surface border border-border font-bold text-sm"
           >
@@ -68,7 +73,10 @@ export function RouteNotFound() {
       <div className="text-center">
         <div className="text-5xl font-extrabold text-primary">404</div>
         <p className="text-sm text-muted-foreground mt-2">This screen doesn't exist.</p>
-        <Link to="/binary" className="inline-block mt-4 px-4 py-2 rounded-lg bg-primary text-primary-foreground font-bold text-sm">
+        <Link
+          to="/binary"
+          className="inline-block mt-4 px-4 py-2 rounded-lg bg-primary text-primary-foreground font-bold text-sm"
+        >
           Back to trading
         </Link>
       </div>

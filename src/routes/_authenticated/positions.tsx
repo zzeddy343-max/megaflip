@@ -5,7 +5,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowDownRight, ArrowUpRight, BarChart3, Bell, Clock3, Menu } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getMyProfile, releaseStaleBinaryTrades } from "@/lib/trades.functions";
-import releaseStaleWithBackoff from '@/lib/trades.client';
 
 export const Route = createFileRoute("/_authenticated/positions")({
   component: PositionsPage,
@@ -34,6 +33,25 @@ type TransactionRowData = {
   amount: number;
   tone: "plain" | "win" | "loss";
 };
+
+async function releaseStaleWithBackoff<T>(
+  releaseFn: (opts?: Record<string, unknown>) => Promise<T>,
+  { attempts = 3, initialDelay = 300 } = {},
+): Promise<T | { ok: false; released: number }> {
+  let tryCount = 0;
+  let delay = initialDelay;
+  while (tryCount < attempts) {
+    tryCount += 1;
+    try {
+      return await releaseFn({});
+    } catch (err) {
+      if (tryCount >= attempts) throw err;
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      delay *= 2;
+    }
+  }
+  return { ok: false, released: 0 };
+}
 
 function PositionsPage() {
   const [tab, setTab] = useState<PositionsTab>("open");
@@ -75,7 +93,7 @@ function PositionsPage() {
           qc.invalidateQueries({ queryKey: ["profile"] });
         }
       } catch (err) {
-        console.warn('[Positions] releaseStaleBinaryTrades failed after retries', err);
+        console.warn("[Positions] releaseStaleBinaryTrades failed after retries", err);
       }
     }
 
@@ -95,10 +113,7 @@ function PositionsPage() {
     () => trades.filter((trade) => isClosedStatus(trade.status)),
     [trades],
   );
-  const transactionRows = useMemo(
-    () => trades.flatMap(buildTransactionRows),
-    [trades],
-  );
+  const transactionRows = useMemo(() => trades.flatMap(buildTransactionRows), [trades]);
 
   const visibleTrades = tab === "open" ? liveOpenTrades : closedTrades;
   const balance = Number(
@@ -122,7 +137,7 @@ function PositionsPage() {
               "relative text-center transition " +
               (tab === item.k
                 ? "text-[var(--color-bull)] after:absolute after:inset-x-3 after:bottom-0 after:h-1 after:rounded-full after:bg-[var(--color-bull)]"
-                  : "text-[var(--muted-foreground)]"
+                : "text-[var(--muted-foreground)]")
             }
           >
             {item.label}
@@ -140,7 +155,9 @@ function PositionsPage() {
             </div>
           ) : (
             <div className="mx-auto max-w-5xl px-3 py-8 text-center text-sm text-[var(--muted-foreground)]">
-              <div className="mb-2 font-semibold text-[var(--color-foreground)]">No transactions yet</div>
+              <div className="mb-2 font-semibold text-[var(--color-foreground)]">
+                No transactions yet
+              </div>
               <div>Transactions will appear here when trades are placed or settled.</div>
             </div>
           )
@@ -151,9 +168,15 @@ function PositionsPage() {
             ))}
           </div>
         ) : (
-            <div className="mx-auto max-w-5xl px-3 py-8 text-center text-sm text-[var(--muted-foreground)]">
-            <div className="mb-2 font-semibold text-[var(--color-foreground)]">No {tab === 'open' ? 'open positions' : 'closed positions'}</div>
-            <div>{tab === 'open' ? 'Open binary contracts will appear here while waiting to settle.' : 'Closed contracts will appear here once settled.'}</div>
+          <div className="mx-auto max-w-5xl px-3 py-8 text-center text-sm text-[var(--muted-foreground)]">
+            <div className="mb-2 font-semibold text-[var(--color-foreground)]">
+              No {tab === "open" ? "open positions" : "closed positions"}
+            </div>
+            <div>
+              {tab === "open"
+                ? "Open binary contracts will appear here while waiting to settle."
+                : "Closed contracts will appear here once settled."}
+            </div>
           </div>
         )}
       </main>
@@ -166,7 +189,10 @@ function PositionsPage() {
 function PositionsHeader({ balance }: { balance: number }) {
   return (
     <header className="flex h-[74px] shrink-0 items-center gap-3 border-b border-[var(--color-border)] bg-[var(--surface)] px-4">
-      <button className="grid h-11 w-11 place-items-center rounded-xl text-[var(--muted-foreground)]" aria-label="Menu">
+      <button
+        className="grid h-11 w-11 place-items-center rounded-xl text-[var(--muted-foreground)]"
+        aria-label="Menu"
+      >
         <Menu className="h-7 w-7" />
       </button>
       <Link to="/binary" className="flex min-w-0 items-center gap-3">
@@ -183,7 +209,9 @@ function PositionsHeader({ balance }: { balance: number }) {
           <span className="grid h-7 w-7 place-items-center rounded-full bg-[var(--color-card)] text-xs font-black text-[var(--gold)]">
             D
           </span>
-          <span className="text-sm font-extrabold tabular-nums text-white sm:text-base">${balance.toFixed(2)}</span>
+          <span className="text-sm font-extrabold tabular-nums text-white sm:text-base">
+            ${balance.toFixed(2)}
+          </span>
         </div>
         <Bell className="h-6 w-6 text-[#8F99AA]" />
       </div>
@@ -202,7 +230,9 @@ function PositionCard({ trade, active }: { trade: Trade; active: boolean }) {
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-3">
-            <span className="text-xl font-extrabold text-[#F4F7FB]">{shortMarket(trade.market)}</span>
+            <span className="text-xl font-extrabold text-[#F4F7FB]">
+              {shortMarket(trade.market)}
+            </span>
             <span
               className={
                 "rounded-lg px-3 py-1 text-sm font-bold " +
@@ -256,7 +286,11 @@ function TransactionRow({ row }: { row: TransactionRowData }) {
               : "bg-[#1C222D] text-[#7C8799]")
         }
       >
-        {row.tone === "win" ? <ArrowUpRight className="h-6 w-6" /> : <ArrowDownRight className="h-6 w-6" />}
+        {row.tone === "win" ? (
+          <ArrowUpRight className="h-6 w-6" />
+        ) : (
+          <ArrowDownRight className="h-6 w-6" />
+        )}
       </div>
 
       <div className="min-w-0 flex-1">
@@ -276,7 +310,11 @@ function TransactionRow({ row }: { row: TransactionRowData }) {
         <div
           className={
             "text-2xl font-extrabold tabular-nums " +
-            (row.tone === "win" ? "text-[#18C99A]" : row.tone === "loss" ? "text-[#F16488]" : "text-[#F4F7FB]")
+            (row.tone === "win"
+              ? "text-[#18C99A]"
+              : row.tone === "loss"
+                ? "text-[#F16488]"
+                : "text-[#F4F7FB]")
           }
         >
           {formatSigned(row.amount)}
@@ -288,9 +326,15 @@ function TransactionRow({ row }: { row: TransactionRowData }) {
 }
 
 function PositionsFooter({ openCount, trades }: { openCount: number; trades: Trade[] }) {
-  const wins = trades.filter((trade) => isClosedStatus(trade.status) && isWinningTrade(trade)).length;
-  const losses = trades.filter((trade) => isClosedStatus(trade.status) && !isWinningTrade(trade)).length;
-  const pnl = trades.filter((trade) => isClosedStatus(trade.status)).reduce((sum, trade) => sum + tradePnl(trade), 0);
+  const wins = trades.filter(
+    (trade) => isClosedStatus(trade.status) && isWinningTrade(trade),
+  ).length;
+  const losses = trades.filter(
+    (trade) => isClosedStatus(trade.status) && !isWinningTrade(trade),
+  ).length;
+  const pnl = trades
+    .filter((trade) => isClosedStatus(trade.status))
+    .reduce((sum, trade) => sum + tradePnl(trade), 0);
 
   return (
     <footer className="shrink-0 border-t border-[#1F2633] bg-[#121720]">
@@ -298,19 +342,32 @@ function PositionsFooter({ openCount, trades }: { openCount: number; trades: Tra
         <div className="flex min-w-0 items-center gap-2">
           <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[#F0B913]" />
           <span className="text-[#F0B913]">Auto-Trading</span>
-          <span className="truncate text-[#4F5869]">{trades.length}t · {wins}W / {losses}L</span>
+          <span className="truncate text-[#4F5869]">
+            {trades.length}t · {wins}W / {losses}L
+          </span>
         </div>
-        <span className={(pnl >= 0 ? "text-[#18C99A]" : "text-[#F16488]") + " text-xl font-extrabold tabular-nums"}>
+        <span
+          className={
+            (pnl >= 0 ? "text-[#18C99A]" : "text-[#F16488]") +
+            " text-xl font-extrabold tabular-nums"
+          }
+        >
           {formatSigned(pnl)}
         </span>
       </div>
 
       <nav className="mx-auto grid h-[78px] max-w-xl grid-cols-2">
-        <Link to="/binary" className="flex flex-col items-center justify-center gap-1 text-[#5D6677]">
+        <Link
+          to="/binary"
+          className="flex flex-col items-center justify-center gap-1 text-[#5D6677]"
+        >
           <BarChart3 className="h-7 w-7" />
           <span className="text-sm font-extrabold">Trade</span>
         </Link>
-        <Link to="/positions" className="relative flex flex-col items-center justify-center gap-1 text-[#18C99A]">
+        <Link
+          to="/positions"
+          className="relative flex flex-col items-center justify-center gap-1 text-[#18C99A]"
+        >
           <span className="relative">
             <Clock3 className="h-8 w-8" />
             {openCount > 0 && (
@@ -400,7 +457,9 @@ function normalizeDirection(value: string) {
 }
 
 function isBearDirection(value: string) {
-  return ["sell", "odd", "under", "differ", "differs", "lost", "loss"].includes(value.toLowerCase());
+  return ["sell", "odd", "under", "differ", "differs", "lost", "loss"].includes(
+    value.toLowerCase(),
+  );
 }
 
 function titleCase(value: string) {
@@ -420,6 +479,7 @@ function formatSigned(value: number) {
 }
 
 function formatBalance(trade: Trade) {
-  const seed = Number(trade.entry_price ?? 0) + Number(trade.payout ?? 0) + Number(trade.stake ?? 0);
+  const seed =
+    Number(trade.entry_price ?? 0) + Number(trade.payout ?? 0) + Number(trade.stake ?? 0);
   return (9300 + (seed % 120)).toFixed(2);
 }

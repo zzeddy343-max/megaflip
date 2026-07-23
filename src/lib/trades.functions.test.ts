@@ -22,5 +22,8 @@ test("flags a clear rapid burst of alternating trades", () => {
     { market: "Vol 10", direction: "BUY", created_at: now.toISOString() },
   ];
 
-  assert.deepEqual(detectFraudSignals(recentTrades, "bot,arbitrage"), ["rapid trade burst", "arbitrage-like market switching"]);
+  assert.deepEqual(detectFraudSignals(recentTrades, "bot,arbitrage"), [
+    "rapid trade burst",
+    "arbitrage-like market switching",
+  ]);
 });

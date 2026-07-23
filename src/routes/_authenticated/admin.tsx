@@ -117,9 +117,9 @@ type AdminRow = {
 };
 
 function AdminPage() {
-  const [tab, setTab] = useState<"accounts" | "users" | "trades" | "agents" | "support" | "settings" | "ledger" | "admins">(
-    "accounts",
-  );
+  const [tab, setTab] = useState<
+    "accounts" | "users" | "trades" | "agents" | "support" | "settings" | "ledger" | "admins"
+  >("accounts");
   const [adminVaultPage, setAdminVaultPage] = useState<"tools" | "admins">("tools");
   const [titleClicks, setTitleClicks] = useState(0);
   const [showAdminVault, setShowAdminVault] = useState(false);
@@ -224,7 +224,11 @@ function AdminPage() {
               (tab === k ? "bg-primary/15 text-primary" : "text-muted-foreground")
             }
           >
-            {k === "accounts" ? "Accounts" : k === "ledger" ? "Ledger" : k[0].toUpperCase() + k.slice(1)}
+            {k === "accounts"
+              ? "Accounts"
+              : k === "ledger"
+                ? "Ledger"
+                : k[0].toUpperCase() + k.slice(1)}
           </button>
         ))}
       </div>
@@ -388,22 +392,54 @@ function SettingsTab() {
     mutationFn: () =>
       updateSettings({
         data: {
-          min_deposit_usd: Number(coreSettingsEnabled ? minDeposit || 0 : DEFAULT_SYSTEM_SETTINGS.min_deposit_usd),
-          min_withdrawal_usd: Number(coreSettingsEnabled ? minWithdrawal || 0 : DEFAULT_SYSTEM_SETTINGS.min_withdrawal_usd),
-          withdrawal_tax_pct: Number(coreSettingsEnabled ? taxPct || 0 : DEFAULT_SYSTEM_SETTINGS.withdrawal_tax_pct),
+          min_deposit_usd: Number(
+            coreSettingsEnabled ? minDeposit || 0 : DEFAULT_SYSTEM_SETTINGS.min_deposit_usd,
+          ),
+          min_withdrawal_usd: Number(
+            coreSettingsEnabled ? minWithdrawal || 0 : DEFAULT_SYSTEM_SETTINGS.min_withdrawal_usd,
+          ),
+          withdrawal_tax_pct: Number(
+            coreSettingsEnabled ? taxPct || 0 : DEFAULT_SYSTEM_SETTINGS.withdrawal_tax_pct,
+          ),
           rtp_percent: Number(coreSettingsEnabled ? rtp || 0 : DEFAULT_SYSTEM_SETTINGS.rtp_percent),
-          limits_min_stake_usd: Number(limitsEnabled ? minStake || 0 : DEFAULT_SYSTEM_SETTINGS.limits_min_stake_usd),
-          limits_max_stake_usd: Number(limitsEnabled ? maxStake || 0 : DEFAULT_SYSTEM_SETTINGS.limits_max_stake_usd),
-          volatility_model_variant: volatilityEnabled ? volatilityModel : DEFAULT_SYSTEM_SETTINGS.volatility_model_variant,
-          user_segmentation_tags: segmentationEnabled ? segmentTags : DEFAULT_SYSTEM_SETTINGS.user_segmentation_tags,
-          liability_limits_market_usd: Number(liabilityEnabled ? marketLiability || 0 : DEFAULT_SYSTEM_SETTINGS.liability_limits_market_usd),
-          liability_limits_user_usd: Number(liabilityEnabled ? userLiability || 0 : DEFAULT_SYSTEM_SETTINGS.liability_limits_user_usd),
+          limits_min_stake_usd: Number(
+            limitsEnabled ? minStake || 0 : DEFAULT_SYSTEM_SETTINGS.limits_min_stake_usd,
+          ),
+          limits_max_stake_usd: Number(
+            limitsEnabled ? maxStake || 0 : DEFAULT_SYSTEM_SETTINGS.limits_max_stake_usd,
+          ),
+          volatility_model_variant: volatilityEnabled
+            ? volatilityModel
+            : DEFAULT_SYSTEM_SETTINGS.volatility_model_variant,
+          user_segmentation_tags: segmentationEnabled
+            ? segmentTags
+            : DEFAULT_SYSTEM_SETTINGS.user_segmentation_tags,
+          liability_limits_market_usd: Number(
+            liabilityEnabled
+              ? marketLiability || 0
+              : DEFAULT_SYSTEM_SETTINGS.liability_limits_market_usd,
+          ),
+          liability_limits_user_usd: Number(
+            liabilityEnabled
+              ? userLiability || 0
+              : DEFAULT_SYSTEM_SETTINGS.liability_limits_user_usd,
+          ),
           fraud_detection_enabled: fraudSectionEnabled ? fraudEnabled : true,
-          fraud_detection_rules: fraudSectionEnabled ? fraudRules : DEFAULT_SYSTEM_SETTINGS.fraud_detection_rules,
-          engagement_notification_triggers: engagementEnabled ? engagementTriggers : DEFAULT_SYSTEM_SETTINGS.engagement_notification_triggers,
-          caps_daily_loss_usd: Number(capsEnabled ? dailyLossCap || 0 : DEFAULT_SYSTEM_SETTINGS.caps_daily_loss_usd),
-          caps_weekly_loss_usd: Number(capsEnabled ? weeklyLossCap || 0 : DEFAULT_SYSTEM_SETTINGS.caps_weekly_loss_usd),
-          caps_monthly_loss_usd: Number(capsEnabled ? monthlyLossCap || 0 : DEFAULT_SYSTEM_SETTINGS.caps_monthly_loss_usd),
+          fraud_detection_rules: fraudSectionEnabled
+            ? fraudRules
+            : DEFAULT_SYSTEM_SETTINGS.fraud_detection_rules,
+          engagement_notification_triggers: engagementEnabled
+            ? engagementTriggers
+            : DEFAULT_SYSTEM_SETTINGS.engagement_notification_triggers,
+          caps_daily_loss_usd: Number(
+            capsEnabled ? dailyLossCap || 0 : DEFAULT_SYSTEM_SETTINGS.caps_daily_loss_usd,
+          ),
+          caps_weekly_loss_usd: Number(
+            capsEnabled ? weeklyLossCap || 0 : DEFAULT_SYSTEM_SETTINGS.caps_weekly_loss_usd,
+          ),
+          caps_monthly_loss_usd: Number(
+            capsEnabled ? monthlyLossCap || 0 : DEFAULT_SYSTEM_SETTINGS.caps_monthly_loss_usd,
+          ),
         },
       }),
     onSuccess: () => {
@@ -421,7 +457,8 @@ function SettingsTab() {
         <SlidersHorizontal className="h-4 w-4 text-primary" /> System settings
       </div>
       <p className="text-[11px] text-muted-foreground">
-        Control staking limits, volatility behavior, risk caps, segmentation tags, fraud automation, engagement events, and VAT retention from one admin dashboard.
+        Control staking limits, volatility behavior, risk caps, segmentation tags, fraud automation,
+        engagement events, and VAT retention from one admin dashboard.
       </p>
       {isLoading ? (
         <div className="text-sm text-muted-foreground">Loading settings…</div>
@@ -429,91 +466,101 @@ function SettingsTab() {
         <div className="space-y-3">
           <div className="rounded-lg border border-border bg-surface/80 p-3 space-y-2">
             <div className="flex items-center justify-between gap-3">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Core economics</div>
-            <button
-              type="button"
-              onClick={() => setCoreSettingsEnabled((prev) => !prev)}
-              className={
-                "rounded-full border px-2 py-1 text-[10px] font-bold transition " +
-                (coreSettingsEnabled
-                  ? "border-primary/30 bg-primary/10 text-primary"
-                  : "border-border bg-surface text-muted-foreground")
-              }
-            >
-              {coreSettingsEnabled ? "Custom" : "Defaults"}
-            </button>
-          </div>
-          <div className={coreSettingsEnabled ? "" : "opacity-80"}>
-            <div className="grid gap-2 sm:grid-cols-2">
-              <LabeledInput
-                label="Minimum deposit (USD)"
-                value={coreSettingsEnabled ? minDeposit : DEFAULT_SYSTEM_SETTINGS.min_deposit_usd}
-                onChange={setMinDeposit}
-                type="number"
-              />
-              <LabeledInput
-                label="Minimum withdrawal (USD)"
-                value={coreSettingsEnabled ? minWithdrawal : DEFAULT_SYSTEM_SETTINGS.min_withdrawal_usd}
-                onChange={setMinWithdrawal}
-                type="number"
-              />
-              <LabeledInput
-                label="VAT retention (%)"
-                value={coreSettingsEnabled ? taxPct : DEFAULT_SYSTEM_SETTINGS.withdrawal_tax_pct}
-                onChange={setTaxPct}
-                type="number"
-              />
-              <LabeledInput
-                label="RTP (%)"
-                value={coreSettingsEnabled ? rtp : DEFAULT_SYSTEM_SETTINGS.rtp_percent}
-                onChange={setRtp}
-                type="number"
-              />
+              <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Core economics
+              </div>
+              <button
+                type="button"
+                onClick={() => setCoreSettingsEnabled((prev) => !prev)}
+                className={
+                  "rounded-full border px-2 py-1 text-[10px] font-bold transition " +
+                  (coreSettingsEnabled
+                    ? "border-primary/30 bg-primary/10 text-primary"
+                    : "border-border bg-surface text-muted-foreground")
+                }
+              >
+                {coreSettingsEnabled ? "Custom" : "Defaults"}
+              </button>
             </div>
-          </div>
+            <div className={coreSettingsEnabled ? "" : "opacity-80"}>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <LabeledInput
+                  label="Minimum deposit (USD)"
+                  value={coreSettingsEnabled ? minDeposit : DEFAULT_SYSTEM_SETTINGS.min_deposit_usd}
+                  onChange={setMinDeposit}
+                  type="number"
+                />
+                <LabeledInput
+                  label="Minimum withdrawal (USD)"
+                  value={
+                    coreSettingsEnabled ? minWithdrawal : DEFAULT_SYSTEM_SETTINGS.min_withdrawal_usd
+                  }
+                  onChange={setMinWithdrawal}
+                  type="number"
+                />
+                <LabeledInput
+                  label="VAT retention (%)"
+                  value={coreSettingsEnabled ? taxPct : DEFAULT_SYSTEM_SETTINGS.withdrawal_tax_pct}
+                  onChange={setTaxPct}
+                  type="number"
+                />
+                <LabeledInput
+                  label="RTP (%)"
+                  value={coreSettingsEnabled ? rtp : DEFAULT_SYSTEM_SETTINGS.rtp_percent}
+                  onChange={setRtp}
+                  type="number"
+                />
+              </div>
+            </div>
             <div className="rounded-lg border border-border bg-card/60 p-2 text-sm">
               <div className="font-semibold">House edge</div>
-              <div className="text-muted-foreground">{houseEdge.toFixed(2)}% ({(100 - houseEdge).toFixed(2)}% RTP)</div>
+              <div className="text-muted-foreground">
+                {houseEdge.toFixed(2)}% ({(100 - houseEdge).toFixed(2)}% RTP)
+              </div>
             </div>
           </div>
 
           <div className="rounded-lg border border-border bg-surface/80 p-3 space-y-2">
             <div className="flex items-center justify-between gap-3">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Limits</div>
-            <button
-              type="button"
-              onClick={() => setLimitsEnabled((prev) => !prev)}
-              className={
-                "rounded-full border px-2 py-1 text-[10px] font-bold transition " +
-                (limitsEnabled
-                  ? "border-primary/30 bg-primary/10 text-primary"
-                  : "border-border bg-surface text-muted-foreground")
-              }
-            >
-              {limitsEnabled ? "Custom" : "Defaults"}
-            </button>
-          </div>
-          <div className={limitsEnabled ? "" : "opacity-80"}>
-            <div className="grid gap-2 sm:grid-cols-2">
-              <LabeledInput
-                label="Minimum stake (USD)"
-                value={limitsEnabled ? minStake : DEFAULT_SYSTEM_SETTINGS.limits_min_stake_usd}
-                onChange={setMinStake}
-                type="number"
-              />
-              <LabeledInput
-                label="Maximum stake (USD)"
-                value={limitsEnabled ? maxStake : DEFAULT_SYSTEM_SETTINGS.limits_max_stake_usd}
-                onChange={setMaxStake}
-                type="number"
-              />
+              <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Limits
+              </div>
+              <button
+                type="button"
+                onClick={() => setLimitsEnabled((prev) => !prev)}
+                className={
+                  "rounded-full border px-2 py-1 text-[10px] font-bold transition " +
+                  (limitsEnabled
+                    ? "border-primary/30 bg-primary/10 text-primary"
+                    : "border-border bg-surface text-muted-foreground")
+                }
+              >
+                {limitsEnabled ? "Custom" : "Defaults"}
+              </button>
             </div>
-          </div>
+            <div className={limitsEnabled ? "" : "opacity-80"}>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <LabeledInput
+                  label="Minimum stake (USD)"
+                  value={limitsEnabled ? minStake : DEFAULT_SYSTEM_SETTINGS.limits_min_stake_usd}
+                  onChange={setMinStake}
+                  type="number"
+                />
+                <LabeledInput
+                  label="Maximum stake (USD)"
+                  value={limitsEnabled ? maxStake : DEFAULT_SYSTEM_SETTINGS.limits_max_stake_usd}
+                  onChange={setMaxStake}
+                  type="number"
+                />
+              </div>
+            </div>
           </div>
 
           <div className="rounded-lg border border-border bg-surface/80 p-3 space-y-2">
             <div className="flex items-center justify-between gap-3">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Volatility</div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Volatility
+              </div>
               <button
                 type="button"
                 onClick={() => setVolatilityEnabled((prev) => !prev)}
@@ -530,7 +577,11 @@ function SettingsTab() {
             <div className={volatilityEnabled ? "" : "opacity-80"}>
               <LabeledSelect
                 label="Math model variant"
-                value={volatilityEnabled ? volatilityModel : DEFAULT_SYSTEM_SETTINGS.volatility_model_variant}
+                value={
+                  volatilityEnabled
+                    ? volatilityModel
+                    : DEFAULT_SYSTEM_SETTINGS.volatility_model_variant
+                }
                 onChange={setVolatilityModel}
                 options={["standard", "aggressive", "conservative"]}
               />
@@ -539,162 +590,194 @@ function SettingsTab() {
 
           <div className="rounded-lg border border-border bg-surface/80 p-3 space-y-2">
             <div className="flex items-center justify-between gap-3">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">User segmentation</div>
-            <button
-              type="button"
-              onClick={() => setSegmentationEnabled((prev) => !prev)}
-              className={
-                "rounded-full border px-2 py-1 text-[10px] font-bold transition " +
-                (segmentationEnabled
-                  ? "border-primary/30 bg-primary/10 text-primary"
-                  : "border-border bg-surface text-muted-foreground")
-              }
-            >
-              {segmentationEnabled ? "Custom" : "Defaults"}
-            </button>
-          </div>
-          <div className={segmentationEnabled ? "" : "opacity-80"}>
-            <LabeledInput
-              label="Auto tags"
-              value={segmentationEnabled ? segmentTags : DEFAULT_SYSTEM_SETTINGS.user_segmentation_tags}
-              onChange={setSegmentTags}
-            />
-            <div className="text-[10px] text-muted-foreground">Enter tags as a comma-separated list such as VIP,HIGH ROLLER.</div>
-          </div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                User segmentation
+              </div>
+              <button
+                type="button"
+                onClick={() => setSegmentationEnabled((prev) => !prev)}
+                className={
+                  "rounded-full border px-2 py-1 text-[10px] font-bold transition " +
+                  (segmentationEnabled
+                    ? "border-primary/30 bg-primary/10 text-primary"
+                    : "border-border bg-surface text-muted-foreground")
+                }
+              >
+                {segmentationEnabled ? "Custom" : "Defaults"}
+              </button>
+            </div>
+            <div className={segmentationEnabled ? "" : "opacity-80"}>
+              <LabeledInput
+                label="Auto tags"
+                value={
+                  segmentationEnabled ? segmentTags : DEFAULT_SYSTEM_SETTINGS.user_segmentation_tags
+                }
+                onChange={setSegmentTags}
+              />
+              <div className="text-[10px] text-muted-foreground">
+                Enter tags as a comma-separated list such as VIP,HIGH ROLLER.
+              </div>
+            </div>
           </div>
 
           <div className="rounded-lg border border-border bg-surface/80 p-3 space-y-2">
             <div className="flex items-center justify-between gap-3">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Liability limits</div>
-            <button
-              type="button"
-              onClick={() => setLiabilityEnabled((prev) => !prev)}
-              className={
-                "rounded-full border px-2 py-1 text-[10px] font-bold transition " +
-                (liabilityEnabled
-                  ? "border-primary/30 bg-primary/10 text-primary"
-                  : "border-border bg-surface text-muted-foreground")
-              }
-            >
-              {liabilityEnabled ? "Custom" : "Defaults"}
-            </button>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Liability limits
+              </div>
+              <button
+                type="button"
+                onClick={() => setLiabilityEnabled((prev) => !prev)}
+                className={
+                  "rounded-full border px-2 py-1 text-[10px] font-bold transition " +
+                  (liabilityEnabled
+                    ? "border-primary/30 bg-primary/10 text-primary"
+                    : "border-border bg-surface text-muted-foreground")
+                }
+              >
+                {liabilityEnabled ? "Custom" : "Defaults"}
+              </button>
+            </div>
+            <div className={liabilityEnabled ? "" : "opacity-80"}>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <LabeledInput
+                  label="Exposure per market (USD)"
+                  value={
+                    liabilityEnabled
+                      ? marketLiability
+                      : DEFAULT_SYSTEM_SETTINGS.liability_limits_market_usd
+                  }
+                  onChange={setMarketLiability}
+                  type="number"
+                />
+                <LabeledInput
+                  label="Exposure per user (USD)"
+                  value={
+                    liabilityEnabled
+                      ? userLiability
+                      : DEFAULT_SYSTEM_SETTINGS.liability_limits_user_usd
+                  }
+                  onChange={setUserLiability}
+                  type="number"
+                />
+              </div>
+            </div>
           </div>
-          <div className={liabilityEnabled ? "" : "opacity-80"}>
-            <div className="grid gap-2 sm:grid-cols-2">
+
+          <div className="rounded-lg border border-border bg-surface/80 p-3 space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Fraud detection
+              </div>
+              <button
+                type="button"
+                onClick={() => setFraudSectionEnabled((prev) => !prev)}
+                className={
+                  "rounded-full border px-2 py-1 text-[10px] font-bold transition " +
+                  (fraudSectionEnabled
+                    ? "border-primary/30 bg-primary/10 text-primary"
+                    : "border-border bg-surface text-muted-foreground")
+                }
+              >
+                {fraudSectionEnabled ? "Custom" : "Defaults"}
+              </button>
+            </div>
+            <div className={fraudSectionEnabled ? "" : "opacity-80"}>
+              <label className="flex items-center gap-2 text-sm font-semibold">
+                <input
+                  type="checkbox"
+                  checked={fraudSectionEnabled ? fraudEnabled : true}
+                  onChange={(e) => setFraudEnabled(e.target.checked)}
+                  disabled={!fraudSectionEnabled}
+                />
+                Enable automated fraud detection
+              </label>
               <LabeledInput
-                label="Exposure per market (USD)"
-                value={liabilityEnabled ? marketLiability : DEFAULT_SYSTEM_SETTINGS.liability_limits_market_usd}
-                onChange={setMarketLiability}
-                type="number"
-              />
-              <LabeledInput
-                label="Exposure per user (USD)"
-                value={liabilityEnabled ? userLiability : DEFAULT_SYSTEM_SETTINGS.liability_limits_user_usd}
-                onChange={setUserLiability}
-                type="number"
+                label="Rules / patterns"
+                value={
+                  fraudSectionEnabled ? fraudRules : DEFAULT_SYSTEM_SETTINGS.fraud_detection_rules
+                }
+                onChange={setFraudRules}
               />
             </div>
           </div>
-          </div>
 
           <div className="rounded-lg border border-border bg-surface/80 p-3 space-y-2">
             <div className="flex items-center justify-between gap-3">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Fraud detection</div>
-            <button
-              type="button"
-              onClick={() => setFraudSectionEnabled((prev) => !prev)}
-              className={
-                "rounded-full border px-2 py-1 text-[10px] font-bold transition " +
-                (fraudSectionEnabled
-                  ? "border-primary/30 bg-primary/10 text-primary"
-                  : "border-border bg-surface text-muted-foreground")
-              }
-            >
-              {fraudSectionEnabled ? "Custom" : "Defaults"}
-            </button>
-          </div>
-          <div className={fraudSectionEnabled ? "" : "opacity-80"}>
-            <label className="flex items-center gap-2 text-sm font-semibold">
-              <input
-                type="checkbox"
-                checked={fraudSectionEnabled ? fraudEnabled : true}
-                onChange={(e) => setFraudEnabled(e.target.checked)}
-                disabled={!fraudSectionEnabled}
-              />
-              Enable automated fraud detection
-            </label>
-            <LabeledInput
-              label="Rules / patterns"
-              value={fraudSectionEnabled ? fraudRules : DEFAULT_SYSTEM_SETTINGS.fraud_detection_rules}
-              onChange={setFraudRules}
-            />
-          </div>
-          </div>
-
-          <div className="rounded-lg border border-border bg-surface/80 p-3 space-y-2">
-            <div className="flex items-center justify-between gap-3">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Engagements</div>
-            <button
-              type="button"
-              onClick={() => setEngagementEnabled((prev) => !prev)}
-              className={
-                "rounded-full border px-2 py-1 text-[10px] font-bold transition " +
-                (engagementEnabled
-                  ? "border-primary/30 bg-primary/10 text-primary"
-                  : "border-border bg-surface text-muted-foreground")
-              }
-            >
-              {engagementEnabled ? "Custom" : "Defaults"}
-            </button>
-          </div>
-          <div className={engagementEnabled ? "" : "opacity-80"}>
-            <LabeledInput
-              label="Event triggers"
-              value={engagementEnabled ? engagementTriggers : DEFAULT_SYSTEM_SETTINGS.engagement_notification_triggers}
-              onChange={setEngagementTriggers}
-            />
-            <div className="text-[10px] text-muted-foreground">Example: trade,withdrawal,deposit,bonus.</div>
-          </div>
-          </div>
-
-          <div className="rounded-lg border border-border bg-surface/80 p-3 space-y-2">
-            <div className="flex items-center justify-between gap-3">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Caps</div>
-            <button
-              type="button"
-              onClick={() => setCapsEnabled((prev) => !prev)}
-              className={
-                "rounded-full border px-2 py-1 text-[10px] font-bold transition " +
-                (capsEnabled
-                  ? "border-primary/30 bg-primary/10 text-primary"
-                  : "border-border bg-surface text-muted-foreground")
-              }
-            >
-              {capsEnabled ? "Custom" : "Defaults"}
-            </button>
-          </div>
-          <div className={capsEnabled ? "" : "opacity-80"}>
-            <div className="grid gap-2 sm:grid-cols-3">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Engagements
+              </div>
+              <button
+                type="button"
+                onClick={() => setEngagementEnabled((prev) => !prev)}
+                className={
+                  "rounded-full border px-2 py-1 text-[10px] font-bold transition " +
+                  (engagementEnabled
+                    ? "border-primary/30 bg-primary/10 text-primary"
+                    : "border-border bg-surface text-muted-foreground")
+                }
+              >
+                {engagementEnabled ? "Custom" : "Defaults"}
+              </button>
+            </div>
+            <div className={engagementEnabled ? "" : "opacity-80"}>
               <LabeledInput
-                label="Daily loss cap (USD)"
-                value={capsEnabled ? dailyLossCap : DEFAULT_SYSTEM_SETTINGS.caps_daily_loss_usd}
-                onChange={setDailyLossCap}
-                type="number"
+                label="Event triggers"
+                value={
+                  engagementEnabled
+                    ? engagementTriggers
+                    : DEFAULT_SYSTEM_SETTINGS.engagement_notification_triggers
+                }
+                onChange={setEngagementTriggers}
               />
-              <LabeledInput
-                label="Weekly loss cap (USD)"
-                value={capsEnabled ? weeklyLossCap : DEFAULT_SYSTEM_SETTINGS.caps_weekly_loss_usd}
-                onChange={setWeeklyLossCap}
-                type="number"
-              />
-              <LabeledInput
-                label="Monthly loss cap (USD)"
-                value={capsEnabled ? monthlyLossCap : DEFAULT_SYSTEM_SETTINGS.caps_monthly_loss_usd}
-                onChange={setMonthlyLossCap}
-                type="number"
-              />
+              <div className="text-[10px] text-muted-foreground">
+                Example: trade,withdrawal,deposit,bonus.
+              </div>
             </div>
           </div>
+
+          <div className="rounded-lg border border-border bg-surface/80 p-3 space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Caps
+              </div>
+              <button
+                type="button"
+                onClick={() => setCapsEnabled((prev) => !prev)}
+                className={
+                  "rounded-full border px-2 py-1 text-[10px] font-bold transition " +
+                  (capsEnabled
+                    ? "border-primary/30 bg-primary/10 text-primary"
+                    : "border-border bg-surface text-muted-foreground")
+                }
+              >
+                {capsEnabled ? "Custom" : "Defaults"}
+              </button>
+            </div>
+            <div className={capsEnabled ? "" : "opacity-80"}>
+              <div className="grid gap-2 sm:grid-cols-3">
+                <LabeledInput
+                  label="Daily loss cap (USD)"
+                  value={capsEnabled ? dailyLossCap : DEFAULT_SYSTEM_SETTINGS.caps_daily_loss_usd}
+                  onChange={setDailyLossCap}
+                  type="number"
+                />
+                <LabeledInput
+                  label="Weekly loss cap (USD)"
+                  value={capsEnabled ? weeklyLossCap : DEFAULT_SYSTEM_SETTINGS.caps_weekly_loss_usd}
+                  onChange={setWeeklyLossCap}
+                  type="number"
+                />
+                <LabeledInput
+                  label="Monthly loss cap (USD)"
+                  value={
+                    capsEnabled ? monthlyLossCap : DEFAULT_SYSTEM_SETTINGS.caps_monthly_loss_usd
+                  }
+                  onChange={setMonthlyLossCap}
+                  type="number"
+                />
+              </div>
+            </div>
           </div>
 
           <button
@@ -851,10 +934,21 @@ function UsersTab() {
     onError: (e) => toast.error(e instanceof Error ? e.message : "Reset failed"),
   });
   const moderateMut = useMutation({
-    mutationFn: (vars: { user_id: string; action: "freeze" | "close" | "delete" | "activate"; duration_days?: number; note?: string }) =>
-      moderate({ data: vars }),
+    mutationFn: (vars: {
+      user_id: string;
+      action: "freeze" | "close" | "delete" | "activate";
+      duration_days?: number;
+      note?: string;
+    }) => moderate({ data: vars }),
     onSuccess: (_, vars) => {
-      const label = vars.action === "freeze" ? "frozen" : vars.action === "close" ? "closed" : vars.action === "delete" ? "deleted" : "unlocked";
+      const label =
+        vars.action === "freeze"
+          ? "frozen"
+          : vars.action === "close"
+            ? "closed"
+            : vars.action === "delete"
+              ? "deleted"
+              : "unlocked";
       toast.success(`Account ${label}`);
       qc.invalidateQueries({ queryKey: ["admin-clients"] });
       qc.invalidateQueries({ queryKey: ["profile"] });
@@ -921,145 +1015,154 @@ function UsersTab() {
           const isClosed = accountState === "closed";
 
           return (
-          <div key={u.id} className="border-b border-border last:border-b-0">
-            <div className="flex items-center justify-between p-2.5 text-sm">
-              <button
-                type="button"
-                onClick={() => setSelectedClientId(u.id)}
-                className="flex min-w-0 flex-1 items-center justify-between text-left"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="font-semibold truncate">
-                    {u.full_name || u.username || u.id.slice(0, 8)}
+            <div key={u.id} className="border-b border-border last:border-b-0">
+              <div className="flex items-center justify-between p-2.5 text-sm">
+                <button
+                  type="button"
+                  onClick={() => setSelectedClientId(u.id)}
+                  className="flex min-w-0 flex-1 items-center justify-between text-left"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="font-semibold truncate">
+                      {u.full_name || u.username || u.id.slice(0, 8)}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground">
+                      Active: {u.active_account?.toUpperCase()} · joined{" "}
+                      {new Date(u.created_at).toLocaleDateString()}
+                    </div>
                   </div>
-                  <div className="text-[10px] text-muted-foreground">
-                    Active: {u.active_account?.toUpperCase()} · joined {new Date(u.created_at).toLocaleDateString()}
+                  <ChevronRight className="ml-2 h-4 w-4 text-muted-foreground" />
+                </button>
+                <div className="text-right ml-4">
+                  <div className="font-bold tabular-nums text-bull text-xs">
+                    🇺🇸 ${Number(u.balance_usd).toFixed(2)}
+                  </div>
+                  <div className="font-bold tabular-nums text-primary text-[10px]">
+                    D ${Number(u.demo_balance_usd ?? 0).toFixed(2)}
                   </div>
                 </div>
-                <ChevronRight className="ml-2 h-4 w-4 text-muted-foreground" />
-              </button>
-              <div className="text-right ml-4">
-                <div className="font-bold tabular-nums text-bull text-xs">
-                  🇺🇸 ${Number(u.balance_usd).toFixed(2)}
+              </div>
+              <div className="px-2.5 pb-2.5 pt-0 space-y-2">
+                <div className="flex flex-wrap gap-1">
+                  <span className="rounded-full border border-border px-1.5 py-0.5 text-[9px] font-bold uppercase text-muted-foreground">
+                    {String(u.account_state ?? "active").toUpperCase()}
+                  </span>
+                  <button
+                    onClick={() => {
+                      if (window.confirm("Reset this user's real balance to zero?")) {
+                        resetMut.mutate({ user_id: u.id, account: "real" });
+                      }
+                    }}
+                    disabled={resetMut.isPending}
+                    className="rounded border border-primary/40 px-1.5 py-0.5 text-[9px] font-bold text-primary disabled:opacity-50"
+                  >
+                    <RotateCcw className="mr-0.5 inline h-2.5 w-2.5" /> Real
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (window.confirm("Reset this user's demo balance to zero?")) {
+                        resetMut.mutate({ user_id: u.id, account: "demo" });
+                      }
+                    }}
+                    disabled={resetMut.isPending}
+                    className="rounded border border-primary/40 px-1.5 py-0.5 text-[9px] font-bold text-primary disabled:opacity-50"
+                  >
+                    <RotateCcw className="mr-0.5 inline h-2.5 w-2.5" /> Demo
+                  </button>
+                  <button
+                    onClick={() => promoteMut.mutate({ user_id: u.id, role: "agent" })}
+                    disabled={promoteMut.isPending}
+                    className="rounded border border-primary/40 px-1.5 py-0.5 text-[9px] font-bold text-primary disabled:opacity-50"
+                  >
+                    <UserPlus className="mr-0.5 inline h-2.5 w-2.5" /> Agent
+                  </button>
+                  <button
+                    onClick={() => promoteMut.mutate({ user_id: u.id, role: "admin" })}
+                    disabled={promoteMut.isPending}
+                    className="rounded border border-bull/40 px-1.5 py-0.5 text-[9px] font-bold text-bull disabled:opacity-50"
+                  >
+                    <ShieldPlus className="mr-0.5 inline h-2.5 w-2.5" /> Admin
+                  </button>
                 </div>
-                <div className="font-bold tabular-nums text-primary text-[10px]">
-                  D ${Number(u.demo_balance_usd ?? 0).toFixed(2)}
+                <div className="flex flex-wrap gap-1">
+                  <select
+                    value={freezeDaysByUser[u.id] ?? 1}
+                    onChange={(e) =>
+                      setFreezeDaysByUser((prev) => ({ ...prev, [u.id]: Number(e.target.value) }))
+                    }
+                    className="rounded border border-border bg-surface px-1.5 py-0.5 text-[9px] font-semibold"
+                  >
+                    <option value={1}>1 day</option>
+                    <option value={3}>3 days</option>
+                    <option value={7}>1 week</option>
+                  </select>
+                  <button
+                    onClick={() => {
+                      if (isFrozen) {
+                        if (window.confirm("Unfreeze this account and restore access?")) {
+                          moderateMut.mutate({ user_id: u.id, action: "activate" });
+                        }
+                      } else if (window.confirm("Freeze this account for the selected duration?")) {
+                        moderateMut.mutate({
+                          user_id: u.id,
+                          action: "freeze",
+                          duration_days: freezeDaysByUser[u.id] ?? 1,
+                        });
+                      }
+                    }}
+                    disabled={moderateMut.isPending}
+                    className={
+                      "rounded border px-1.5 py-0.5 text-[9px] font-bold disabled:opacity-50 " +
+                      (isFrozen ? "border-bull/40 text-bull" : "border-amber-500/40 text-amber-500")
+                    }
+                  >
+                    {isFrozen ? "Unfreeze" : "Freeze"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (isClosed) {
+                        if (window.confirm("Open and unlock this closed account?")) {
+                          moderateMut.mutate({ user_id: u.id, action: "activate" });
+                        }
+                      } else if (
+                        window.confirm("Close this account so it can sign in but stays inert?")
+                      ) {
+                        moderateMut.mutate({ user_id: u.id, action: "close" });
+                      }
+                    }}
+                    disabled={moderateMut.isPending}
+                    className={
+                      "rounded border px-1.5 py-0.5 text-[9px] font-bold disabled:opacity-50 " +
+                      (isClosed ? "border-bull/40 text-bull" : "border-primary/40 text-primary")
+                    }
+                  >
+                    {isClosed ? "Open" : "Close"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          "Permanently delete this account and remove its data from the platform?",
+                        )
+                      ) {
+                        moderateMut.mutate({ user_id: u.id, action: "delete" });
+                      }
+                    }}
+                    disabled={moderateMut.isPending}
+                    className="rounded border border-bear/40 px-1.5 py-0.5 text-[9px] font-bold text-bear disabled:opacity-50"
+                  >
+                    Delete
+                  </button>
                 </div>
               </div>
             </div>
-            <div className="px-2.5 pb-2.5 pt-0 space-y-2">
-              <div className="flex flex-wrap gap-1">
-                <span className="rounded-full border border-border px-1.5 py-0.5 text-[9px] font-bold uppercase text-muted-foreground">
-                  {String(u.account_state ?? "active").toUpperCase()}
-                </span>
-                <button
-                  onClick={() => {
-                    if (window.confirm("Reset this user's real balance to zero?")) {
-                      resetMut.mutate({ user_id: u.id, account: "real" });
-                    }
-                  }}
-                  disabled={resetMut.isPending}
-                  className="rounded border border-primary/40 px-1.5 py-0.5 text-[9px] font-bold text-primary disabled:opacity-50"
-                >
-                  <RotateCcw className="mr-0.5 inline h-2.5 w-2.5" /> Real
-                </button>
-                <button
-                  onClick={() => {
-                    if (window.confirm("Reset this user's demo balance to zero?")) {
-                      resetMut.mutate({ user_id: u.id, account: "demo" });
-                    }
-                  }}
-                  disabled={resetMut.isPending}
-                  className="rounded border border-primary/40 px-1.5 py-0.5 text-[9px] font-bold text-primary disabled:opacity-50"
-                >
-                  <RotateCcw className="mr-0.5 inline h-2.5 w-2.5" /> Demo
-                </button>
-                <button
-                  onClick={() => promoteMut.mutate({ user_id: u.id, role: "agent" })}
-                  disabled={promoteMut.isPending}
-                  className="rounded border border-primary/40 px-1.5 py-0.5 text-[9px] font-bold text-primary disabled:opacity-50"
-                >
-                  <UserPlus className="mr-0.5 inline h-2.5 w-2.5" /> Agent
-                </button>
-                <button
-                  onClick={() => promoteMut.mutate({ user_id: u.id, role: "admin" })}
-                  disabled={promoteMut.isPending}
-                  className="rounded border border-bull/40 px-1.5 py-0.5 text-[9px] font-bold text-bull disabled:opacity-50"
-                >
-                  <ShieldPlus className="mr-0.5 inline h-2.5 w-2.5" /> Admin
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-1">
-                <select
-                  value={freezeDaysByUser[u.id] ?? 1}
-                  onChange={(e) => setFreezeDaysByUser((prev) => ({ ...prev, [u.id]: Number(e.target.value) }))}
-                  className="rounded border border-border bg-surface px-1.5 py-0.5 text-[9px] font-semibold"
-                >
-                  <option value={1}>1 day</option>
-                  <option value={3}>3 days</option>
-                  <option value={7}>1 week</option>
-                </select>
-                <button
-                  onClick={() => {
-                    if (isFrozen) {
-                      if (window.confirm("Unfreeze this account and restore access?")) {
-                        moderateMut.mutate({ user_id: u.id, action: "activate" });
-                      }
-                    } else if (window.confirm("Freeze this account for the selected duration?")) {
-                      moderateMut.mutate({
-                        user_id: u.id,
-                        action: "freeze",
-                        duration_days: freezeDaysByUser[u.id] ?? 1,
-                      });
-                    }
-                  }}
-                  disabled={moderateMut.isPending}
-                  className={
-                    "rounded border px-1.5 py-0.5 text-[9px] font-bold disabled:opacity-50 " +
-                    (isFrozen
-                      ? "border-bull/40 text-bull"
-                      : "border-amber-500/40 text-amber-500")
-                  }
-                >
-                  {isFrozen ? "Unfreeze" : "Freeze"}
-                </button>
-                <button
-                  onClick={() => {
-                    if (isClosed) {
-                      if (window.confirm("Open and unlock this closed account?")) {
-                        moderateMut.mutate({ user_id: u.id, action: "activate" });
-                      }
-                    } else if (window.confirm("Close this account so it can sign in but stays inert?")) {
-                      moderateMut.mutate({ user_id: u.id, action: "close" });
-                    }
-                  }}
-                  disabled={moderateMut.isPending}
-                  className={
-                    "rounded border px-1.5 py-0.5 text-[9px] font-bold disabled:opacity-50 " +
-                    (isClosed ? "border-bull/40 text-bull" : "border-primary/40 text-primary")
-                  }
-                >
-                  {isClosed ? "Open" : "Close"}
-                </button>
-                <button
-                  onClick={() => {
-                    if (window.confirm("Permanently delete this account and remove its data from the platform?")) {
-                      moderateMut.mutate({ user_id: u.id, action: "delete" });
-                    }
-                  }}
-                  disabled={moderateMut.isPending}
-                  className="rounded border border-bear/40 px-1.5 py-0.5 text-[9px] font-bold text-bear disabled:opacity-50"
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          </div>
           );
         })}
       </div>
 
-      {selectedClient && <ClientDetailsDrawer client={selectedClient} onClose={() => setSelectedClientId(null)} />}
+      {selectedClient && (
+        <ClientDetailsDrawer client={selectedClient} onClose={() => setSelectedClientId(null)} />
+      )}
     </div>
   );
 }
@@ -1074,16 +1177,36 @@ function ClientDetailsDrawer({ client, onClose }: { client: ClientRow; onClose: 
   useEffect(() => {
     let active = true;
     async function load() {
-      const { data: profileData } = await supabase.from("profiles").select("*").eq("id", client.id).maybeSingle();
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", client.id)
+        .maybeSingle();
       const [{ data: tradesData }, { data: txData }] = await Promise.all([
-        supabase.from("trades").select("*").eq("user_id", client.id).order("created_at", { ascending: false }).limit(12),
-        supabase.from("transactions").select("*").eq("user_id", client.id).order("created_at", { ascending: false }).limit(12),
+        supabase
+          .from("trades")
+          .select("*")
+          .eq("user_id", client.id)
+          .order("created_at", { ascending: false })
+          .limit(12),
+        supabase
+          .from("transactions")
+          .select("*")
+          .eq("user_id", client.id)
+          .order("created_at", { ascending: false })
+          .limit(12),
       ]);
       if (!active) return;
-      setDetails({ profile: profileData ?? null, trades: (tradesData ?? []) as Array<Record<string, unknown>>, transactions: (txData ?? []) as Array<Record<string, unknown>> });
+      setDetails({
+        profile: profileData ?? null,
+        trades: (tradesData ?? []) as Array<Record<string, unknown>>,
+        transactions: (txData ?? []) as Array<Record<string, unknown>>,
+      });
     }
     load();
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [client.id]);
 
   return (
@@ -1092,7 +1215,9 @@ function ClientDetailsDrawer({ client, onClose }: { client: ClientRow; onClose: 
       <div className="fixed right-0 top-0 z-[51] h-full w-full max-w-xl overflow-y-auto border-l border-border bg-background p-4 shadow-2xl">
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-sm font-bold">{client.full_name || client.username || client.id.slice(0, 8)}</div>
+            <div className="text-sm font-bold">
+              {client.full_name || client.username || client.id.slice(0, 8)}
+            </div>
             <div className="text-[11px] text-muted-foreground">Client profile and activity</div>
           </div>
           <button type="button" onClick={onClose} className="rounded-lg border border-border p-2">
@@ -1101,23 +1226,59 @@ function ClientDetailsDrawer({ client, onClose }: { client: ClientRow; onClose: 
         </div>
 
         <div className="mt-4 rounded-xl border border-border bg-card p-3 space-y-3">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Profile</div>
+          <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            Profile
+          </div>
           <div className="grid gap-2 text-sm">
-            <Row label="Name" value={String(details.profile?.full_name ?? client.full_name ?? "—")} />
-            <Row label="Username" value={String(details.profile?.username ?? client.username ?? "—")} />
+            <Row
+              label="Name"
+              value={String(details.profile?.full_name ?? client.full_name ?? "—")}
+            />
+            <Row
+              label="Username"
+              value={String(details.profile?.username ?? client.username ?? "—")}
+            />
             <Row label="Email" value={String(details.profile?.email ?? "—")} />
             <Row label="Phone" value={String(details.profile?.phone ?? "—")} />
-            <Row label="Active account" value={String(details.profile?.active_account ?? client.active_account ?? "—")} />
-            <Row label="Account state" value={String(details.profile?.account_state ?? client.account_state ?? "active").toUpperCase()} />
-            <Row label="Freeze until" value={details.profile?.freeze_until ? new Date(String(details.profile.freeze_until)).toLocaleString() : "—"} />
-            <Row label="Real balance" value={`$${Number(details.profile?.balance_usd ?? client.balance_usd ?? 0).toFixed(2)}`} />
-            <Row label="Demo balance" value={`$${Number(details.profile?.demo_balance_usd ?? client.demo_balance_usd ?? 0).toFixed(2)}`} />
-            <Row label="Joined" value={new Date(String(details.profile?.created_at ?? client.created_at)).toLocaleString()} />
+            <Row
+              label="Active account"
+              value={String(details.profile?.active_account ?? client.active_account ?? "—")}
+            />
+            <Row
+              label="Account state"
+              value={String(
+                details.profile?.account_state ?? client.account_state ?? "active",
+              ).toUpperCase()}
+            />
+            <Row
+              label="Freeze until"
+              value={
+                details.profile?.freeze_until
+                  ? new Date(String(details.profile.freeze_until)).toLocaleString()
+                  : "—"
+              }
+            />
+            <Row
+              label="Real balance"
+              value={`$${Number(details.profile?.balance_usd ?? client.balance_usd ?? 0).toFixed(2)}`}
+            />
+            <Row
+              label="Demo balance"
+              value={`$${Number(details.profile?.demo_balance_usd ?? client.demo_balance_usd ?? 0).toFixed(2)}`}
+            />
+            <Row
+              label="Joined"
+              value={new Date(
+                String(details.profile?.created_at ?? client.created_at),
+              ).toLocaleString()}
+            />
           </div>
         </div>
 
         <div className="mt-4 rounded-xl border border-border bg-card p-3 space-y-3">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Recent trades</div>
+          <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            Recent trades
+          </div>
           {details.trades.length === 0 ? (
             <div className="text-sm text-muted-foreground">No trades yet.</div>
           ) : (
@@ -1125,11 +1286,17 @@ function ClientDetailsDrawer({ client, onClose }: { client: ClientRow; onClose: 
               {details.trades.map((trade) => (
                 <div key={String(trade.id)} className="rounded-lg border border-border p-2 text-sm">
                   <div className="flex items-center justify-between gap-2">
-                    <div className="font-semibold">{String(trade.module ?? "trade").toUpperCase()} · {String(trade.market ?? "—")}</div>
-                    <div className="text-[10px] text-muted-foreground">{String(trade.status ?? "—")}</div>
+                    <div className="font-semibold">
+                      {String(trade.module ?? "trade").toUpperCase()} ·{" "}
+                      {String(trade.market ?? "—")}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground">
+                      {String(trade.status ?? "—")}
+                    </div>
                   </div>
                   <div className="mt-1 text-[11px] text-muted-foreground">
-                    Stake ${Number(trade.stake ?? 0).toFixed(2)} · payout ${Number(trade.payout ?? 0).toFixed(2)}
+                    Stake ${Number(trade.stake ?? 0).toFixed(2)} · payout $
+                    {Number(trade.payout ?? 0).toFixed(2)}
                   </div>
                 </div>
               ))}
@@ -1138,21 +1305,31 @@ function ClientDetailsDrawer({ client, onClose }: { client: ClientRow; onClose: 
         </div>
 
         <div className="mt-4 rounded-xl border border-border bg-card p-3 space-y-3">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Deposits / withdrawals</div>
+          <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            Deposits / withdrawals
+          </div>
           {details.transactions.length === 0 ? (
             <div className="text-sm text-muted-foreground">No transactions yet.</div>
           ) : (
             <div className="space-y-2">
               {details.transactions.map((transaction) => (
-                <div key={String(transaction.id)} className="rounded-lg border border-border p-2 text-sm">
+                <div
+                  key={String(transaction.id)}
+                  className="rounded-lg border border-border p-2 text-sm"
+                >
                   <div className="flex items-center justify-between gap-2">
                     <div className="font-semibold">{String(transaction.kind ?? "transaction")}</div>
-                    <div className={Number(transaction.amount_usd ?? 0) >= 0 ? "text-bull" : "text-bear"}>
+                    <div
+                      className={
+                        Number(transaction.amount_usd ?? 0) >= 0 ? "text-bull" : "text-bear"
+                      }
+                    >
                       ${Number(transaction.amount_usd ?? 0).toFixed(2)}
                     </div>
                   </div>
                   <div className="mt-1 text-[11px] text-muted-foreground">
-                    {String(transaction.status ?? "—")} · {new Date(String(transaction.created_at ?? "")).toLocaleString()}
+                    {String(transaction.status ?? "—")} ·{" "}
+                    {new Date(String(transaction.created_at ?? "")).toLocaleString()}
                   </div>
                 </div>
               ))}
@@ -1565,59 +1742,59 @@ function CreateAdminForm() {
 
   return (
     <form onSubmit={submit} className="bg-card border border-border rounded-xl p-3 space-y-2">
-        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-          <ShieldPlus className="h-4 w-4 text-primary" /> Add admin
-        </div>
+      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+        <ShieldPlus className="h-4 w-4 text-primary" /> Add admin
+      </div>
+      <input
+        value={fullName}
+        onChange={(e) => setFullName(e.target.value)}
+        placeholder="Full name"
+        minLength={2}
+        required
+        className="w-full px-3 py-2 rounded-lg bg-surface border border-border text-sm outline-none focus:border-primary"
+      />
+      <input
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        placeholder="admin@email.com"
+        type="email"
+        required
+        className="w-full px-3 py-2 rounded-lg bg-surface border border-border text-sm outline-none focus:border-primary"
+      />
+      <div className="relative">
         <input
-          value={fullName}
-          onChange={(e) => setFullName(e.target.value)}
-          placeholder="Full name"
-          minLength={2}
-          required
-          className="w-full px-3 py-2 rounded-lg bg-surface border border-border text-sm outline-none focus:border-primary"
-        />
-        <input
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="admin@email.com"
-          type="email"
-          required
-          className="w-full px-3 py-2 rounded-lg bg-surface border border-border text-sm outline-none focus:border-primary"
-        />
-        <div className="relative">
-          <input
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Temporary password"
-            type={showPassword ? "text" : "password"}
-            minLength={8}
-            required
-            className="w-full px-3 py-2 pr-10 rounded-lg bg-surface border border-border text-sm outline-none focus:border-primary"
-          />
-          <button
-            type="button"
-            onClick={() => setShowPassword((v) => !v)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-          >
-            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-          </button>
-        </div>
-        <input
-          value={confirm}
-          onChange={(e) => setConfirm(e.target.value)}
-          placeholder="Confirm password"
-          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Temporary password"
+          type={showPassword ? "text" : "password"}
           minLength={8}
           required
-          className="w-full px-3 py-2 rounded-lg bg-surface border border-border text-sm outline-none focus:border-primary"
+          className="w-full px-3 py-2 pr-10 rounded-lg bg-surface border border-border text-sm outline-none focus:border-primary"
         />
         <button
-          disabled={createMut.isPending}
-          className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground font-bold text-sm glow-primary disabled:opacity-50"
+          type="button"
+          onClick={() => setShowPassword((v) => !v)}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
         >
-          {createMut.isPending ? "Creating..." : "Create admin"}
+          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
         </button>
-      </form>
+      </div>
+      <input
+        value={confirm}
+        onChange={(e) => setConfirm(e.target.value)}
+        placeholder="Confirm password"
+        type="password"
+        minLength={8}
+        required
+        className="w-full px-3 py-2 rounded-lg bg-surface border border-border text-sm outline-none focus:border-primary"
+      />
+      <button
+        disabled={createMut.isPending}
+        className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground font-bold text-sm glow-primary disabled:opacity-50"
+      >
+        {createMut.isPending ? "Creating..." : "Create admin"}
+      </button>
+    </form>
   );
 }
 
@@ -1640,7 +1817,9 @@ function AdminsList() {
             : { ok: true },
       ),
     onSuccess: (_, vars) => {
-      toast.success(vars.next_role === "agent" ? "Admin demoted to agent" : "Admin demoted to user");
+      toast.success(
+        vars.next_role === "agent" ? "Admin demoted to agent" : "Admin demoted to user",
+      );
       qc.invalidateQueries({ queryKey: ["admin-admins"] });
       qc.invalidateQueries({ queryKey: ["admin-agents"] });
       qc.invalidateQueries({ queryKey: ["admin-clients"] });
@@ -1649,51 +1828,49 @@ function AdminsList() {
   });
 
   return (
-      <div className="bg-card border border-border rounded-xl divide-y divide-border">
-        {isLoading && (
-          <div className="p-6 text-center text-sm text-muted-foreground">Loading...</div>
-        )}
-        {!isLoading && adminRows.length === 0 && (
-          <div className="p-6 text-center text-sm text-muted-foreground">No admins found.</div>
-        )}
-        {adminRows.map((admin) => (
-          <div key={admin.id} className="flex items-center justify-between p-2.5 text-sm">
-            <div className="min-w-0 flex-1">
-              <div className="font-semibold truncate">
-                {admin.full_name || admin.username || admin.email}
-              </div>
-              <div className="text-[10px] text-muted-foreground truncate">{admin.email}</div>
+    <div className="bg-card border border-border rounded-xl divide-y divide-border">
+      {isLoading && <div className="p-6 text-center text-sm text-muted-foreground">Loading...</div>}
+      {!isLoading && adminRows.length === 0 && (
+        <div className="p-6 text-center text-sm text-muted-foreground">No admins found.</div>
+      )}
+      {adminRows.map((admin) => (
+        <div key={admin.id} className="flex items-center justify-between p-2.5 text-sm">
+          <div className="min-w-0 flex-1">
+            <div className="font-semibold truncate">
+              {admin.full_name || admin.username || admin.email}
             </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <div className="text-[10px] text-muted-foreground">
-                Joined {new Date(admin.created_at).toLocaleDateString()}
-              </div>
-              <button
-                onClick={() => {
-                  if (window.confirm("Demote this admin to an agent?")) {
-                    demoteMut.mutate({ user_id: admin.id, next_role: "agent" });
-                  }
-                }}
-                disabled={demoteMut.isPending}
-                className="rounded border border-primary/40 px-1.5 py-0.5 text-[9px] font-bold text-primary disabled:opacity-50"
-              >
-                <UserMinus className="mr-0.5 inline h-2.5 w-2.5" /> Agent
-              </button>
-              <button
-                onClick={() => {
-                  if (window.confirm("Demote this admin to a normal user?")) {
-                    demoteMut.mutate({ user_id: admin.id, next_role: "client" });
-                  }
-                }}
-                disabled={demoteMut.isPending}
-                className="rounded border border-bear/40 px-1.5 py-0.5 text-[9px] font-bold text-bear disabled:opacity-50"
-              >
-                <UserMinus className="mr-0.5 inline h-2.5 w-2.5" /> Demote
-              </button>
-            </div>
+            <div className="text-[10px] text-muted-foreground truncate">{admin.email}</div>
           </div>
-        ))}
-      </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <div className="text-[10px] text-muted-foreground">
+              Joined {new Date(admin.created_at).toLocaleDateString()}
+            </div>
+            <button
+              onClick={() => {
+                if (window.confirm("Demote this admin to an agent?")) {
+                  demoteMut.mutate({ user_id: admin.id, next_role: "agent" });
+                }
+              }}
+              disabled={demoteMut.isPending}
+              className="rounded border border-primary/40 px-1.5 py-0.5 text-[9px] font-bold text-primary disabled:opacity-50"
+            >
+              <UserMinus className="mr-0.5 inline h-2.5 w-2.5" /> Agent
+            </button>
+            <button
+              onClick={() => {
+                if (window.confirm("Demote this admin to a normal user?")) {
+                  demoteMut.mutate({ user_id: admin.id, next_role: "client" });
+                }
+              }}
+              disabled={demoteMut.isPending}
+              className="rounded border border-bear/40 px-1.5 py-0.5 text-[9px] font-bold text-bear disabled:opacity-50"
+            >
+              <UserMinus className="mr-0.5 inline h-2.5 w-2.5" /> Demote
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -1745,8 +1922,7 @@ function LedgerReconciliationTab() {
   });
 
   const toggleAutoMut = useMutation({
-    mutationFn: (enabled: boolean) =>
-      setAutoEnabled({ data: { enabled } }),
+    mutationFn: (enabled: boolean) => setAutoEnabled({ data: { enabled } }),
     onSuccess: (result) => {
       const data = result as { auto_fix_enabled?: boolean; message?: string };
       toast.success(data.message || "Setting updated");
@@ -1774,7 +1950,9 @@ function LedgerReconciliationTab() {
             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
               <Zap className="h-4 w-4 text-primary" /> Automation Status
             </div>
-            <div className={`px-2 py-1 rounded text-[10px] font-bold ${autoStatus.auto_fix_enabled ? "bg-bull/20 text-bull" : "bg-bear/20 text-bear"}`}>
+            <div
+              className={`px-2 py-1 rounded text-[10px] font-bold ${autoStatus.auto_fix_enabled ? "bg-bull/20 text-bull" : "bg-bear/20 text-bear"}`}
+            >
               {autoStatus.auto_fix_enabled ? "ACTIVE" : "INACTIVE"}
             </div>
           </div>
@@ -1782,19 +1960,31 @@ function LedgerReconciliationTab() {
           <div className="grid grid-cols-2 gap-2 text-[10px]">
             <div className="space-y-1">
               <div className="text-muted-foreground">Last Audit</div>
-              <div className="font-bold text-xs">{autoStatus.last_audit_at ? new Date(autoStatus.last_audit_at).toLocaleString() : "Never"}</div>
+              <div className="font-bold text-xs">
+                {autoStatus.last_audit_at
+                  ? new Date(autoStatus.last_audit_at).toLocaleString()
+                  : "Never"}
+              </div>
             </div>
             <div className="space-y-1">
               <div className="text-muted-foreground">Last Fixed</div>
-              <div className="font-bold text-xs">{autoStatus.last_fix_at ? new Date(autoStatus.last_fix_at).toLocaleString() : "Never"}</div>
+              <div className="font-bold text-xs">
+                {autoStatus.last_fix_at
+                  ? new Date(autoStatus.last_fix_at).toLocaleString()
+                  : "Never"}
+              </div>
             </div>
             <div className="space-y-1">
               <div className="text-muted-foreground">Pending Issues</div>
-              <div className="font-bold text-xs text-bull">{autoStatus.pending_discrepancies || 0}</div>
+              <div className="font-bold text-xs text-bull">
+                {autoStatus.pending_discrepancies || 0}
+              </div>
             </div>
             <div className="space-y-1">
               <div className="text-muted-foreground">Total Fixed (Lifetime)</div>
-              <div className="font-bold text-xs">{autoStatus.discrepancies_fixed_lifetime || 0}</div>
+              <div className="font-bold text-xs">
+                {autoStatus.discrepancies_fixed_lifetime || 0}
+              </div>
             </div>
           </div>
 
@@ -1808,7 +1998,11 @@ function LedgerReconciliationTab() {
                   : "border border-bull/30 bg-bull/10 text-bull"
               }`}
             >
-              {toggleAutoMut.isPending ? "Updating..." : autoStatus.auto_fix_enabled ? "Disable Auto Fix" : "Enable Auto Fix"}
+              {toggleAutoMut.isPending
+                ? "Updating..."
+                : autoStatus.auto_fix_enabled
+                  ? "Disable Auto Fix"
+                  : "Enable Auto Fix"}
             </button>
             <button
               onClick={() => scheduledMut.mutate()}
@@ -1827,7 +2021,8 @@ function LedgerReconciliationTab() {
           <TrendingUp className="h-4 w-4 text-primary" /> Manual Operations
         </div>
         <p className="text-[10px] text-muted-foreground">
-          Verify and manually fix discrepancies between wallet balances and transaction history. All calculations are based on actual deposits, withdrawals, and trade outcomes.
+          Verify and manually fix discrepancies between wallet balances and transaction history. All
+          calculations are based on actual deposits, withdrawals, and trade outcomes.
         </p>
 
         <div className="grid grid-cols-2 gap-2">
@@ -1866,15 +2061,17 @@ function LedgerReconciliationTab() {
             </div>
           </div>
           <div className="divide-y divide-border max-h-96 overflow-y-auto">
-            {(auditResults as Array<{
-              user_id: string;
-              username?: string;
-              account_type: string;
-              current_balance: number;
-              calculated_balance: number;
-              discrepancy: number;
-              status: string;
-            }>).map((result) => (
+            {(
+              auditResults as Array<{
+                user_id: string;
+                username?: string;
+                account_type: string;
+                current_balance: number;
+                calculated_balance: number;
+                discrepancy: number;
+                status: string;
+              }>
+            ).map((result) => (
               <div key={`${result.user_id}-${result.account_type}`} className="p-2.5 text-sm">
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
@@ -1892,7 +2089,9 @@ function LedgerReconciliationTab() {
                     <div className="text-[10px] text-muted-foreground">
                       Should be: ${Number(result.calculated_balance).toFixed(2)}
                     </div>
-                    <div className={`text-[10px] font-bold ${result.discrepancy > 0 ? "text-bull" : "text-bear"}`}>
+                    <div
+                      className={`text-[10px] font-bold ${result.discrepancy > 0 ? "text-bull" : "text-bear"}`}
+                    >
                       {result.discrepancy > 0 ? "+" : ""}${Number(result.discrepancy).toFixed(2)}
                     </div>
                   </div>

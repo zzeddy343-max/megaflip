@@ -54,7 +54,8 @@ async function fetchYahooCandles(
   const result = json.chart?.result?.[0];
   const timestamps = result?.timestamp ?? [];
   const quote = result?.indicators?.quote?.[0];
-  if (!result || !quote || timestamps.length === 0) return { ok: false as const, reason: "no_data" as const };
+  if (!result || !quote || timestamps.length === 0)
+    return { ok: false as const, reason: "no_data" as const };
 
   const candles = timestamps
     .map((t, i) => {
@@ -84,9 +85,14 @@ async function fetchRate(symbol: string) {
     time_last_update_unix?: number;
   };
   const price = json.rates?.[quote];
-  if (json.result !== "success" || !price) return { ok: false as const, reason: "no_data" as const };
+  if (json.result !== "success" || !price)
+    return { ok: false as const, reason: "no_data" as const };
 
-  return { ok: true as const, price, ts: json.time_last_update_unix ?? Math.floor(Date.now() / 1000) };
+  return {
+    ok: true as const,
+    price,
+    ts: json.time_last_update_unix ?? Math.floor(Date.now() / 1000),
+  };
 }
 
 export const getForexQuote = createServerFn({ method: "GET" })
@@ -111,7 +117,11 @@ export const getForexQuote = createServerFn({ method: "GET" })
         ts: rate.ts,
       };
     } catch (e) {
-      return { ok: false as const, reason: "error" as const, message: e instanceof Error ? e.message : String(e) };
+      return {
+        ok: false as const,
+        reason: "error" as const,
+        message: e instanceof Error ? e.message : String(e),
+      };
     }
   });
 
@@ -135,6 +145,10 @@ export const getForexCandles = createServerFn({ method: "GET" })
         source: "Yahoo Finance",
       };
     } catch (e) {
-      return { ok: false as const, reason: "error" as const, message: e instanceof Error ? e.message : String(e) };
+      return {
+        ok: false as const,
+        reason: "error" as const,
+        message: e instanceof Error ? e.message : String(e),
+      };
     }
   });

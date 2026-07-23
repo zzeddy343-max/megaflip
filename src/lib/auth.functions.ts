@@ -45,7 +45,9 @@ export async function createAdminUser(data: {
   });
 
   if (error) {
-    const existingAccount = /already registered|already been registered|already exists/i.test(error.message);
+    const existingAccount = /already registered|already been registered|already exists/i.test(
+      error.message,
+    );
     if (!existingAccount) throw error;
 
     const { data: list, error: listErr } = await supabaseAdmin.auth.admin.listUsers();
@@ -62,9 +64,13 @@ export async function createAdminUser(data: {
       active_account: "real",
     });
     await supabaseAdmin.from("user_settings").upsert({ user_id: existing.id });
-    await supabaseAdmin
-      .from("user_roles")
-      .upsert([{ user_id: existing.id, role: "client" }, { user_id: existing.id, role: "admin" }], { onConflict: "user_id,role" });
+    await supabaseAdmin.from("user_roles").upsert(
+      [
+        { user_id: existing.id, role: "client" },
+        { user_id: existing.id, role: "admin" },
+      ],
+      { onConflict: "user_id,role" },
+    );
 
     return { ok: true, userId: existing.id, email, promotedExisting: true };
   }
@@ -81,9 +87,13 @@ export async function createAdminUser(data: {
     active_account: "real",
   });
   await supabaseAdmin.from("user_settings").upsert({ user_id: created.user.id });
-  await supabaseAdmin
-    .from("user_roles")
-    .upsert([{ user_id: created.user.id, role: "client" }, { user_id: created.user.id, role: "admin" }], { onConflict: "user_id,role" });
+  await supabaseAdmin.from("user_roles").upsert(
+    [
+      { user_id: created.user.id, role: "client" },
+      { user_id: created.user.id, role: "admin" },
+    ],
+    { onConflict: "user_id,role" },
+  );
 
   return { ok: true, userId: created.user.id, email, promotedExisting: false };
 }

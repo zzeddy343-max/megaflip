@@ -25,7 +25,7 @@ WebSocket Tick Stream
 Maintains a rolling window of prices with O(1) add/remove operations.
 
 ```typescript
-import { TickBuffer } from '@/lib/tick-engine';
+import { TickBuffer } from "@/lib/tick-engine";
 
 const buffer = new TickBuffer(500); // Keep last 500 prices
 
@@ -47,7 +47,7 @@ const current = buffer.getLast();
 Converts individual ticks into candles with configurable grouping.
 
 ```typescript
-import { CandleBuilder } from '@/lib/tick-engine';
+import { CandleBuilder } from "@/lib/tick-engine";
 
 // 5-tick candles (every 5 ticks = 1 candle)
 const builder = new CandleBuilder(5);
@@ -55,9 +55,9 @@ const builder = new CandleBuilder(5);
 // Process each tick
 for (let i = 0; i < ticks.length; i++) {
   const completedCandle = builder.addTick(ticks[i], timestamp);
-  
+
   if (completedCandle) {
-    console.log('New 5-tick candle:', completedCandle);
+    console.log("New 5-tick candle:", completedCandle);
     // { open, high, low, close, tickCount: 5, timestamp }
   }
 }
@@ -74,7 +74,7 @@ const current = builder.getCurrentCandle();
 Calculates indicators on each tick with constant time complexity (not O(n)).
 
 ```typescript
-import { IncrementalIndicatorEngine } from '@/lib/tick-engine';
+import { IncrementalIndicatorEngine } from "@/lib/tick-engine";
 
 const engine = new IncrementalIndicatorEngine({
   smaPeriod: 20,
@@ -105,11 +105,11 @@ const indicators = {
 Combines all components into a single chart engine.
 
 ```typescript
-import { TickChartEngine } from '@/lib/tick-engine';
+import { TickChartEngine } from "@/lib/tick-engine";
 
 const engine = new TickChartEngine({
   tickBufferSize: 500,
-  ticksPerCandle: 5,  // 5-tick candles
+  ticksPerCandle: 5, // 5-tick candles
   smaPeriod: 20,
   emaPeriod: 20,
   rsiPeriod: 14,
@@ -120,8 +120,8 @@ const engine = new TickChartEngine({
 engine.onTick(price);
 
 // Get data for rendering
-const prices = engine.getPrices();        // All prices for line graph
-const candles = engine.getCandles();      // All candles
+const prices = engine.getPrices(); // All prices for line graph
+const candles = engine.getCandles(); // All candles
 const indicators = engine.getIndicators(); // Current indicator values
 ```
 
@@ -167,7 +167,7 @@ function MyChart() {
 ### Using `useSyntheticTicks` for Demo Data
 
 ```typescript
-import { useSyntheticTicks, useTickChart } from '@/hooks/use-tick-chart';
+import { useSyntheticTicks, useTickChart } from "@/hooks/use-tick-chart";
 
 function DemoChart() {
   const getNextPrice = useSyntheticTicks({
@@ -218,22 +218,22 @@ export function LiveTradingChart() {
 
 ### Time Complexity
 
-| Operation | Time | Notes |
-|-----------|------|-------|
-| Add tick | O(1) | Push to ring buffer |
-| Update all indicators | O(1) | Incremental calculations |
-| Get prices | O(1) | Direct buffer access |
-| Get candles | O(1) | Direct list access |
+| Operation             | Time     | Notes                    |
+| --------------------- | -------- | ------------------------ |
+| Add tick              | O(1)     | Push to ring buffer      |
+| Update all indicators | O(1)     | Incremental calculations |
+| Get prices            | O(1)     | Direct buffer access     |
+| Get candles           | O(1)     | Direct list access       |
 | **Per-tick overhead** | **O(1)** | **~1ms for all updates** |
 
 ### Space Complexity
 
-| Component | Space |
-|-----------|-------|
-| Tick buffer | O(n) where n = buffer size (default 500) |
-| Candles | O(m) where m = number of candles |
-| Indicator state | O(1) |
-| **Total** | **~50KB for 500 ticks** |
+| Component       | Space                                    |
+| --------------- | ---------------------------------------- |
+| Tick buffer     | O(n) where n = buffer size (default 500) |
+| Candles         | O(m) where m = number of candles         |
+| Indicator state | O(1)                                     |
+| **Total**       | **~50KB for 500 ticks**                  |
 
 ### Comparison: Before vs After
 
@@ -244,14 +244,14 @@ OLD APPROACH (recalculate from scratch):
            recalculate RSI from 14 prices = O(14)
            recalculate Bollinger from 20 prices = O(20)
   Total: O(74) per tick
-  
+
 NEW APPROACH (incremental):
   Per tick: update SMA = O(1)
            update EMA = O(1)
            update RSI = O(1)
            update Bollinger = O(1)
   Total: O(1) per tick
-  
+
 IMPROVEMENT: 74x faster per tick
 ```
 
@@ -270,6 +270,7 @@ All indicators update incrementally with O(1) complexity:
 ## Line Graphs vs Candle Charts
 
 ### Line Graphs (Tick Series)
+
 - Shows **every tick** as a continuous line
 - Useful for high-frequency trading
 - Very smooth animation
@@ -285,6 +286,7 @@ Price
 ```
 
 ### Candle Charts (Grouped Ticks)
+
 - Shows **N ticks grouped as one OHLC candle**
 - Useful for pattern recognition
 - Cleaner visualization
@@ -314,7 +316,7 @@ All devices receive the same tick stream from your market backend:
   Tick 100.25  Tick 100.25  Tick 100.25
   Tick 100.26  Tick 100.26  Tick 100.26
   Tick 100.24  Tick 100.24  Tick 100.24
-  
+
   Charts stay synchronized because they process
   the same tick stream in the same order
 ```
@@ -347,6 +349,7 @@ function LiveChart() {
 ## Migration from Time-Based to Tick-Based
 
 ### Before (Time-based candles):
+
 ```typescript
 // Candles based on fixed time intervals (1 minute, 5 minutes, etc.)
 const candleMs = 60000; // 1 minute
@@ -354,6 +357,7 @@ const candle = buildCandle(prices, candleMs);
 ```
 
 ### After (Tick-based candles):
+
 ```typescript
 // Candles based on tick count (1-tick, 5-tick, N-tick)
 const engine = new TickChartEngine({
@@ -366,6 +370,7 @@ engine.onTick(price); // Automatically groups into candles
 ## Optimization Tips
 
 ### 1. Throttle Rendering
+
 ```typescript
 const throttle = useRef(0);
 engine.onTick(price);
@@ -377,12 +382,14 @@ if (Date.now() - throttle.current > 100) {
 ```
 
 ### 2. Only Display Visible Points
+
 ```typescript
 // Display last 100 points even if buffer has 500
 const visiblePrices = prices.slice(-100);
 ```
 
 ### 3. Use Request Animation Frame
+
 ```typescript
 useEffect(() => {
   const rafId = requestAnimationFrame(() => {
@@ -395,31 +402,35 @@ useEffect(() => {
 ## Testing Indicators
 
 ```typescript
-import { IncrementalIndicatorEngine } from '@/lib/tick-engine';
+import { IncrementalIndicatorEngine } from "@/lib/tick-engine";
 
 // Test RSI calculation
 const engine = new IncrementalIndicatorEngine({ rsiPeriod: 14 });
 const prices = [100, 101, 102, 101, 100, 101, 102, 103, 102, 101, 102, 103, 104, 103, 102];
 
-prices.forEach(price => engine.updateTick(price));
-console.log('RSI:', engine.getRSI()); // Should be between 0-100
+prices.forEach((price) => engine.updateTick(price));
+console.log("RSI:", engine.getRSI()); // Should be between 0-100
 ```
 
 ## Troubleshooting
 
 ### Chart Looks Jittery
+
 - Increase `tickIntervalMs` to reduce update frequency
 - Use `throttle` or `requestAnimationFrame` for rendering
 
 ### Indicators Not Updating
+
 - Ensure enough data points: SMA needs 20+ ticks, RSI needs 14+
 - Check that `updateTick()` is called for each price
 
 ### Memory Usage High
+
 - Reduce `tickBufferSize` (default 500)
 - Clear engine periodically: `engine.reset()`
 
 ### Performance Issues
+
 - Verify indicators are using incremental updates (not recalculated)
 - Profile with DevTools to find bottlenecks
 - Consider canvas rendering instead of SVG for very high-frequency updates

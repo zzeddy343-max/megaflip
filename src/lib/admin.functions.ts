@@ -332,7 +332,11 @@ export const moderateClientAccount = createServerFn({ method: "POST" })
       .eq("id", data.user_id);
     if (updateError) throw new Error(updateError.message);
 
-    return { ok: true, state: data.action === "freeze" ? "frozen" : "closed", freeze_until: freezeUntil };
+    return {
+      ok: true,
+      state: data.action === "freeze" ? "frozen" : "closed",
+      freeze_until: freezeUntil,
+    };
   });
 
 export const promoteUserRole = createServerFn({ method: "POST" })
@@ -452,8 +456,8 @@ export const resetUserBalances = createServerFn({ method: "POST" })
       data.account === "real"
         ? { balance_usd: 0, balance_ksh: 0 }
         : data.account === "demo"
-          ? { demo_balance_usd: 10000.00 }
-          : { balance_usd: 0, demo_balance_usd: 10000.00, balance_ksh: 0 };
+          ? { demo_balance_usd: 10000.0 }
+          : { balance_usd: 0, demo_balance_usd: 10000.0, balance_ksh: 0 };
 
     const { error } = await supabaseAdmin
       .from("profiles")
@@ -594,7 +598,9 @@ export const getAccountsReport = createServerFn({ method: "POST" })
         .map((row) => row.user_id as string),
     );
 
-    const filteredClients = (clients ?? []).filter((client) => !excludedRoleIds.has(client.id as string));
+    const filteredClients = (clients ?? []).filter(
+      (client) => !excludedRoleIds.has(client.id as string),
+    );
     const filteredIds = filteredClients.map((client) => client.id as string);
     if (filteredIds.length === 0) return { ...emptyAccountsReport(), clients: [] };
 
@@ -786,9 +792,9 @@ export const listAdmins = createServerFn({ method: "GET" })
 
     const [{ data: profiles, error }, { data: authUsers, error: authError }] = await Promise.all([
       supabaseAdmin
-      .from("profiles")
-      .select("id,email,full_name,username,created_at")
-      .in("id", ids)
+        .from("profiles")
+        .select("id,email,full_name,username,created_at")
+        .in("id", ids)
         .order("created_at", { ascending: false }),
       supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 }),
     ]);
@@ -990,9 +996,7 @@ export const getReconciliationStatus = createServerFn({ method: "POST" })
     await assertAdmin(context.supabase, context.userId);
 
     try {
-      const { data: status, error } = await context.supabase.rpc(
-        "get_reconciliation_status"
-      );
+      const { data: status, error } = await context.supabase.rpc("get_reconciliation_status");
 
       if (error) throw new Error(error.message);
       return status;
@@ -1030,7 +1034,7 @@ export const setAutoReconciliationEnabled = createServerFn({
     try {
       const { data: result, error } = await context.supabase.rpc(
         "set_auto_reconciliation_enabled",
-        { enabled: data.enabled }
+        { enabled: data.enabled },
       );
 
       if (error) throw new Error(error.message);
@@ -1041,7 +1045,9 @@ export const setAutoReconciliationEnabled = createServerFn({
       return {
         ok: true,
         auto_fix_enabled: data.enabled,
-        message: data.enabled ? "Auto-reconciliation enabled" : "Auto-reconciliation disabled - manual only",
+        message: data.enabled
+          ? "Auto-reconciliation enabled"
+          : "Auto-reconciliation disabled - manual only",
       };
     }
   });
@@ -1055,7 +1061,7 @@ export const runScheduledLedgerReconciliation = createServerFn({
 
     try {
       const { data: result, error } = await context.supabase.rpc(
-        "run_scheduled_ledger_reconciliation"
+        "run_scheduled_ledger_reconciliation",
       );
 
       if (error) throw new Error(error.message);

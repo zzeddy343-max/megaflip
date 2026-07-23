@@ -107,7 +107,13 @@ export const settleTrade = createServerFn({ method: "POST" })
       const adjustedPayout = applyVolatilityToPayout(payout, settings);
       if (adjustedPayout !== payout) {
         try {
-          await adjustSettledPayout(supabase, context.userId, data.trade_id, payout, adjustedPayout);
+          await adjustSettledPayout(
+            supabase,
+            context.userId,
+            data.trade_id,
+            payout,
+            adjustedPayout,
+          );
         } catch (adjustError) {
           console.warn("[Trades] payout adjustment skipped after settlement", {
             userId: context.userId,
@@ -136,18 +142,104 @@ export const releaseStaleBinaryTrades = createServerFn({ method: "POST" })
       const released = await cancelStaleBinaryTrades(supabase, context.userId);
       return { ok: true, released };
     } catch (err) {
-      console.warn('[Trades] releaseStaleBinaryTrades failed, retrying once', { userId: context.userId, error: err instanceof Error ? err.message : String(err) });
+      console.warn("[Trades] releaseStaleBinaryTrades failed, retrying once", {
+        userId: context.userId,
+        error: err instanceof Error ? err.message : String(err),
+      });
       try {
         await new Promise((r) => setTimeout(r, 250));
         const released = await cancelStaleBinaryTrades(supabase, context.userId);
         return { ok: true, released };
       } catch (err2) {
-        console.error('[Trades] releaseStaleBinaryTrades failed after retry', { userId: context.userId, error: err2 instanceof Error ? err2.message : String(err2) });
+        console.error("[Trades] releaseStaleBinaryTrades failed after retry", {
+          userId: context.userId,
+          error: err2 instanceof Error ? err2.message : String(err2),
+        });
         // Return ok=false to allow client to handle gracefully
         return { ok: false, released: 0 };
       }
     }
   });
+
+export const getWallet = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data } = await context.supabase
+      .from("profiles")
+      .select("balance_usd,demo_balance_usd,active_account")
+      .eq("id", context.userId)
+      .maybeSingle();
+    const active = data?.active_account === "demo" ? "demo" : "real";
+    const balance = active === "demo" ? data?.demo_balance_usd : data?.balance_usd;
+    return {
+      account_mode: active,
+      balance_cents: Math.round(Number(balance ?? 0) * 100),
+      real_balance_cents: Math.round(Number(data?.balance_usd ?? 0) * 100),
+      demo_balance_cents: Math.round(Number(data?.demo_balance_usd ?? 0) * 100),
+    };
+  });
+
+export const listMyTrades = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data } = await context.supabase
+      .from("trades")
+      .select("id,market,direction,stake,payout,status,meta,created_at,closed_at,entry_price,exit_price")
+      .eq("user_id", context.userId)
+      .eq("module", "binary")
+      .order("created_at", { ascending: false })
+      .limit(80);
+
+    return (data ?? []).map((trade: any) => {
+      const stakeCents = Math.round(Number(trade.stake ?? 0) * 100);
+      const payoutCents = Math.round(Number(trade.payout ?? 0) * 100);
+      const multiplier =
+        stakeCents > 0 && payoutCents > 0 ? payoutCents / stakeCents : Number(trade.meta?.multiplier ?? 1.95);
+      return {
+        id: trade.id,
+        market: trade.market,
+        direction: trade.direction,
+        status: normalizeTradeStatus(trade.status),
+        stake_cents: stakeCents,
+        payout_cents: payoutCents,
+        payout_multiplier: multiplier,
+        ticks: Number(trade.meta?.settlement_ticks ?? trade.meta?.ticks ?? 1),
+        contract_type: trade.meta?.contract_type ?? "even_odd",
+        opened_at: trade.created_at,
+        settled_at: trade.closed_at,
+        entry_price: trade.entry_price,
+        exit_price: trade.exit_price,
+      };
+    });
+  });
+
+export const listMyTransactions = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data } = await context.supabase
+      .from("transactions")
+      .select("id,kind,amount_usd,created_at,meta")
+      .eq("user_id", context.userId)
+      .order("created_at", { ascending: false })
+      .limit(80);
+
+    let balanceCents = 0;
+    return (data ?? []).map((txn: any) => {
+      const amountCents = Math.round(Number(txn.amount_usd ?? 0) * 100);
+      balanceCents += amountCents;
+      return {
+        id: txn.id,
+        type: txn.kind,
+        amount_cents: amountCents,
+        balance_after_cents: balanceCents,
+        created_at: txn.created_at,
+      };
+    });
+  });
+
+export const settleDueTrades = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async () => ({ settled: 0 }));
 
 async function enforceTradeRiskRules(
   supabase: any,
@@ -206,29 +298,30 @@ async function enforceTradeRiskRules(
     throw new Error(`Maximum stake is $${maxStake.toFixed(2)}`);
   }
 
-  const [marketExposure, userExposure, dailyLosses, weeklyLosses, monthlyLosses, recentTrades] = await Promise.all([
-    supabase
-      .from("trades")
-      .select("stake")
-      .eq("status", "open")
-      .eq("account_type", accountType)
-      .eq("market", input.market),
-    supabase
-      .from("trades")
-      .select("stake")
-      .eq("status", "open")
-      .eq("account_type", accountType)
-      .eq("user_id", userId),
-    fetchPeriodLosses(supabase, "daily", userId),
-    fetchPeriodLosses(supabase, "weekly", userId),
-    fetchPeriodLosses(supabase, "monthly", userId),
-    supabase
-      .from("trades")
-      .select("id,market,direction,created_at")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(10),
-  ]);
+  const [marketExposure, userExposure, dailyLosses, weeklyLosses, monthlyLosses, recentTrades] =
+    await Promise.all([
+      supabase
+        .from("trades")
+        .select("stake")
+        .eq("status", "open")
+        .eq("account_type", accountType)
+        .eq("market", input.market),
+      supabase
+        .from("trades")
+        .select("stake")
+        .eq("status", "open")
+        .eq("account_type", accountType)
+        .eq("user_id", userId),
+      fetchPeriodLosses(supabase, "daily", userId),
+      fetchPeriodLosses(supabase, "weekly", userId),
+      fetchPeriodLosses(supabase, "monthly", userId),
+      supabase
+        .from("trades")
+        .select("id,market,direction,created_at")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(10),
+    ]);
 
   const marketExposureUsd = sumStake(marketExposure?.data ?? []);
   const userExposureUsd = sumStake(userExposure?.data ?? []);
@@ -236,28 +329,49 @@ async function enforceTradeRiskRules(
   const systemWeeklyLosses = await fetchSystemLosses(supabase, "weekly");
   const systemMonthlyLosses = await fetchSystemLosses(supabase, "monthly");
 
-  if (settings.liability_limits_market_usd > 0 && marketExposureUsd + input.stake > settings.liability_limits_market_usd) {
+  if (
+    settings.liability_limits_market_usd > 0 &&
+    marketExposureUsd + input.stake > settings.liability_limits_market_usd
+  ) {
     throw new Error(`Market exposure limit reached for ${input.market}`);
   }
 
-  if (settings.liability_limits_user_usd > 0 && userExposureUsd + input.stake > settings.liability_limits_user_usd) {
+  if (
+    settings.liability_limits_user_usd > 0 &&
+    userExposureUsd + input.stake > settings.liability_limits_user_usd
+  ) {
     throw new Error("User exposure limit reached");
   }
 
-  if (settings.caps_daily_loss_usd > 0 && (dailyLosses + input.stake > settings.caps_daily_loss_usd || systemDailyLosses + input.stake > settings.caps_daily_loss_usd)) {
+  if (
+    settings.caps_daily_loss_usd > 0 &&
+    (dailyLosses + input.stake > settings.caps_daily_loss_usd ||
+      systemDailyLosses + input.stake > settings.caps_daily_loss_usd)
+  ) {
     throw new Error("Daily loss cap reached");
   }
 
-  if (settings.caps_weekly_loss_usd > 0 && (weeklyLosses + input.stake > settings.caps_weekly_loss_usd || systemWeeklyLosses + input.stake > settings.caps_weekly_loss_usd)) {
+  if (
+    settings.caps_weekly_loss_usd > 0 &&
+    (weeklyLosses + input.stake > settings.caps_weekly_loss_usd ||
+      systemWeeklyLosses + input.stake > settings.caps_weekly_loss_usd)
+  ) {
     throw new Error("Weekly loss cap reached");
   }
 
-  if (settings.caps_monthly_loss_usd > 0 && (monthlyLosses + input.stake > settings.caps_monthly_loss_usd || systemMonthlyLosses + input.stake > settings.caps_monthly_loss_usd)) {
+  if (
+    settings.caps_monthly_loss_usd > 0 &&
+    (monthlyLosses + input.stake > settings.caps_monthly_loss_usd ||
+      systemMonthlyLosses + input.stake > settings.caps_monthly_loss_usd)
+  ) {
     throw new Error("Monthly loss cap reached");
   }
 
   if (settings.fraud_detection_enabled) {
-    const fraudSignals = detectFraudSignals(recentTrades?.data ?? [], settings.fraud_detection_rules);
+    const fraudSignals = detectFraudSignals(
+      recentTrades?.data ?? [],
+      settings.fraud_detection_rules,
+    );
     if (fraudSignals.length) {
       throw new Error(`Fraud checks blocked this trade: ${fraudSignals.join(", ")}`);
     }
@@ -265,7 +379,13 @@ async function enforceTradeRiskRules(
 
   const triggers = getEnabledEngagementTriggers(settings);
   if (triggers.includes("TRADE")) {
-    console.info("[Engagement] trade", { userId, market: input.market, stake: input.stake, direction: input.direction, accountType });
+    console.info("[Engagement] trade", {
+      userId,
+      market: input.market,
+      stake: input.stake,
+      direction: input.direction,
+      accountType,
+    });
   }
 }
 
@@ -361,7 +481,10 @@ async function refundCancelledStake(
 
   const { error: balanceError } = await supabaseAdmin
     .from("profiles")
-    .update({ [balanceField]: Number(profile?.[balanceField] ?? 0) + stake } as Record<string, unknown>)
+    .update({ [balanceField]: Number(profile?.[balanceField] ?? 0) + stake } as Record<
+      string,
+      unknown
+    >)
     .eq("id", userId);
   if (balanceError) throw new Error(balanceError.message);
 
@@ -382,12 +505,23 @@ async function refundCancelledStake(
 
 async function getUserSegmentStats(supabase: any, userId: string, accountType: string) {
   const [depositsResult, tradesResult] = await Promise.all([
-    supabase.from("transactions").select("amount_usd").eq("user_id", userId).eq("kind", "deposit").eq("status", "completed"),
+    supabase
+      .from("transactions")
+      .select("amount_usd")
+      .eq("user_id", userId)
+      .eq("kind", "deposit")
+      .eq("status", "completed"),
     supabase.from("trades").select("stake").eq("user_id", userId).eq("account_type", accountType),
   ]);
 
-  const totalDepositsUsd = (depositsResult?.data ?? []).reduce((sum: number, row: any) => sum + Number(row.amount_usd ?? 0), 0);
-  const totalVolumeUsd = (tradesResult?.data ?? []).reduce((sum: number, row: any) => sum + Number(row.stake ?? 0), 0);
+  const totalDepositsUsd = (depositsResult?.data ?? []).reduce(
+    (sum: number, row: any) => sum + Number(row.amount_usd ?? 0),
+    0,
+  );
+  const totalVolumeUsd = (tradesResult?.data ?? []).reduce(
+    (sum: number, row: any) => sum + Number(row.stake ?? 0),
+    0,
+  );
 
   return {
     totalDepositsUsd,
@@ -396,7 +530,11 @@ async function getUserSegmentStats(supabase: any, userId: string, accountType: s
   };
 }
 
-async function fetchPeriodLosses(supabase: any, period: "daily" | "weekly" | "monthly", userId: string) {
+async function fetchPeriodLosses(
+  supabase: any,
+  period: "daily" | "weekly" | "monthly",
+  userId: string,
+) {
   const startedAt = getPeriodStart(period);
   const { data } = await supabase
     .from("trades")
@@ -417,7 +555,10 @@ async function fetchSystemLosses(supabase: any, period: "daily" | "weekly" | "mo
   return sumStake(data ?? []);
 }
 
-export function detectFraudSignals(recentTrades: Array<{ market?: string; direction?: string; created_at?: string }>, rulesText?: string) {
+export function detectFraudSignals(
+  recentTrades: Array<{ market?: string; direction?: string; created_at?: string }>,
+  rulesText?: string,
+) {
   const rules = String(rulesText ?? "")
     .split(",")
     .map((item) => item.trim().toLowerCase())
@@ -442,7 +583,9 @@ export function detectFraudSignals(recentTrades: Array<{ market?: string; direct
   const directions = rapidTrades
     .map((trade) => trade.direction?.toLowerCase())
     .filter((direction): direction is string => Boolean(direction));
-  const hasAlternatingDirections = directions.length >= 4 && directions.some((direction, index) => index > 0 && direction !== directions[index - 1]);
+  const hasAlternatingDirections =
+    directions.length >= 4 &&
+    directions.some((direction, index) => index > 0 && direction !== directions[index - 1]);
   const hasMultipleMarkets = repeatedMarkets.size >= 3;
 
   if (rapidTrades.length >= 5 && hasAlternatingDirections && hasMultipleMarkets) {
@@ -472,15 +615,34 @@ function sumStake(rows: Array<{ stake?: number | string | null }>) {
   return rows.reduce((sum, row) => sum + Number(row.stake ?? 0), 0);
 }
 
-async function adjustSettledPayout(supabase: any, userId: string, tradeId: string, originalPayout: number, adjustedPayout: number) {
+function normalizeTradeStatus(status: string) {
+  if (status === "closed" || status === "settled") return "won";
+  return status;
+}
+
+async function adjustSettledPayout(
+  supabase: any,
+  userId: string,
+  tradeId: string,
+  originalPayout: number,
+  adjustedPayout: number,
+) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const delta = adjustedPayout - originalPayout;
-  const { data: trade } = await supabase.from("trades").select("account_type").eq("id", tradeId).maybeSingle();
+  const { data: trade } = await supabase
+    .from("trades")
+    .select("account_type")
+    .eq("id", tradeId)
+    .maybeSingle();
   const profileField = trade?.account_type === "real" ? "balance_usd" : "demo_balance_usd";
 
   await supabaseAdmin
     .from("profiles")
-    .update({ [profileField]: (await supabaseAdmin.from("profiles").select(profileField).eq("id", userId).single()).data?.[profileField] + delta } as Record<string, unknown>)
+    .update({
+      [profileField]:
+        (await supabaseAdmin.from("profiles").select(profileField).eq("id", userId).single())
+          .data?.[profileField] + delta,
+    } as Record<string, unknown>)
     .eq("id", userId);
 
   await supabaseAdmin.from("trades").update({ payout: adjustedPayout }).eq("id", tradeId);

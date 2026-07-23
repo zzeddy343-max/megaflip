@@ -15,28 +15,28 @@ type Duration = "1tick" | "5ticks" | "1min" | "5min" | "15min" | "1hour";
 interface ExecutionPanelProps {
   /** Current market price */
   currentPrice?: number;
-  
+
   /** Trade type selection */
   tradeType?: TradeType;
   onTradeTypeChange?: (type: TradeType) => void;
-  
+
   /** Selected duration */
   duration?: Duration;
   onDurationChange?: (duration: Duration) => void;
-  
+
   /** Stake amount */
   stake?: number;
   onStakeChange?: (stake: number) => void;
-  
+
   /** Predicted payout percentage */
   payoutPercentage?: number;
-  
+
   /** Callback when buy/call is clicked */
   onBuy?: (stake: number) => void;
-  
+
   /** Callback when sell/put is clicked */
   onSell?: (stake: number) => void;
-  
+
   /** Is loading/processing */
   isLoading?: boolean;
 }
@@ -128,7 +128,7 @@ export function ExecutionPanel({
                 "px-2 py-2 rounded-lg text-xs font-semibold transition-all border",
                 duration === id
                   ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-surface border-border hover:border-primary/50"
+                  : "bg-surface border-border hover:border-primary/50",
               )}
             >
               {label}
@@ -186,7 +186,7 @@ export function ExecutionPanel({
                 "px-2 py-2 rounded-lg text-xs font-semibold transition-all border",
                 localStake === preset
                   ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-surface border-border hover:border-primary/50"
+                  : "bg-surface border-border hover:border-primary/50",
               )}
             >
               ${preset}

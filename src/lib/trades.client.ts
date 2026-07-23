@@ -1,7 +1,7 @@
-export async function releaseStaleWithBackoff(
-  releaseFn: (opts?: Record<string, unknown>) => Promise<any>,
+export async function releaseStaleWithBackoff<T>(
+  releaseFn: (opts?: Record<string, unknown>) => Promise<T>,
   { attempts = 3, initialDelay = 300 } = {},
-) {
+): Promise<T | { ok: false; released: number }> {
   let tryCount = 0;
   let delay = initialDelay;
   while (tryCount < attempts) {

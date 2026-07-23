@@ -1,7 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
-import { calculateNetWithdrawalAmount, readSystemSettings, type SystemSettings } from "@/lib/system-settings";
+import {
+  calculateNetWithdrawalAmount,
+  readSystemSettings,
+  type SystemSettings,
+} from "@/lib/system-settings";
 
 const USD_TO_KSH = 130;
 
@@ -298,7 +302,11 @@ async function queryStkStatus(checkoutRequestId: string) {
   return json as Record<string, unknown>;
 }
 
-async function sendB2cPayment(transaction: WalletTransaction, phone?: string, payoutAmount?: number) {
+async function sendB2cPayment(
+  transaction: WalletTransaction,
+  phone?: string,
+  payoutAmount?: number,
+) {
   const msisdn = normalizeKenyanPhone(phone);
   const env = getDarajaEnv("b2c");
   const payload = {
@@ -316,7 +324,9 @@ async function sendB2cPayment(transaction: WalletTransaction, phone?: string, pa
 
   const response = await darajaRequest("/mpesa/b2c/v1/paymentrequest", payload, "b2c");
   if (response.ResponseCode && response.ResponseCode !== "0") {
-    throw new Error(response.ResponseDescription ?? response.errorMessage ?? "B2C payment rejected");
+    throw new Error(
+      response.ResponseDescription ?? response.errorMessage ?? "B2C payment rejected",
+    );
   }
 
   await recordPaymentRequest(transaction.id, "b2c", msisdn, payload, response);
@@ -454,7 +464,8 @@ function validateMoney(
   phone?: string,
   settings?: SystemSettings,
 ) {
-  const minUsd = kind === "deposit" ? settings?.min_deposit_usd ?? 3 : settings?.min_withdrawal_usd ?? 3;
+  const minUsd =
+    kind === "deposit" ? (settings?.min_deposit_usd ?? 3) : (settings?.min_withdrawal_usd ?? 3);
   const minKsh = minUsd * USD_TO_KSH;
   if (amount < minKsh) {
     throw new Error(`Minimum ${kind} is KSh ${minKsh} ($${minUsd})`);
@@ -543,7 +554,8 @@ function readEnv(name: string) {
   const value = process.env[name]?.trim();
   if (!value) return undefined;
   const quoted =
-    (value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"));
+    (value.startsWith('"') && value.endsWith('"')) ||
+    (value.startsWith("'") && value.endsWith("'"));
   return quoted ? value.slice(1, -1).trim() : value;
 }
 

@@ -42,7 +42,10 @@ function tryRecoverDynamicImport(error: unknown) {
 
     // Unregister service workers to avoid stale cached HTML/manifest
     if (navigator && "serviceWorker" in navigator) {
-      navigator.serviceWorker.getRegistrations().then((regs) => regs.forEach((r) => r.unregister())).catch(() => {});
+      navigator.serviceWorker
+        .getRegistrations()
+        .then((regs) => regs.forEach((r) => r.unregister()))
+        .catch(() => {});
     }
 
     // Reload with a cache-busting query param so clients request fresh assets

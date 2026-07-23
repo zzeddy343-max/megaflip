@@ -29,6 +29,7 @@ This is a complete, production-ready trading user interface implementation based
 ## Components
 
 ### 1. TradingLayout
+
 **Main container component** that orchestrates all sub-components.
 
 ```tsx
@@ -39,14 +40,15 @@ import { TradingLayout } from "@/components/modules";
   assetSymbol="Vol 75"
   currentPrice={9554.32}
   priceChange={0.14}
-  accountBalance={5000.00}
+  accountBalance={5000.0}
   chartType="area"
   onChartTypeChange={setChartType}
   // ... other props
-/>
+/>;
 ```
 
 **Key Props:**
+
 - `chart` (ReactNode) - Your main chart component
 - `assetSymbol` (string) - Display name of active asset
 - `currentPrice` (number) - Current market price
@@ -55,9 +57,11 @@ import { TradingLayout } from "@/components/modules";
 - All configuration handlers for chart, trade, and execution settings
 
 ### 2. TradeHeader
+
 **Top navigation bar** with logo, asset selector, price display, and account controls.
 
 **Features:**
+
 - Logo + branding on left
 - Asset selector dropdown in center
 - Real-time price display with percentage change
@@ -66,6 +70,7 @@ import { TradingLayout } from "@/components/modules";
 - User profile menu with account type
 
 **Customization:**
+
 ```tsx
 import { TradeHeader } from "@/components/modules";
 
@@ -73,14 +78,16 @@ import { TradeHeader } from "@/components/modules";
   assetSymbol="EUR/USD"
   currentPrice={1.0856}
   priceChange={0.0012}
-  accountBalance={10000.00}
-/>
+  accountBalance={10000.0}
+/>;
 ```
 
 ### 3. ChartToolbar
+
 **Left vertical sidebar** with chart type selection, timeframe options, indicators menu, and drawing tools.
 
 **Features:**
+
 - Chart type selector (Area, Candlestick, Hollow, OHLC)
 - Time interval dropdown (1 Tick to 1 Day)
 - Indicators menu with checkboxes
@@ -90,11 +97,13 @@ import { TradeHeader } from "@/components/modules";
 - Tooltips on hover
 
 **Indicators Available:**
+
 - Trend: SMA, EMA
 - Momentum: MACD, RSI, Stochastic
 - Volatility: Bollinger Bands
 
 **Example Usage:**
+
 ```tsx
 const [indicators, setIndicators] = useState<string[]>([]);
 const [chartType, setChartType] = useState<ChartType>("area");
@@ -106,13 +115,15 @@ const [chartType, setChartType] = useState<ChartType>("area");
   onTimeIntervalChange={handleTimeChange}
   indicators={indicators}
   onIndicatorToggle={handleIndicatorToggle}
-/>
+/>;
 ```
 
 ### 4. TickStatistics
+
 **Bottom widget** displaying last digit frequency statistics from recent price data.
 
 **Features:**
+
 - Visual bar chart for each digit (0-9)
 - Frequency percentages
 - Circular digit badges
@@ -121,6 +132,7 @@ const [chartType, setChartType] = useState<ChartType>("area");
 - Color-coded (primary = highest, muted = others)
 
 **Data Format:**
+
 ```tsx
 interface Tick {
   close: number;
@@ -135,18 +147,17 @@ const ticks = [
 ```
 
 **Usage:**
+
 ```tsx
-<TickStatistics
-  ticks={ticks}
-  displayMode="percentage"
-  className="h-32"
-/>
+<TickStatistics ticks={ticks} displayMode="percentage" className="h-32" />
 ```
 
 ### 5. ExecutionPanel
+
 **Right sidebar** for trade execution with type selection, duration, stake control, payout information, and action buttons.
 
 **Features:**
+
 - Trade type tabs (Over/Under, Rise/Fall, Higher/Lower)
 - Duration selector (6 preset options)
 - Stake amount input with +/- adjusters
@@ -156,12 +167,14 @@ const ticks = [
 - Current price display at bottom
 
 **Payout Calculation:**
+
 ```tsx
 const potentialReturn = stake * (1 + payoutPercentage / 100);
 const potentialProfit = potentialReturn - stake;
 ```
 
 **Usage:**
+
 ```tsx
 <ExecutionPanel
   currentPrice={9554.32}
@@ -224,15 +237,15 @@ export function BinaryTradingPage() {
       assetSymbol="Vol 75"
       currentPrice={currentPrice}
       priceChange={0.14}
-      accountBalance={5000.00}
+      accountBalance={5000.0}
       chartType={chartType}
       onChartTypeChange={setChartType}
       timeInterval={timeInterval}
       onTimeIntervalChange={setTimeInterval}
       indicators={indicators}
-      onIndicatorToggle={(id) => setIndicators(prev => 
-        prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
-      )}
+      onIndicatorToggle={(id) =>
+        setIndicators((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]))
+      }
       tradeType={tradeType}
       onTradeTypeChange={setTradeType}
       duration={duration}
@@ -251,6 +264,7 @@ export function BinaryTradingPage() {
 ## Design Specifications
 
 ### Color Scheme
+
 - **Background**: Dark theme (`#000000` or `#0a0a0a`)
 - **Surface**: Elevated surfaces (`#1a1a1a`)
 - **Primary**: Brand color (typically gold/primary accent)
@@ -259,6 +273,7 @@ export function BinaryTradingPage() {
 - **Text**: Foreground light, muted secondary text
 
 ### Layout Dimensions
+
 - **Header Height**: 64px (4rem)
 - **Left Sidebar Width**: 64px (fixed, icon-only)
 - **Right Panel Width**: 320px (fixed)
@@ -266,11 +281,13 @@ export function BinaryTradingPage() {
 - **Chart/Stats Split**: 70% chart, 30% statistics
 
 ### Responsive Behavior
+
 - **Desktop (1200px+)**: Full three-column layout
 - **Tablet (768px-1199px)**: Simplified with collapsible panels
 - **Mobile (<768px)**: Not recommended for trading; consider mobile-specific app
 
 ### Typography
+
 - **Headers**: Bold, tracking-wide
 - **Labels**: Small caps, uppercase
 - **Values**: Monospace for numbers (prices, amounts)
@@ -281,7 +298,9 @@ export function BinaryTradingPage() {
 All components use **Tailwind CSS** for styling and are compatible with your existing theme system.
 
 ### Dark Mode
+
 Components automatically respect the theme context:
+
 ```tsx
 import { applyTheme } from "@/lib/theme";
 
@@ -290,7 +309,9 @@ applyTheme("dark"); // or "light"
 ```
 
 ### Custom Colors
+
 Override Tailwind config in `tailwind.config.ts`:
+
 ```js
 theme: {
   extend: {
@@ -304,7 +325,9 @@ theme: {
 ```
 
 ### Spacing & Layout
+
 Adjust container dimensions in `TradingLayout`:
+
 ```tsx
 // Modify sidebar widths or header height
 <div className="ml-16 mr-80"> {/* Adjust ml/mr values */}
@@ -313,11 +336,13 @@ Adjust container dimensions in `TradingLayout`:
 ## State Management Patterns
 
 ### Option 1: Local Component State (Simple)
+
 ```tsx
 const [chartType, setChartType] = useState("area");
 ```
 
 ### Option 2: Zustand Store (Recommended for Complex)
+
 ```tsx
 import create from "zustand";
 
@@ -328,6 +353,7 @@ const useTradeStore = create((set) => ({
 ```
 
 ### Option 3: Redux Toolkit (Enterprise)
+
 ```tsx
 import { useDispatch, useSelector } from "react-redux";
 import { setChartType } from "@/store/trading.slice";
@@ -336,6 +362,7 @@ import { setChartType } from "@/store/trading.slice";
 ## API Integration
 
 ### Real Price Data
+
 Replace the simulation in `TradingPageDemo`:
 
 ```tsx
@@ -352,6 +379,7 @@ useEffect(() => {
 ```
 
 ### Trade Execution
+
 Implement in `onBuy` and `onSell` callbacks:
 
 ```tsx
@@ -374,22 +402,28 @@ const handleBuy = async (stakeAmount: number) => {
 ## Common Implementation Tasks
 
 ### Add Custom Indicator
+
 1. Implement calculation in `lib/indicator-engine.ts`
 2. Add to `INDICATORS` array in `ChartToolbar.tsx`
 3. Handle in chart component
 
 ### Modify Payout Calculation
+
 Edit `ExecutionPanel.tsx`:
+
 ```tsx
 const potentialReturn = (localStake * (1 + payoutPercentage / 100)).toFixed(2);
 // Customize calculation here
 ```
 
 ### Change Chart Color Scheme
+
 Update chart in `TickBasedLiveChart.tsx` SVG styles or pass color props
 
 ### Add More Duration Options
+
 Extend in `ExecutionPanel.tsx`:
+
 ```tsx
 const DURATIONS = [
   // Add new durations
@@ -423,16 +457,19 @@ const DURATIONS = [
 ## Troubleshooting
 
 ### Chart Not Updating
+
 - Ensure `getNextPrice` callback is being called
 - Check price data format: `{ close: number, timestamp: number }`
 - Verify chart component is receiving new props
 
 ### Buttons Not Clickable
+
 - Check for overlapping absolutely-positioned elements
 - Verify `isLoading` state is properly managed
 - Check z-index values in CSS
 
 ### Statistics Not Displaying
+
 - Ensure `ticks` array has sufficient data (at least 10)
 - Verify tick format matches expected structure
 - Check TickStatistics component isn't hidden behind another element

@@ -29,12 +29,19 @@ export const Route = createFileRoute("/_authenticated")({
       await supabase.auth.signOut();
       throw redirect({ to: "/auth" });
     }
-    if (profile?.account_state === "frozen" && profile.freeze_until && new Date(profile.freeze_until).getTime() > Date.now()) {
+    if (
+      profile?.account_state === "frozen" &&
+      profile.freeze_until &&
+      new Date(profile.freeze_until).getTime() > Date.now()
+    ) {
       await supabase.auth.signOut();
       throw redirect({ to: "/auth" });
     }
     if (profile?.account_state === "frozen") {
-      await supabase.from("profiles").update({ account_state: "active", freeze_until: null }).eq("id", data.user.id);
+      await supabase
+        .from("profiles")
+        .update({ account_state: "active", freeze_until: null })
+        .eq("id", data.user.id);
     }
 
     return { user: data.user };
@@ -44,8 +51,8 @@ export const Route = createFileRoute("/_authenticated")({
 
 function AuthedLayout() {
   const [isAdmin, setIsAdmin] = useState(false);
-    const [lastUnread, setLastUnread] = useState(0);
-    const [isFullWidth, setIsFullWidth] = useState(false);
+  const [lastUnread, setLastUnread] = useState(0);
+  const [isFullWidth, setIsFullWidth] = useState(false);
   const location = useLocation();
   const unreadSupport = useServerFn(getAdminSupportUnreadCount);
 
@@ -78,23 +85,39 @@ function AuthedLayout() {
   }, [isAdmin, lastUnread, supportUnread?.count]);
 
   const isAdminConsole = location.pathname === "/admin" || location.pathname.startsWith("/admin/");
+  const isPositionsPage =
+    location.pathname === "/positions" || location.pathname.startsWith("/positions/");
 
   useEffect(() => {
-    setIsFullWidth(location.pathname === "/binary" || location.pathname.startsWith("/binary/"));
-  }, [location.pathname]);
+    setIsFullWidth(
+      location.pathname === "/binary" ||
+        location.pathname.startsWith("/binary/") ||
+        isPositionsPage,
+    );
+  }, [isPositionsPage, location.pathname]);
 
   const shellHeightClass = isAdminConsole ? "min-h-[100dvh]" : "h-[100dvh]";
   const shellOverflowClass = isAdminConsole ? "overflow-x-hidden" : "overflow-hidden";
-  const mainOverflowClass = isFullWidth
+  const mainOverflowClass = isPositionsPage
     ? "overflow-hidden"
-    : isAdminConsole
-      ? "overflow-visible"
-      : "overflow-y-auto overflow-x-hidden";
-  const contentOverflowClass = isFullWidth ? "overflow-hidden" : "overflow-visible";
+    : isFullWidth
+      ? "overflow-y-auto overflow-x-hidden lg:overflow-hidden"
+      : isAdminConsole
+        ? "overflow-visible"
+        : "overflow-y-auto overflow-x-hidden";
+  const contentOverflowClass = isPositionsPage
+    ? "overflow-hidden"
+    : isFullWidth
+      ? "overflow-visible lg:overflow-hidden"
+      : "overflow-visible";
+
+  const shellPaddingClass = isPositionsPage ? "pb-0" : "pb-20 lg:pb-0";
 
   return (
-    <div className={`flex ${shellHeightClass} w-full max-w-full flex-col ${shellOverflowClass} bg-background pb-20 lg:pb-0`}>
-      <AppHeader />
+    <div
+      className={`flex ${shellHeightClass} w-full max-w-full flex-col ${shellOverflowClass} bg-background ${shellPaddingClass}`}
+    >
+      {!isPositionsPage && <AppHeader />}
       <main className={`min-h-0 flex-1 w-full max-w-full px-0 py-0 ${mainOverflowClass}`}>
         {isAdmin && (supportUnread?.count ?? 0) > 0 && (
           <div className="border-b border-primary/30 bg-primary/10 px-4 py-2 text-xs font-bold text-primary">
@@ -107,9 +130,11 @@ function AuthedLayout() {
         </div>
       </main>
       {isAdmin && <DebugConsole />}
-      <div className="lg:hidden">
-        <BottomNav />
-      </div>
+      {!isPositionsPage && (
+        <div className="lg:hidden">
+          <BottomNav />
+        </div>
+      )}
     </div>
   );
 }

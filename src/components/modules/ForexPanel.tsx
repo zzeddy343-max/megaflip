@@ -53,7 +53,11 @@ export function ForexPanel() {
 
   const [pickerOpen, setPickerOpen] = useState(false);
   const [chartOptionsOpen, setChartOptionsOpen] = useState(false);
-  const [selectedIndicators, setSelectedIndicators] = useState<IndicatorOption[]>(["SMA", "EMA", "Bollinger"]);
+  const [selectedIndicators, setSelectedIndicators] = useState<IndicatorOption[]>([
+    "SMA",
+    "EMA",
+    "Bollinger",
+  ]);
 
   const place = useServerFn(placeTrade);
   const quoteFn = useServerFn(getForexQuote);
@@ -214,7 +218,9 @@ export function ForexPanel() {
             className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-foreground"
           >
             <span>{chartOptionsOpen ? "Hide" : "Show"} indicators</span>
-            <ChevronDown className={"h-4 w-4 transition " + (chartOptionsOpen ? "rotate-180" : "")} />
+            <ChevronDown
+              className={"h-4 w-4 transition " + (chartOptionsOpen ? "rotate-180" : "")}
+            />
           </button>
         </div>
         {chartOptionsOpen && (
@@ -247,7 +253,12 @@ export function ForexPanel() {
         )}
         <div className="bg-card border border-border rounded-xl p-2 h-56">
           <div className="relative h-full">
-            <CandleChart candles={candles} livePrice={price} indicators={selectedIndicators} className="h-full" />
+            <CandleChart
+              candles={candles}
+              livePrice={price}
+              indicators={selectedIndicators}
+              className="h-full"
+            />
             <OpenPositionLines module="forex" market={pair.sym} livePrice={price} digits={digits} />
           </div>
         </div>
@@ -297,13 +308,15 @@ export function ForexPanel() {
           onClick={() => submit("BUY")}
           className="py-3 rounded-xl bg-bull text-bull-foreground font-extrabold glow-bull text-sm"
         >
-          BUY ${amount}<div className="text-[10px] font-mono opacity-80">{ask}</div>
+          BUY ${amount}
+          <div className="text-[10px] font-mono opacity-80">{ask}</div>
         </button>
         <button
           onClick={() => submit("SELL")}
           className="py-3 rounded-xl bg-bear text-bear-foreground font-extrabold glow-bear text-sm"
         >
-          SELL ${amount}<div className="text-[10px] font-mono opacity-80">{bid}</div>
+          SELL ${amount}
+          <div className="text-[10px] font-mono opacity-80">{bid}</div>
         </button>
       </div>
 

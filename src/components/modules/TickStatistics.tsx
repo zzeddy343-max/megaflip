@@ -4,10 +4,10 @@ import { cn } from "@/lib/utils";
 interface TickStatisticsProps {
   /** Array of the last N ticks/candles */
   ticks?: { close: number; timestamp: number }[];
-  
+
   /** Class name for styling */
   className?: string;
-  
+
   /** Show percentage or count */
   displayMode?: "percentage" | "count";
 }
@@ -20,7 +20,7 @@ export function TickStatistics({
   // Calculate last digit statistics
   const stats = useMemo(() => {
     const digitCounts = new Map<number, number>();
-    
+
     // Initialize digit counts 0-9
     for (let i = 0; i < 10; i++) {
       digitCounts.set(i, 0);
@@ -42,10 +42,15 @@ export function TickStatistics({
     return digits;
   }, [ticks]);
 
-  const maxCount = Math.max(...stats.map(s => s.count), 1);
+  const maxCount = Math.max(...stats.map((s) => s.count), 1);
 
   return (
-    <div className={cn("w-full bg-surface/60 backdrop-blur border-t border-border px-4 py-3", className)}>
+    <div
+      className={cn(
+        "w-full bg-surface/60 backdrop-blur border-t border-border px-4 py-3",
+        className,
+      )}
+    >
       {/* Label */}
       <div className="mb-2 flex items-center justify-between">
         <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -69,7 +74,7 @@ export function TickStatistics({
                 <div
                   className={cn(
                     "w-full rounded-t transition-all duration-300 group-hover:opacity-80",
-                    isHighest ? "bg-primary shadow-lg shadow-primary/50" : "bg-primary/40"
+                    isHighest ? "bg-primary shadow-lg shadow-primary/50" : "bg-primary/40",
                   )}
                   style={{
                     height: `${Math.max(heightPercent, 5)}%`,
@@ -83,7 +88,7 @@ export function TickStatistics({
                   "h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold border transition-all",
                   isHighest
                     ? "bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/30"
-                    : "bg-surface border-border text-foreground"
+                    : "bg-surface border-border text-foreground",
                 )}
               >
                 {digit}
@@ -106,7 +111,10 @@ export function TickStatistics({
           Most frequent: <span className="font-bold text-foreground">{stats[0]?.digit || 0}</span>
         </span>
         <span>
-          Highest frequency: <span className="font-bold text-primary">{stats.length > 0 ? Math.max(...stats.map(s => parseFloat(s.percentage))) : 0}%</span>
+          Highest frequency:{" "}
+          <span className="font-bold text-primary">
+            {stats.length > 0 ? Math.max(...stats.map((s) => parseFloat(s.percentage))) : 0}%
+          </span>
         </span>
       </div>
     </div>

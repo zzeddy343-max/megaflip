@@ -10,9 +10,14 @@ export function getTickLabel(tickCount: number): string {
   return `${normalized} tick${normalized === 1 ? "" : "s"}`;
 }
 
-export function getProfitRateForContract(type: BinaryTradeType, direction: string, tickCount = 1): number {
+export function getProfitRateForContract(
+  type: BinaryTradeType,
+  direction: string,
+  tickCount = 1,
+): number {
   const normalizedTickCount = normalizeTickCount(tickCount);
-  const tickPremium = normalizedTickCount > 1 ? Math.min(0.08, (normalizedTickCount - 1) * 0.02) : 0;
+  const tickPremium =
+    normalizedTickCount > 1 ? Math.min(0.08, (normalizedTickCount - 1) * 0.02) : 0;
 
   if (type === "Buy/Sell" || type === "Even/Odd") return 0.7 + tickPremium;
   if (type === "Matches/Differs") return direction === "MATCH" ? 4 : 0.06;
@@ -34,8 +39,11 @@ export function resolveContractOutcome({
 }): boolean {
   const finalDigit = Math.floor(settlementPrice * 10000) % 10;
 
-  if (type === "Buy/Sell") return direction === "BUY" ? settlementPrice > entryPrice : settlementPrice < entryPrice;
-  if (type === "Even/Odd") return direction === "EVEN" ? finalDigit % 2 === 0 : finalDigit % 2 === 1;
-  if (type === "Over/Under") return direction === "OVER" ? finalDigit > selectedDigit : finalDigit < selectedDigit;
+  if (type === "Buy/Sell")
+    return direction === "BUY" ? settlementPrice > entryPrice : settlementPrice < entryPrice;
+  if (type === "Even/Odd")
+    return direction === "EVEN" ? finalDigit % 2 === 0 : finalDigit % 2 === 1;
+  if (type === "Over/Under")
+    return direction === "OVER" ? finalDigit > selectedDigit : finalDigit < selectedDigit;
   return direction === "MATCH" ? finalDigit === selectedDigit : finalDigit !== selectedDigit;
 }

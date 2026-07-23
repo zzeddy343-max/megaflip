@@ -50,7 +50,10 @@ function WalletPage() {
   const syncDeposits = useServerFn(syncPendingMpesaDeposits);
   const resetDemo = useServerFn(resetDemoBalance);
   const { data: profile } = useQuery({ queryKey: ["profile"], queryFn: () => fetchProfile() });
-  const { data: settings } = useQuery({ queryKey: ["system-settings"], queryFn: () => fetchSettings() });
+  const { data: settings } = useQuery({
+    queryKey: ["system-settings"],
+    queryFn: () => fetchSettings(),
+  });
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [tab, setTab] = useState<"deposit" | "withdraw" | "history">("deposit");
@@ -106,10 +109,16 @@ function WalletPage() {
       account: activeAccount,
       phone: mpesaPhone,
     });
-    const minimum = minimumAmount("deposit", settings?.min_deposit_usd, settings?.min_withdrawal_usd);
+    const minimum = minimumAmount(
+      "deposit",
+      settings?.min_deposit_usd,
+      settings?.min_withdrawal_usd,
+    );
     if (!amt || amt < minimum) {
       logDebugEvent("warn", "wallet.deposit", "Deposit validation failed", { method, amount: amt });
-      toast.error(`Minimum deposit ${minimumLabel("deposit", settings?.min_deposit_usd, settings?.min_withdrawal_usd)}`);
+      toast.error(
+        `Minimum deposit ${minimumLabel("deposit", settings?.min_deposit_usd, settings?.min_withdrawal_usd)}`,
+      );
       return;
     }
 
@@ -153,13 +162,19 @@ function WalletPage() {
       return;
     }
 
-    const minimum = minimumAmount("withdraw", settings?.min_deposit_usd, settings?.min_withdrawal_usd);
+    const minimum = minimumAmount(
+      "withdraw",
+      settings?.min_deposit_usd,
+      settings?.min_withdrawal_usd,
+    );
     if (!amt || amt < minimum) {
       logDebugEvent("warn", "wallet.withdraw", "Withdraw validation failed", {
         method,
         amount: amt,
       });
-      toast.error(`Minimum withdrawal ${minimumLabel("withdraw", settings?.min_deposit_usd, settings?.min_withdrawal_usd)}`);
+      toast.error(
+        `Minimum withdrawal ${minimumLabel("withdraw", settings?.min_deposit_usd, settings?.min_withdrawal_usd)}`,
+      );
       return;
     }
 
@@ -269,14 +284,18 @@ function WalletPage() {
               <input
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                placeholder={String(minimumAmount(tab, settings?.min_deposit_usd, settings?.min_withdrawal_usd))}
+                placeholder={String(
+                  minimumAmount(tab, settings?.min_deposit_usd, settings?.min_withdrawal_usd),
+                )}
                 inputMode="numeric"
                 className="flex-1 bg-transparent outline-none font-bold text-base tabular-nums"
               />
             </div>
             <div className="mt-1 text-[10px] text-muted-foreground">
               Minimum {minimumLabel(tab, settings?.min_deposit_usd, settings?.min_withdrawal_usd)}
-              {tab === "withdraw" && settings?.withdrawal_tax_pct != null ? ` · ${Number(settings.withdrawal_tax_pct).toFixed(0)}% VAT retention applied` : ""}
+              {tab === "withdraw" && settings?.withdrawal_tax_pct != null
+                ? ` · ${Number(settings.withdrawal_tax_pct).toFixed(0)}% VAT retention applied`
+                : ""}
             </div>
           </div>
 

@@ -1,15 +1,15 @@
 /**
  * COMPLETE EXAMPLE: Tick-Based Trading Chart System
- * 
+ *
  * This file demonstrates how to use all components of the tick-based charting system
  * for a Deriv-style trading platform.
  */
 
-import React, { useState, useCallback } from 'react';
-import { TickChartEngine, CandleBuilder } from '@/lib/tick-engine';
-import { useTickChart, useSyntheticTicks } from '@/hooks/use-tick-chart';
-import { TickBasedLiveChart } from '@/components/TickBasedLiveChart';
-import { computeSMA, computeEMA, computeRSI } from '@/lib/indicator-engine';
+import React, { useState, useCallback } from "react";
+import { TickChartEngine, CandleBuilder } from "@/lib/tick-engine";
+import { useTickChart, useSyntheticTicks } from "@/hooks/use-tick-chart";
+import { TickBasedLiveChart } from "@/components/TickBasedLiveChart";
+import { computeSMA, computeEMA, computeRSI } from "@/lib/indicator-engine";
 
 // ============================================================================
 // EXAMPLE 1: Basic Usage with Synthetic Data
@@ -17,20 +17,13 @@ import { computeSMA, computeEMA, computeRSI } from '@/lib/indicator-engine';
 
 export function BasicTickChartExample() {
   const getNextPrice = useSyntheticTicks({
-    basePrice: 100.00,
+    basePrice: 100.0,
     volatility: 0.001,
     enableMeanReversion: true,
     enableVolatilityClusters: true,
   });
 
-  const {
-    prices,
-    candles,
-    currentPrice,
-    indicators,
-    tickCount,
-    isLoading,
-  } = useTickChart({
+  const { prices, candles, currentPrice, indicators, tickCount, isLoading } = useTickChart({
     onTick: getNextPrice,
     tickIntervalMs: 500,
     ticksPerCandle: 1,
@@ -43,13 +36,13 @@ export function BasicTickChartExample() {
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-bold">Basic Tick Chart</h2>
-      
+
       <div className="grid grid-cols-2 gap-4">
         <div className="p-4 bg-surface rounded border border-border">
           <p className="text-sm text-muted-foreground">Current Price</p>
           <p className="text-2xl font-bold">{currentPrice.toFixed(2)}</p>
         </div>
-        
+
         <div className="p-4 bg-surface rounded border border-border">
           <p className="text-sm text-muted-foreground">Total Ticks</p>
           <p className="text-2xl font-bold">{tickCount}</p>
@@ -70,7 +63,7 @@ export function BasicTickChartExample() {
         <TickBasedLiveChart
           getNextPrice={getNextPrice}
           mode="line"
-          indicators={['SMA', 'EMA', 'Bollinger']}
+          indicators={["SMA", "EMA", "Bollinger"]}
           ticksPerCandle={1}
           tickIntervalMs={500}
         />
@@ -85,24 +78,22 @@ export function BasicTickChartExample() {
 
 export function TickBasedCandlesExample() {
   const getNextPrice = useSyntheticTicks({
-    basePrice: 1000.00,
+    basePrice: 1000.0,
     volatility: 0.0008,
   });
 
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-bold">5-Tick Candles</h2>
-      <p className="text-sm text-muted-foreground">
-        Every 5 individual ticks creates one candle
-      </p>
+      <p className="text-sm text-muted-foreground">Every 5 individual ticks creates one candle</p>
 
       <div className="h-64 bg-surface rounded border border-border p-4">
         <TickBasedLiveChart
           getNextPrice={getNextPrice}
           mode="candles"
-          ticksPerCandle={5}  // ← Key: 5 ticks per candle
+          ticksPerCandle={5} // ← Key: 5 ticks per candle
           tickIntervalMs={100} // Ticks arrive every 100ms
-          indicators={['SMA', 'EMA']}
+          indicators={["SMA", "EMA"]}
         />
       </div>
     </div>
@@ -172,7 +163,7 @@ export function DirectEngineExample() {
         disabled={isRunning}
         className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
       >
-        {isRunning ? 'Running...' : 'Start Engine'}
+        {isRunning ? "Running..." : "Start Engine"}
       </button>
 
       <div className="grid grid-cols-2 gap-4">
@@ -194,9 +185,7 @@ export function DirectEngineExample() {
         {engineStats.latestIndicators && (
           <div className="p-4 bg-surface rounded border border-border">
             <p className="text-sm text-muted-foreground">Current RSI</p>
-            <p className="text-2xl font-bold">
-              {engineStats.latestIndicators.rsi.toFixed(1)}
-            </p>
+            <p className="text-2xl font-bold">{engineStats.latestIndicators.rsi.toFixed(1)}</p>
           </div>
         )}
       </div>
@@ -227,7 +216,9 @@ export function DirectEngineExample() {
             </div>
             <div>
               <p className="text-muted-foreground">BB Middle:</p>
-              <p className="font-mono">{engineStats.latestIndicators.bollinger.middle.toFixed(2)}</p>
+              <p className="font-mono">
+                {engineStats.latestIndicators.bollinger.middle.toFixed(2)}
+              </p>
             </div>
           </div>
         </div>
@@ -284,12 +275,12 @@ export function IndicatorComparisonExample() {
 
         <div className="p-4 bg-surface rounded border border-border">
           <p className="text-sm text-muted-foreground">SMA (20)</p>
-          <p className="text-2xl font-bold">{lastSMA?.toFixed(2) || '—'}</p>
+          <p className="text-2xl font-bold">{lastSMA?.toFixed(2) || "—"}</p>
         </div>
 
         <div className="p-4 bg-surface rounded border border-border">
           <p className="text-sm text-muted-foreground">EMA (20)</p>
-          <p className="text-2xl font-bold">{lastEMA?.toFixed(2) || '—'}</p>
+          <p className="text-2xl font-bold">{lastEMA?.toFixed(2) || "—"}</p>
         </div>
       </div>
 
@@ -301,12 +292,8 @@ export function IndicatorComparisonExample() {
             .reverse()
             .map((rsi, idx) => (
               <div key={idx} className="flex justify-between">
-                <span className="text-muted-foreground">
-                  Point {prices.length - 10 + idx}:
-                </span>
-                <span>
-                  {rsi !== null ? rsi.toFixed(1) : '—'}
-                </span>
+                <span className="text-muted-foreground">Point {prices.length - 10 + idx}:</span>
+                <span>{rsi !== null ? rsi.toFixed(1) : "—"}</span>
               </div>
             ))}
         </div>
@@ -335,15 +322,11 @@ export function SignalGenerationExample() {
   const [signals, setSignals] = useState<Array<{ time: string; type: string; price: number }>>([]);
 
   const getNextPrice = useSyntheticTicks({
-    basePrice: 100.00,
+    basePrice: 100.0,
     volatility: 0.0015,
   });
 
-  const {
-    prices,
-    currentPrice,
-    indicators,
-  } = useTickChart({
+  const { prices, currentPrice, indicators } = useTickChart({
     onTick: getNextPrice,
     tickIntervalMs: 300,
     ticksPerCandle: 1,
@@ -361,20 +344,26 @@ export function SignalGenerationExample() {
 
     // Golden cross (SMA crosses above EMA) = BUY
     if (prevPrice < smaValue && currentPrice >= smaValue && emaValue < smaValue) {
-      setSignals(prev => [...prev.slice(-9), {
-        time: new Date().toLocaleTimeString(),
-        type: 'BUY (Golden Cross)',
-        price: currentPrice,
-      }]);
+      setSignals((prev) => [
+        ...prev.slice(-9),
+        {
+          time: new Date().toLocaleTimeString(),
+          type: "BUY (Golden Cross)",
+          price: currentPrice,
+        },
+      ]);
     }
 
     // Death cross (SMA crosses below EMA) = SELL
     if (prevPrice > smaValue && currentPrice <= smaValue && emaValue > smaValue) {
-      setSignals(prev => [...prev.slice(-9), {
-        time: new Date().toLocaleTimeString(),
-        type: 'SELL (Death Cross)',
-        price: currentPrice,
-      }]);
+      setSignals((prev) => [
+        ...prev.slice(-9),
+        {
+          time: new Date().toLocaleTimeString(),
+          type: "SELL (Death Cross)",
+          price: currentPrice,
+        },
+      ]);
     }
   }, [prices, currentPrice, indicators]);
 
@@ -386,20 +375,16 @@ export function SignalGenerationExample() {
         <TickBasedLiveChart
           getNextPrice={getNextPrice}
           mode="line"
-          indicators={['SMA', 'EMA']}
+          indicators={["SMA", "EMA"]}
           ticksPerCandle={1}
           tickIntervalMs={300}
-          badge={
-            signals.length > 0 
-              ? signals[signals.length - 1].type.split(' ')[0]
-              : undefined
-          }
+          badge={signals.length > 0 ? signals[signals.length - 1].type.split(" ")[0] : undefined}
           badgeTone={
             signals.length > 0
-              ? signals[signals.length - 1].type.includes('BUY')
-                ? 'bull'
-                : 'bear'
-              : 'neutral'
+              ? signals[signals.length - 1].type.includes("BUY")
+                ? "bull"
+                : "bear"
+              : "neutral"
           }
         />
       </div>
@@ -431,29 +416,29 @@ export function SignalGenerationExample() {
 
 export const EXAMPLES = [
   {
-    name: 'Basic Tick Chart',
+    name: "Basic Tick Chart",
     component: BasicTickChartExample,
-    description: 'Simple line chart with synthetic prices and indicators',
+    description: "Simple line chart with synthetic prices and indicators",
   },
   {
-    name: 'Tick-Based Candles',
+    name: "Tick-Based Candles",
     component: TickBasedCandlesExample,
-    description: 'Candle charts created from tick grouping (5-tick candles)',
+    description: "Candle charts created from tick grouping (5-tick candles)",
   },
   {
-    name: 'Direct Engine Usage',
+    name: "Direct Engine Usage",
     component: DirectEngineExample,
-    description: 'Low-level engine usage for custom implementations',
+    description: "Low-level engine usage for custom implementations",
   },
   {
-    name: 'Indicator Comparison',
+    name: "Indicator Comparison",
     component: IndicatorComparisonExample,
-    description: 'Shows how indicators work with any price series',
+    description: "Shows how indicators work with any price series",
   },
   {
-    name: 'Trading Signals',
+    name: "Trading Signals",
     component: SignalGenerationExample,
-    description: 'Real-time signal generation from indicator crossovers',
+    description: "Real-time signal generation from indicator crossovers",
   },
 ];
 
@@ -477,8 +462,8 @@ export function TickChartExamplesShowcase() {
               onClick={() => setSelectedExample(idx)}
               className={`px-3 py-2 rounded text-sm font-medium transition ${
                 selectedExample === idx
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-surface text-muted-foreground hover:bg-surface/80 border border-border'
+                  ? "bg-blue-600 text-white"
+                  : "bg-surface text-muted-foreground hover:bg-surface/80 border border-border"
               }`}
             >
               {ex.name}

@@ -22,7 +22,14 @@ export function BottomNav() {
             >
               {({ isActive }) => (
                 <>
-                  <span className={"grid place-items-center h-8 w-11 rounded-full transition-all " + (isActive ? "bg-primary/10 text-primary shadow-[0_0_22px_color-mix(in_oklab,var(--gold)_28%,transparent)]" : "")}>
+                  <span
+                    className={
+                      "grid place-items-center h-8 w-11 rounded-full transition-all " +
+                      (isActive
+                        ? "bg-primary/10 text-primary shadow-[0_0_22px_color-mix(in_oklab,var(--gold)_28%,transparent)]"
+                        : "")
+                    }
+                  >
                     <Icon className="h-4 w-4" />
                   </span>
                   <span className="leading-none">{label}</span>

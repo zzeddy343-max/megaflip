@@ -8,17 +8,18 @@ import { supabase } from "@/integrations/supabase/client";
 
 // Type definitions for better DX
 type ChartType = "area" | "candle" | "hollow" | "ohlc";
-type TimeInterval = "1tick" | "1min" | "2min" | "3min" | "5min" | "10min" | "15min" | "30min" | "1h" | "1d";
+type TimeInterval =
+  "1tick" | "1min" | "2min" | "3min" | "5min" | "10min" | "15min" | "30min" | "1h" | "1d";
 type TradeType = "over-under" | "rise-fall" | "higher-lower";
 type Duration = "1tick" | "5ticks" | "1min" | "5min" | "15min" | "1hour";
 
 /**
  * INTEGRATION EXAMPLE: Binary Trading Route
- * 
+ *
  * This demonstrates a complete, production-ready implementation of the
  * TradingLayout with real Supabase integration, WebSocket price data,
  * trade execution, and account management.
- * 
+ *
  * To use this:
  * 1. Create a new route file: src/routes/_authenticated/binary.tsx
  * 2. Import and customize this component
@@ -128,7 +129,7 @@ function BinaryTradingPage() {
   const [currentPrice, setCurrentPrice] = useState(9554.32);
   const [priceChange, setPriceChange] = useState(0.14);
   const [ticks, setTicks] = useState<{ close: number; timestamp: number }[]>([]);
-  
+
   // WebSocket connection
   const wsRef = useRef<WebSocket | null>(null);
   const priceHistoryRef = useRef<number[]>([9554.32]);
@@ -141,9 +142,7 @@ function BinaryTradingPage() {
    */
   const handleIndicatorToggle = useCallback((indicatorId: string) => {
     setIndicators((prev) =>
-      prev.includes(indicatorId)
-        ? prev.filter((i) => i !== indicatorId)
-        : [...prev, indicatorId]
+      prev.includes(indicatorId) ? prev.filter((i) => i !== indicatorId) : [...prev, indicatorId],
     );
   }, []);
 
@@ -154,7 +153,8 @@ function BinaryTradingPage() {
     async (stakeAmount: number) => {
       if (!profileData?.userId) return;
 
-      const direction = tradeType === "over-under" ? "over" : tradeType === "rise-fall" ? "rise" : "higher";
+      const direction =
+        tradeType === "over-under" ? "over" : tradeType === "rise-fall" ? "rise" : "higher";
 
       tradeMutation.mutate({
         type: direction as any,
@@ -164,7 +164,7 @@ function BinaryTradingPage() {
         entry_price: currentPrice,
       });
     },
-    [tradeType, duration, currentPrice, profileData?.userId]
+    [tradeType, duration, currentPrice, profileData?.userId],
   );
 
   /**
@@ -174,7 +174,8 @@ function BinaryTradingPage() {
     async (stakeAmount: number) => {
       if (!profileData?.userId) return;
 
-      const direction = tradeType === "over-under" ? "under" : tradeType === "rise-fall" ? "fall" : "lower";
+      const direction =
+        tradeType === "over-under" ? "under" : tradeType === "rise-fall" ? "fall" : "lower";
 
       tradeMutation.mutate({
         type: direction as any,
@@ -184,7 +185,7 @@ function BinaryTradingPage() {
         entry_price: currentPrice,
       });
     },
-    [tradeType, duration, currentPrice, profileData?.userId]
+    [tradeType, duration, currentPrice, profileData?.userId],
   );
 
   /**
@@ -195,15 +196,18 @@ function BinaryTradingPage() {
     // Simulate price movement if WebSocket not available
     const randomChange = (Math.random() - 0.5) * 20;
     const meanReversionForce = (9554.32 - lastPriceRef.current) * 0.01;
-    const newPrice = Math.max(9500, Math.min(9610, lastPriceRef.current + randomChange + meanReversionForce));
-    
+    const newPrice = Math.max(
+      9500,
+      Math.min(9610, lastPriceRef.current + randomChange + meanReversionForce),
+    );
+
     lastPriceRef.current = newPrice;
     priceHistoryRef.current.push(newPrice);
-    
+
     if (priceHistoryRef.current.length > 500) {
       priceHistoryRef.current.shift();
     }
-    
+
     return newPrice;
   }, []);
 
@@ -272,7 +276,9 @@ function BinaryTradingPage() {
           mode={chartType === "candle" || chartType === "hollow" ? "candles" : "line"}
           indicators={indicators}
           maxPrices={500}
-          badge={tradeType === "over-under" ? "OVER" : tradeType === "rise-fall" ? "RISE" : "HIGHER"}
+          badge={
+            tradeType === "over-under" ? "OVER" : tradeType === "rise-fall" ? "RISE" : "HIGHER"
+          }
           badgeTone="bull"
           note="Live Vol 75 Index"
           noteTone="neutral"

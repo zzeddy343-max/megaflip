@@ -1,10 +1,10 @@
 /**
  * TAILWIND CSS THEME CONFIGURATION FOR TRADING UI
- * 
+ *
  * This file contains the recommended Tailwind configuration for
  * the professional trading UI components to achieve the polished,
  * professional look shown in the reference images.
- * 
+ *
  * Add this to your tailwind.config.ts
  */
 
@@ -27,7 +27,7 @@ const tradingThemeConfig: Partial<Config> = {
           800: "#92400e",
           900: "#78350f",
         },
-        
+
         // Bull color (green for uptrends/wins)
         bull: {
           50: "#f0fdf4",
@@ -41,7 +41,7 @@ const tradingThemeConfig: Partial<Config> = {
           800: "#166534",
           900: "#145231",
         },
-        
+
         // Bear color (red for downtrends/losses)
         bear: {
           50: "#fef2f2",
@@ -62,29 +62,29 @@ const tradingThemeConfig: Partial<Config> = {
         card: "#0f0f0f",
         surface: "#1a1a1a",
         border: "#27272a",
-        
+
         // Semantic colors
         success: "#10b981",
         warning: "#f59e0b",
         error: "#ef4444",
         info: "#3b82f6",
-        
+
         // Neutral grays
         muted: {
           foreground: "#a1a1aa",
           background: "#27272a",
         },
       },
-      
+
       backgroundColor: {
         surface: "#1a1a1a",
         "surface-soft": "rgba(26, 26, 26, 0.5)",
       },
-      
+
       borderColor: {
         border: "#27272a",
       },
-      
+
       // Custom glow effects for buttons
       boxShadow: {
         "glow-primary": "0 0 20px rgba(245, 158, 11, 0.5)",
@@ -92,14 +92,14 @@ const tradingThemeConfig: Partial<Config> = {
         "glow-bear": "0 0 20px rgba(239, 68, 68, 0.5)",
         "glow-subtle": "0 0 10px rgba(245, 158, 11, 0.2)",
       },
-      
+
       // Smooth transitions
       transitionDuration: {
-        "fast": "150ms",
-        "normal": "300ms",
-        "slow": "500ms",
+        fast: "150ms",
+        normal: "300ms",
+        slow: "500ms",
       },
-      
+
       // Typography enhancements
       fontSize: {
         xs: ["0.75rem", { lineHeight: "1rem" }],
@@ -108,7 +108,7 @@ const tradingThemeConfig: Partial<Config> = {
         lg: ["1.125rem", { lineHeight: "1.75rem" }],
         xl: ["1.25rem", { lineHeight: "1.75rem" }],
       },
-      
+
       // Custom utility classes
       backdropBlur: {
         xs: "blur(2px)",
@@ -116,7 +116,7 @@ const tradingThemeConfig: Partial<Config> = {
         md: "blur(8px)",
         lg: "blur(12px)",
       },
-      
+
       // Animation enhancements
       animation: {
         "pulse-slow": "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
@@ -124,7 +124,7 @@ const tradingThemeConfig: Partial<Config> = {
         "slide-in": "slideIn 0.3s ease-out",
         "fade-in": "fadeIn 0.2s ease-in",
       },
-      
+
       keyframes: {
         slideIn: {
           from: { transform: "translateX(-100%)", opacity: "0" },
@@ -135,28 +135,28 @@ const tradingThemeConfig: Partial<Config> = {
           to: { opacity: "1" },
         },
       },
-      
+
       // Spacing for trading layout
       spacing: {
-        "header": "4rem", // 64px
-        "toolbar": "4rem", // 64px
-        "panel": "20rem", // 320px
+        header: "4rem", // 64px
+        toolbar: "4rem", // 64px
+        panel: "20rem", // 320px
       },
-      
+
       // Z-index layers for trading UI
       zIndex: {
-        "background": "0",
-        "surface": "10",
-        "modal": "40",
-        "header": "40",
-        "toolbar": "30",
-        "panel": "30",
-        "tooltip": "50",
-        "dropdown": "50",
+        background: "0",
+        surface: "10",
+        modal: "40",
+        header: "40",
+        toolbar: "30",
+        panel: "30",
+        tooltip: "50",
+        dropdown: "50",
       },
     },
   },
-  
+
   safelist: [
     // Chart type classes
     "bg-bull",
@@ -168,7 +168,7 @@ const tradingThemeConfig: Partial<Config> = {
     "shadow-glow-bull",
     "shadow-glow-bear",
     "shadow-glow-primary",
-    
+
     // Responsive display classes
     "hidden",
     "sm:inline",

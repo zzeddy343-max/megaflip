@@ -18,7 +18,12 @@ const DIRECTION_OPTIONS = {
 const TICK_OPTIONS = [1, 2, 3, 5, 10] as const;
 const CANDLE_INTERVALS = ["1 minute", "5 minutes", "15 minutes"] as const;
 const SELL_RULES = ["Sell when available", "Take profit", "Stop loss", "Sell at market"] as const;
-const RESTART_RULES = ["Restart on error", "Restart last trade", "Wait 1 tick", "Reset counters"] as const;
+const RESTART_RULES = [
+  "Restart on error",
+  "Restart last trade",
+  "Wait 1 tick",
+  "Reset counters",
+] as const;
 
 type MarketOption = (typeof MARKET_OPTIONS)[number];
 type VolatilityOption = (typeof VOLATILITY_OPTIONS)[number];
@@ -32,7 +37,9 @@ function BotBuilderPage() {
   const [market, setMarket] = useState<MarketOption>(MARKET_OPTIONS[0]);
   const [volatility, setVolatility] = useState<VolatilityOption>(VOLATILITY_OPTIONS[0]);
   const [tradeType, setTradeType] = useState<TradeTypeOption>(TRADE_TYPES[0]);
-  const [tradeDirection, setTradeDirection] = useState<TradeDirection>(DIRECTION_OPTIONS[TRADE_TYPES[0]][0]);
+  const [tradeDirection, setTradeDirection] = useState<TradeDirection>(
+    DIRECTION_OPTIONS[TRADE_TYPES[0]][0],
+  );
   const [selectedDigit, setSelectedDigit] = useState(5);
   const [ticks, setTicks] = useState<TickOption>(TICK_OPTIONS[0]);
   const [stake, setStake] = useState(1);
@@ -103,7 +110,9 @@ function BotBuilderPage() {
                 onChange={(event) => setBotName(event.target.value)}
                 className="mt-3 w-full max-w-md rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 text-lg font-semibold text-slate-900 outline-none"
               />
-              <p className="mt-2 text-sm text-slate-600">Set the bot name and launch the trading page.</p>
+              <p className="mt-2 text-sm text-slate-600">
+                Set the bot name and launch the trading page.
+              </p>
             </div>
 
             <div className="flex flex-wrap gap-3">
@@ -130,7 +139,9 @@ function BotBuilderPage() {
         <section className="rounded-3xl bg-white border border-slate-200 p-5 shadow-sm">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div>
-              <label className="block text-xs uppercase tracking-[0.28em] text-slate-500">Market</label>
+              <label className="block text-xs uppercase tracking-[0.28em] text-slate-500">
+                Market
+              </label>
               <select
                 value={market}
                 onChange={(event) => setMarket(event.target.value as MarketOption)}
@@ -145,7 +156,9 @@ function BotBuilderPage() {
             </div>
 
             <div>
-              <label className="block text-xs uppercase tracking-[0.28em] text-slate-500">Volatility</label>
+              <label className="block text-xs uppercase tracking-[0.28em] text-slate-500">
+                Volatility
+              </label>
               <select
                 value={volatility}
                 onChange={(event) => setVolatility(event.target.value as VolatilityOption)}
@@ -160,7 +173,9 @@ function BotBuilderPage() {
             </div>
 
             <div>
-              <label className="block text-xs uppercase tracking-[0.28em] text-slate-500">Ticks</label>
+              <label className="block text-xs uppercase tracking-[0.28em] text-slate-500">
+                Ticks
+              </label>
               <select
                 value={ticks}
                 onChange={(event) => setTicks(Number(event.target.value) as TickOption)}
@@ -175,7 +190,9 @@ function BotBuilderPage() {
             </div>
 
             <div>
-              <label className="block text-xs uppercase tracking-[0.28em] text-slate-500">Binary contract</label>
+              <label className="block text-xs uppercase tracking-[0.28em] text-slate-500">
+                Binary contract
+              </label>
               <select
                 value={tradeType}
                 onChange={(event) => {
@@ -193,7 +210,9 @@ function BotBuilderPage() {
               </select>
             </div>
             <div>
-              <label className="block text-xs uppercase tracking-[0.28em] text-slate-500">Direction</label>
+              <label className="block text-xs uppercase tracking-[0.28em] text-slate-500">
+                Direction
+              </label>
               <select
                 value={tradeDirection}
                 onChange={(event) => setTradeDirection(event.target.value as TradeDirection)}
@@ -208,21 +227,29 @@ function BotBuilderPage() {
             </div>
             {(tradeType === "Over/Under" || tradeType === "Matches/Differs") && (
               <div>
-                <label className="block text-xs uppercase tracking-[0.28em] text-slate-500">Digit</label>
+                <label className="block text-xs uppercase tracking-[0.28em] text-slate-500">
+                  Digit
+                </label>
                 <input
                   type="number"
                   min={0}
                   max={9}
                   value={selectedDigit}
-                  onChange={(event) => setSelectedDigit(Math.max(0, Math.min(9, Number(event.target.value))))}
+                  onChange={(event) =>
+                    setSelectedDigit(Math.max(0, Math.min(9, Number(event.target.value))))
+                  }
                   className="mt-2 w-full rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none"
                 />
-                <p className="mt-2 text-xs text-slate-500">Choose the target digit for your selected contract.</p>
+                <p className="mt-2 text-xs text-slate-500">
+                  Choose the target digit for your selected contract.
+                </p>
               </div>
             )}
 
             <div>
-              <label className="block text-xs uppercase tracking-[0.28em] text-slate-500">Stake</label>
+              <label className="block text-xs uppercase tracking-[0.28em] text-slate-500">
+                Stake
+              </label>
               <input
                 type="number"
                 min={0.01}
@@ -234,7 +261,9 @@ function BotBuilderPage() {
             </div>
 
             <div>
-              <label className="block text-xs uppercase tracking-[0.28em] text-slate-500">Max loss</label>
+              <label className="block text-xs uppercase tracking-[0.28em] text-slate-500">
+                Max loss
+              </label>
               <input
                 type="number"
                 min={0}
@@ -247,7 +276,9 @@ function BotBuilderPage() {
           </div>
 
           <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-sm text-slate-600">Simplified view with only core bot settings.</div>
+            <div className="text-sm text-slate-600">
+              Simplified view with only core bot settings.
+            </div>
             <button
               type="button"
               onClick={() => setMoreOptionsOpen((open) => !open)}
@@ -262,7 +293,9 @@ function BotBuilderPage() {
             <div className="mt-5 rounded-3xl border border-slate-200 bg-slate-50 p-5">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="block text-xs uppercase tracking-[0.28em] text-slate-500">Candle interval</label>
+                  <label className="block text-xs uppercase tracking-[0.28em] text-slate-500">
+                    Candle interval
+                  </label>
                   <select
                     value={candleInterval}
                     onChange={(event) => setCandleInterval(event.target.value as CandleInterval)}
@@ -277,7 +310,9 @@ function BotBuilderPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs uppercase tracking-[0.28em] text-slate-500">Sell condition</label>
+                  <label className="block text-xs uppercase tracking-[0.28em] text-slate-500">
+                    Sell condition
+                  </label>
                   <select
                     value={sellRule}
                     onChange={(event) => setSellRule(event.target.value)}
@@ -292,7 +327,9 @@ function BotBuilderPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs uppercase tracking-[0.28em] text-slate-500">Restart rule</label>
+                  <label className="block text-xs uppercase tracking-[0.28em] text-slate-500">
+                    Restart rule
+                  </label>
                   <select
                     value={restartRule}
                     onChange={(event) => setRestartRule(event.target.value)}
@@ -315,13 +352,17 @@ function BotBuilderPage() {
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-xs uppercase tracking-[0.28em] text-slate-500">Profit</p>
-                <h2 className="mt-2 text-3xl font-semibold text-slate-900">{formatMoney(profit)}</h2>
+                <h2 className="mt-2 text-3xl font-semibold text-slate-900">
+                  {formatMoney(profit)}
+                </h2>
               </div>
               <span className="rounded-full bg-slate-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.28em] text-slate-600">
                 Live
               </span>
             </div>
-            <p className="mt-4 text-sm text-slate-600">Simplified profit display visible on initial open.</p>
+            <p className="mt-4 text-sm text-slate-600">
+              Simplified profit display visible on initial open.
+            </p>
           </div>
 
           <aside className="rounded-3xl bg-white border border-slate-200 p-5 shadow-sm">
@@ -332,7 +373,9 @@ function BotBuilderPage() {
               <div>Ticks: {ticks}</div>
               <div>Contract: {tradeType}</div>
               <div>Direction: {tradeDirection}</div>
-              {(tradeType === "Over/Under" || tradeType === "Matches/Differs") && <div>Digit: {selectedDigit}</div>}
+              {(tradeType === "Over/Under" || tradeType === "Matches/Differs") && (
+                <div>Digit: {selectedDigit}</div>
+              )}
               <div>Stake: {formatMoney(stake)}</div>
               <div>Max loss: {formatMoney(maxLoss)}</div>
             </div>

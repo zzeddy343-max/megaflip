@@ -42,7 +42,11 @@ export function CryptoPanel() {
 
   const [pickerOpen, setPickerOpen] = useState(false);
   const [chartOptionsOpen, setChartOptionsOpen] = useState(false);
-  const [selectedIndicators, setSelectedIndicators] = useState<IndicatorOption[]>(["SMA", "EMA", "Bollinger"]);
+  const [selectedIndicators, setSelectedIndicators] = useState<IndicatorOption[]>([
+    "SMA",
+    "EMA",
+    "Bollinger",
+  ]);
 
   const quoteFn = useServerFn(getCryptoQuote);
   const candlesFn = useServerFn(getCryptoCandles);
@@ -191,7 +195,9 @@ export function CryptoPanel() {
             className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-semibold text-foreground"
           >
             <span>{chartOptionsOpen ? "Hide" : "Show"} indicators</span>
-            <ChevronDown className={"h-4 w-4 transition " + (chartOptionsOpen ? "rotate-180" : "")} />
+            <ChevronDown
+              className={"h-4 w-4 transition " + (chartOptionsOpen ? "rotate-180" : "")}
+            />
           </button>
         </div>
         {chartOptionsOpen && (
@@ -224,13 +230,28 @@ export function CryptoPanel() {
         )}
         <div className="bg-card border border-border rounded-xl p-2 h-56">
           <div className="relative h-full">
-            <CandleChart candles={candles} livePrice={price} indicators={selectedIndicators} className="h-full" />
-            <OpenPositionLines module="crypto" market={`${coin.sym}/USD`} livePrice={price} digits={price < 1 ? 5 : 2} />
+            <CandleChart
+              candles={candles}
+              livePrice={price}
+              indicators={selectedIndicators}
+              className="h-full"
+            />
+            <OpenPositionLines
+              module="crypto"
+              market={`${coin.sym}/USD`}
+              livePrice={price}
+              digits={price < 1 ? 5 : 2}
+            />
           </div>
         </div>
       </div>
 
-      <OpenPositionsPanel module="crypto" market={`${coin.sym}/USD`} livePrice={price} digits={price < 1 ? 5 : 2} />
+      <OpenPositionsPanel
+        module="crypto"
+        market={`${coin.sym}/USD`}
+        livePrice={price}
+        digits={price < 1 ? 5 : 2}
+      />
 
       <div className="bg-card border border-border rounded-xl p-3 space-y-2">
         <div className="flex items-center justify-between gap-3">

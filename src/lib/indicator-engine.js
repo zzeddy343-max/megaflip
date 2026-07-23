@@ -219,7 +219,7 @@ export function computeADX(values, period = 14) {
     const downMove = move < 0 ? -move : 0;
     const plusDI = upMove / Math.max(1, Math.abs(series[i] - series[i - 1]));
     const minusDI = downMove / Math.max(1, Math.abs(series[i] - series[i - 1]));
-    const dxValue = Math.abs(plusDI - minusDI) / (plusDI + minusDI + 1e-8) * 100;
+    const dxValue = (Math.abs(plusDI - minusDI) / (plusDI + minusDI + 1e-8)) * 100;
     dx.push(dxValue);
   }
   let smoothedDx = 0;
@@ -330,14 +330,14 @@ export function getIndicatorScale(indicator, value) {
  */
 export function buildIndicatorPath(values, width, height, minPrice, rangePrice) {
   if (!values || values.length === 0) return "";
-  
+
   let points = [];
   let pathCommands = [];
 
   for (let i = 0; i < values.length; i++) {
     const v = values[i];
     const x = (i / (values.length - 1)) * width;
-    
+
     if (v === null || v === undefined) {
       // Break the line at null values
       if (points.length > 0) {
@@ -375,7 +375,7 @@ export function buildIndicatorPath(values, width, height, minPrice, rangePrice) 
  */
 export function buildBandPath(bands, width, height, minPrice, rangePrice) {
   if (!bands.upper || !bands.lower) return "";
-  
+
   const length = Math.min(bands.upper.length, bands.lower.length);
   const upperSegments = [];
   const lowerSegments = [];
@@ -399,7 +399,7 @@ export function buildBandPath(bands, width, height, minPrice, rangePrice) {
   if (upperSegments.length < 2 || lowerSegments.length < 2) return "";
 
   let path = `M${upperSegments[0].x},${upperSegments[0].y}`;
-  
+
   // Draw upper band
   for (let i = 1; i < upperSegments.length; i++) {
     path += ` L${upperSegments[i].x},${upperSegments[i].y}`;
@@ -420,7 +420,7 @@ export function buildBandPath(bands, width, height, minPrice, rangePrice) {
  */
 export function buildLinePath(prices, width, height, minPrice, rangePrice) {
   if (!prices || prices.length === 0) return "";
-  
+
   const points = prices
     .map((p, i) => {
       if (p === null || p === undefined) return null;
@@ -460,16 +460,16 @@ export function prepareIndicatorsForRendering(prices, indicatorNames = []) {
 
   for (const name of indicatorNames) {
     let series = computeIndicatorSeries(prices, name);
-    
+
     // Handle complex indicators that return objects
-    if (typeof series === 'object' && series.middle) {
+    if (typeof series === "object" && series.middle) {
       // Bollinger Bands
       series = {
         middle: alignIndicatorWithPrices(series.middle, prices),
         upper: alignIndicatorWithPrices(series.upper, prices),
         lower: alignIndicatorWithPrices(series.lower, prices),
       };
-    } else if (typeof series === 'object' && series.macd) {
+    } else if (typeof series === "object" && series.macd) {
       // MACD
       series = {
         macd: alignIndicatorWithPrices(series.macd, prices),
@@ -491,7 +491,7 @@ export function prepareIndicatorsForRendering(prices, indicatorNames = []) {
  */
 export function formatIndicatorValue(indicator, value) {
   if (value === null || value === undefined) return "—";
-  
+
   switch (indicator) {
     case "RSI":
     case "Stochastic":
@@ -517,7 +517,7 @@ export function formatIndicatorValue(indicator, value) {
  */
 export function alignIndicatorWithPrices(indicatorSeries, prices) {
   if (!indicatorSeries || !prices) return [];
-  
+
   const result = [...indicatorSeries];
 
   // Find first non-null value
@@ -564,7 +564,7 @@ export function padIndicatorToPrices(indicatorSeries, priceLength) {
  */
 export function findCrossovers(indicator1, indicator2) {
   const crossovers = [];
-  
+
   for (let i = 1; i < Math.min(indicator1.length, indicator2.length); i++) {
     const curr1 = indicator1[i];
     const curr2 = indicator2[i];

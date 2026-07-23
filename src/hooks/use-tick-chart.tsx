@@ -4,7 +4,7 @@ import { TickChartEngine, OHLC } from "@/lib/tick-engine";
 /**
  * React hook for managing tick-based charts
  * Handles WebSocket tick stream, indicator updates, and efficient rendering
- * 
+ *
  * Usage:
  * const { prices, candles, indicators } = useTickChart({
  *   onTick: (price) => fetchPriceFromAPI(),
@@ -118,7 +118,7 @@ export function useTickChart(options: UseTickChartOptions = {}): UseTickChartRet
         setIsLoading(false);
       }
     },
-    [onTick, maxDisplayPoints]
+    [onTick, maxDisplayPoints],
   );
 
   // Start tick timer

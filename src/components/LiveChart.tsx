@@ -63,7 +63,9 @@ export function LiveChart({
     });
   }, [basePrice, volatility]);
   const [points, setPoints] = useState<number[]>(buildInitialPoints);
-  const [candles, setCandles] = useState<Candle[]>(() => buildInitialCandles(basePrice, volatility, candleMs));
+  const [candles, setCandles] = useState<Candle[]>(() =>
+    buildInitialCandles(basePrice, volatility, candleMs),
+  );
   const driftRef = useRef(0);
   const impulseRef = useRef(0);
 
@@ -79,7 +81,8 @@ export function LiveChart({
       setPoints((prev) => {
         const last = prev[prev.length - 1];
         const pull = (basePrice - last) * 0.015;
-        const burst = Math.random() < 0.13 ? (Math.random() - 0.5) * volatility * basePrice * 7.5 : 0;
+        const burst =
+          Math.random() < 0.13 ? (Math.random() - 0.5) * volatility * basePrice * 7.5 : 0;
         impulseRef.current = impulseRef.current * 0.68 + burst;
         driftRef.current =
           driftRef.current * 0.76 +
@@ -112,7 +115,16 @@ export function LiveChart({
   const boll = selected.has("Bollinger") ? computeIndicatorSeries(points, "Bollinger", 20) : null;
   const smaPath = sma.length ? buildLinePath(sma, w, h, min, range) : "";
   const emaPath = ema.length ? buildLinePath(ema, w, h, min, range) : "";
-  const bollFill = boll && typeof boll === "object" ? buildBandPath(boll as { upper: Array<number | null>; lower: Array<number | null> }, w, h, min, range) : "";
+  const bollFill =
+    boll && typeof boll === "object"
+      ? buildBandPath(
+          boll as { upper: Array<number | null>; lower: Array<number | null> },
+          w,
+          h,
+          min,
+          range,
+        )
+      : "";
   const smoothedPoints = smoothPriceSeries(points);
   const path = buildSmoothPricePath(smoothedPoints, w, h, min, range);
   const area = `${path} L${w},${h} L0,${h} Z`;
@@ -121,7 +133,8 @@ export function LiveChart({
   const latestCandle = candles[candles.length - 1];
   const up = last >= first;
   const stroke = up ? "oklch(0.76 0.18 152)" : "oklch(0.66 0.24 22)";
-  const priceY = h - (((mode === "candles" && latestCandle ? latestCandle.c : last) - min) / range) * h;
+  const priceY =
+    h - (((mode === "candles" && latestCandle ? latestCandle.c : last) - min) / range) * h;
   const priceLabel = (mode === "candles" && latestCandle ? latestCandle.c : last).toFixed(2);
   const axisValues = Array.from({ length: 5 }, (_, i) => max - (range / 4) * i);
   const timeLabels = Array.from({ length: 5 }, (_, i) => {
@@ -132,11 +145,26 @@ export function LiveChart({
       second: "2-digit",
     });
   });
-  const badgeBg = badgeTone === "bull" ? "bg-bull text-bull-foreground" : badgeTone === "bear" ? "bg-bear text-bear-foreground" : "bg-surface text-foreground border border-border";
-  const noteBg = noteTone === "bull" ? "bg-bull/10 text-bull border border-bull/30" : noteTone === "bear" ? "bg-bear/10 text-bear border border-bear/30" : "bg-surface/95 text-foreground border border-border";
+  const badgeBg =
+    badgeTone === "bull"
+      ? "bg-bull text-bull-foreground"
+      : badgeTone === "bear"
+        ? "bg-bear text-bear-foreground"
+        : "bg-surface text-foreground border border-border";
+  const noteBg =
+    noteTone === "bull"
+      ? "bg-bull/10 text-bull border border-bull/30"
+      : noteTone === "bear"
+        ? "bg-bear/10 text-bear border border-bear/30"
+        : "bg-surface/95 text-foreground border border-border";
 
   return (
-    <div className={"relative w-full overflow-hidden bg-[var(--color-surface)] text-[var(--muted-foreground)] " + (className ?? "")}>
+    <div
+      className={
+        "relative w-full overflow-hidden bg-[var(--color-surface)] text-[var(--muted-foreground)] " +
+        (className ?? "")
+      }
+    >
       <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="w-full h-full">
         <defs>
           <linearGradient id="lc-fill" x1="0" x2="0" y1="0" y2="1">
@@ -146,18 +174,58 @@ export function LiveChart({
           </linearGradient>
         </defs>
         {[0, 0.25, 0.5, 0.75, 1].map((t) => (
-          <line key={`h-${t}`} x1="0" x2={w} y1={h * t} y2={h * t} stroke="rgba(255,255,255,0.06)" strokeWidth="0.18" />
+          <line
+            key={`h-${t}`}
+            x1="0"
+            x2={w}
+            y1={h * t}
+            y2={h * t}
+            stroke="rgba(255,255,255,0.06)"
+            strokeWidth="0.18"
+          />
         ))}
         {Array.from({ length: 11 }, (_, i) => i * 10).map((x) => (
-          <line key={`v-${x}`} x1={x} x2={x} y1="0" y2={h} stroke="rgba(255,255,255,0.045)" strokeWidth="0.14" />
+          <line
+            key={`v-${x}`}
+            x1={x}
+            x2={x}
+            y1="0"
+            y2={h}
+            stroke="rgba(255,255,255,0.045)"
+            strokeWidth="0.14"
+          />
         ))}
         {mode === "line" ? (
           <>
             {bollFill && <path d={bollFill} fill="oklch(0.5 0.18 222 / 0.16)" />}
-            {smaPath && <path d={smaPath} fill="none" stroke={getIndicatorColor("SMA")} strokeWidth="0.5" vectorEffect="non-scaling-stroke" />}
-            {emaPath && <path d={emaPath} fill="none" stroke={getIndicatorColor("EMA")} strokeWidth="0.5" vectorEffect="non-scaling-stroke" />}
+            {smaPath && (
+              <path
+                d={smaPath}
+                fill="none"
+                stroke={getIndicatorColor("SMA")}
+                strokeWidth="0.5"
+                vectorEffect="non-scaling-stroke"
+              />
+            )}
+            {emaPath && (
+              <path
+                d={emaPath}
+                fill="none"
+                stroke={getIndicatorColor("EMA")}
+                strokeWidth="0.5"
+                vectorEffect="non-scaling-stroke"
+              />
+            )}
             <path d={area} fill="url(#lc-fill)" />
-            <path d={path} fill="none" stroke="var(--color-foreground)" strokeWidth="1.25" vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" />
+            <path
+              d={path}
+              fill="none"
+              stroke="var(--color-foreground)"
+              strokeWidth="1.25"
+              vectorEffect="non-scaling-stroke"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
             <circle
               cx={w}
               cy={h - ((last - min) / range) * h}
@@ -168,9 +236,36 @@ export function LiveChart({
           </>
         ) : (
           <>
-            {boll && typeof boll === "object" && <path d={buildBandPath(boll as { upper: Array<number | null>; lower: Array<number | null> }, w, h, min, range)} fill="oklch(0.5 0.18 222 / 0.16)" />}
-            {smaPath && <path d={smaPath} fill="none" stroke={getIndicatorColor("SMA")} strokeWidth="0.5" vectorEffect="non-scaling-stroke" />}
-            {emaPath && <path d={emaPath} fill="none" stroke={getIndicatorColor("EMA")} strokeWidth="0.5" vectorEffect="non-scaling-stroke" />}
+            {boll && typeof boll === "object" && (
+              <path
+                d={buildBandPath(
+                  boll as { upper: Array<number | null>; lower: Array<number | null> },
+                  w,
+                  h,
+                  min,
+                  range,
+                )}
+                fill="oklch(0.5 0.18 222 / 0.16)"
+              />
+            )}
+            {smaPath && (
+              <path
+                d={smaPath}
+                fill="none"
+                stroke={getIndicatorColor("SMA")}
+                strokeWidth="0.5"
+                vectorEffect="non-scaling-stroke"
+              />
+            )}
+            {emaPath && (
+              <path
+                d={emaPath}
+                fill="none"
+                stroke={getIndicatorColor("EMA")}
+                strokeWidth="0.5"
+                vectorEffect="non-scaling-stroke"
+              />
+            )}
             {candles.map((c, i) => {
               const candleUp = c.c >= c.o;
               const color = candleUp ? "oklch(0.76 0.18 152)" : "oklch(0.66 0.24 22)";
@@ -191,11 +286,28 @@ export function LiveChart({
                     strokeOpacity="0.8"
                     vectorEffect="non-scaling-stroke"
                   />
-                  <rect x={cx - step * 0.36} y={bodyTop} width={step * 0.72} height={bodyH} fill={color} rx="0.08" />
+                  <rect
+                    x={cx - step * 0.36}
+                    y={bodyTop}
+                    width={step * 0.72}
+                    height={bodyH}
+                    fill={color}
+                    rx="0.08"
+                  />
                 </g>
               );
             })}
-            <line x1="0" x2={w} y1={priceY} y2={priceY} stroke="oklch(0.78 0.13 86)" strokeOpacity="0.55" strokeDasharray="1 1" strokeWidth="0.25" vectorEffect="non-scaling-stroke" />
+            <line
+              x1="0"
+              x2={w}
+              y1={priceY}
+              y2={priceY}
+              stroke="oklch(0.78 0.13 86)"
+              strokeOpacity="0.55"
+              strokeDasharray="1 1"
+              strokeWidth="0.25"
+              vectorEffect="non-scaling-stroke"
+            />
           </>
         )}
       </svg>
@@ -223,7 +335,11 @@ export function LiveChart({
       </div>
       {/* Digit bubbles rendered inside SVG area via absolute positioned SVG group */}
       {digitStats && digitStats.length > 0 && (
-        <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="absolute left-0 top-0 w-full h-full pointer-events-none">
+        <svg
+          viewBox={`0 0 ${w} ${h}`}
+          preserveAspectRatio="none"
+          className="absolute left-0 top-0 w-full h-full pointer-events-none"
+        >
           <g>
             {(() => {
               const total = digitStats.length;
@@ -271,10 +387,31 @@ export function LiveChart({
                         transform={active ? "rotate(-35)" : undefined}
                       />
                     )}
-                    <text x="0" y="-0.35" fontSize={isCurrent ? "3.4" : "3.1"} fontWeight="850" textAnchor="middle" fill="#ffffff">{s.d}</text>
-                    <text x="0" y="2.65" fontSize="1.55" fontWeight="700" textAnchor="middle" fill="#AAB4C5">{s.pct.toFixed(1)}%</text>
+                    <text
+                      x="0"
+                      y="-0.35"
+                      fontSize={isCurrent ? "3.4" : "3.1"}
+                      fontWeight="850"
+                      textAnchor="middle"
+                      fill="#ffffff"
+                    >
+                      {s.d}
+                    </text>
+                    <text
+                      x="0"
+                      y="2.65"
+                      fontSize="1.55"
+                      fontWeight="700"
+                      textAnchor="middle"
+                      fill="#AAB4C5"
+                    >
+                      {s.pct.toFixed(1)}%
+                    </text>
                     {(isSelected || isCurrent) && (
-                      <path d={`M -0.8 ${r + 1.4} L 0 ${r + 2.15} L 0.8 ${r + 1.4} Z`} fill={active ? "#f59e0b" : strokeColor} />
+                      <path
+                        d={`M -0.8 ${r + 1.4} L 0 ${r + 2.15} L 0.8 ${r + 1.4} Z`}
+                        fill={active ? "#f59e0b" : strokeColor}
+                      />
                     )}
                   </g>
                 );
@@ -289,7 +426,12 @@ export function LiveChart({
         </div>
       )}
       {note && (
-        <div className={"pointer-events-none absolute left-16 top-24 z-20 rounded border px-2 py-1 text-xs font-semibold tabular-nums shadow-lg " + noteBg}>
+        <div
+          className={
+            "pointer-events-none absolute left-16 top-24 z-20 rounded border px-2 py-1 text-xs font-semibold tabular-nums shadow-lg " +
+            noteBg
+          }
+        >
           {note}
         </div>
       )}
@@ -316,7 +458,13 @@ function smoothPriceSeries(values: number[]) {
   });
 }
 
-function buildSmoothPricePath(values: number[], width: number, height: number, min: number, range: number) {
+function buildSmoothPricePath(
+  values: number[],
+  width: number,
+  height: number,
+  min: number,
+  range: number,
+) {
   if (values.length === 0) return "";
   const points = values.map((value, index) => ({
     x: (index / Math.max(values.length - 1, 1)) * width,
@@ -340,14 +488,19 @@ function buildSmoothPricePath(values: number[], width: number, height: number, m
   return path;
 }
 
-function buildLinePath(values: Array<number | null>, width: number, height: number, min: number, range: number) {
-  return values
-    .reduce((acc, value, index) => {
-      if (value === null) return acc;
-      const x = (index / (values.length - 1)) * width;
-      const y = height - ((value - min) / range) * height;
-      return acc + `${acc === "" ? "M" : "L"}${x.toFixed(2)},${y.toFixed(2)}`;
-    }, "");
+function buildLinePath(
+  values: Array<number | null>,
+  width: number,
+  height: number,
+  min: number,
+  range: number,
+) {
+  return values.reduce((acc, value, index) => {
+    if (value === null) return acc;
+    const x = (index / (values.length - 1)) * width;
+    const y = height - ((value - min) / range) * height;
+    return acc + `${acc === "" ? "M" : "L"}${x.toFixed(2)},${y.toFixed(2)}`;
+  }, "");
 }
 
 function buildBandPath(

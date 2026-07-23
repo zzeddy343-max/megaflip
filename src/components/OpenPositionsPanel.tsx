@@ -54,7 +54,9 @@ export function OpenPositionLines({ module, market, livePrice, digits = 2 }: Pro
               </span>
             </div>
             <div
-              className={"absolute left-0 right-0 border-t " + (positive ? "border-bull" : "border-bear")}
+              className={
+                "absolute left-0 right-0 border-t " + (positive ? "border-bull" : "border-bear")
+              }
               style={{ top: y(livePrice) }}
             >
               <span
@@ -90,7 +92,9 @@ export function OpenPositionsPanel({ module, market, livePrice, digits = 2 }: Pr
     setClosing(position.id);
     try {
       const result = await closeAtPrice({ data: { trade_id: position.id, exit_price: livePrice } });
-      toast.success(`Closed ${position.market} ${position.direction} ${money(Number(result.pnl ?? 0))}`);
+      toast.success(
+        `Closed ${position.market} ${position.direction} ${money(Number(result.pnl ?? 0))}`,
+      );
       qc.invalidateQueries({ queryKey: ["profile"] });
       qc.invalidateQueries({ queryKey: ["trades"] });
       qc.invalidateQueries({ queryKey: ["open-positions", module, market] });
@@ -116,17 +120,29 @@ export function OpenPositionsPanel({ module, market, livePrice, digits = 2 }: Pr
             >
               <div className="min-w-0">
                 <div className="text-sm font-bold">
-                  {p.market} <span className={isLong(p.direction) ? "text-bull" : "text-bear"}>{p.direction}</span>
+                  {p.market}{" "}
+                  <span className={isLong(p.direction) ? "text-bull" : "text-bear"}>
+                    {p.direction}
+                  </span>
                 </div>
                 <div className="text-[10px] text-muted-foreground">
                   Entry {entry.toFixed(digits)} - Now {livePrice.toFixed(digits)}
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <div className={"text-right text-sm font-extrabold tabular-nums " + (positive ? "text-bull" : "text-bear")}>
+                <div
+                  className={
+                    "text-right text-sm font-extrabold tabular-nums " +
+                    (positive ? "text-bull" : "text-bear")
+                  }
+                >
                   {money(pnl)}
                 </div>
-                <ChevronDown className={"h-4 w-4 text-muted-foreground transition " + (isOpen ? "rotate-180" : "")} />
+                <ChevronDown
+                  className={
+                    "h-4 w-4 text-muted-foreground transition " + (isOpen ? "rotate-180" : "")
+                  }
+                />
               </div>
             </button>
             {isOpen && (
@@ -177,7 +193,11 @@ function estimatePnl(position: Position, livePrice: number) {
     return ((isLong(position.direction) ? livePrice - entry : entry - livePrice) / pip) * lot * 10;
   }
   const leverage = Number(position.meta?.leverage ?? 1);
-  return ((isLong(position.direction) ? livePrice - entry : entry - livePrice) / entry) * Number(position.stake) * leverage;
+  return (
+    ((isLong(position.direction) ? livePrice - entry : entry - livePrice) / entry) *
+    Number(position.stake) *
+    leverage
+  );
 }
 
 function isLong(direction: string) {
@@ -196,7 +216,9 @@ function metaValue(position: Position, module: "forex" | "crypto") {
 function Info({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div className="text-[9px] uppercase font-bold tracking-wider text-muted-foreground">{label}</div>
+      <div className="text-[9px] uppercase font-bold tracking-wider text-muted-foreground">
+        {label}
+      </div>
       <div className="text-sm font-bold tabular-nums">{value}</div>
     </div>
   );

@@ -23,7 +23,10 @@ export const getCryptoQuote = createServerFn({ method: "GET" })
       const url = `https://api.coingecko.com/api/v3/simple/price?ids=${id}&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true`;
       const res = await fetch(url, { headers: { accept: "application/json" } });
       if (!res.ok) return { ok: false as const, reason: "upstream" as const, status: res.status };
-      const j = (await res.json()) as Record<string, { usd: number; usd_24h_change?: number; usd_24h_vol?: number }>;
+      const j = (await res.json()) as Record<
+        string,
+        { usd: number; usd_24h_change?: number; usd_24h_vol?: number }
+      >;
       const row = j[id];
       if (!row?.usd) return { ok: false as const, reason: "no_data" as const };
       return {
@@ -34,11 +37,18 @@ export const getCryptoQuote = createServerFn({ method: "GET" })
         vol24h: row.usd_24h_vol ?? 0,
       };
     } catch (e) {
-      return { ok: false as const, reason: "error" as const, message: e instanceof Error ? e.message : String(e) };
+      return {
+        ok: false as const,
+        reason: "error" as const,
+        message: e instanceof Error ? e.message : String(e),
+      };
     }
   });
 
-const CandleInput = z.object({ symbol: z.string().min(2).max(8), days: z.number().int().min(1).max(30).default(1) });
+const CandleInput = z.object({
+  symbol: z.string().min(2).max(8),
+  days: z.number().int().min(1).max(30).default(1),
+});
 
 export const getCryptoCandles = createServerFn({ method: "GET" })
   .inputValidator((d: unknown) => CandleInput.parse(d))
@@ -54,6 +64,10 @@ export const getCryptoCandles = createServerFn({ method: "GET" })
       const candles = arr.map(([t, o, h, l, c]) => ({ t: Math.floor(t / 1000), o, h, l, c }));
       return { ok: true as const, symbol: data.symbol.toUpperCase(), candles };
     } catch (e) {
-      return { ok: false as const, reason: "error" as const, message: e instanceof Error ? e.message : String(e) };
+      return {
+        ok: false as const,
+        reason: "error" as const,
+        message: e instanceof Error ? e.message : String(e),
+      };
     }
   });

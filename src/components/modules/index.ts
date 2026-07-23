@@ -6,4 +6,4 @@ export { TickStatistics } from "./TickStatistics";
 export { ExecutionPanel } from "./ExecutionPanel";
 
 // Type exports for consumer components
-export type { } from "./TradingLayout";
+export type {} from "./TradingLayout";

@@ -27,7 +27,10 @@ export function AccountSwitcher() {
     (async () => {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) return;
-      const { data } = await supabase.from("user_roles").select("role").eq("user_id", userData.user.id);
+      const { data } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userData.user.id);
       if (!cancelled) setIsAdmin(!!data?.some((row) => row.role === "admin"));
     })();
     return () => {

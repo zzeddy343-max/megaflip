@@ -1,6 +1,6 @@
 /**
  * QUICK START: Add This to Your Routes
- * 
+ *
  * This is the minimal code needed to display the trading layout.
  * Copy this to create a new route and you'll have a working trading interface.
  */
@@ -78,9 +78,7 @@ function TradingDemoRoute() {
       onTimeIntervalChange={setTimeInterval as any}
       indicators={indicators}
       onIndicatorToggle={(id) =>
-        setIndicators((prev) =>
-          prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
-        )
+        setIndicators((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]))
       }
       tradeType={tradeType as any}
       onTradeTypeChange={setTradeType as any}

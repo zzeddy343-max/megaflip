@@ -10,7 +10,12 @@ import { applyTheme, getInitialTheme, type Theme } from "@/lib/theme";
 import { AccountSwitcher } from "@/components/AccountSwitcher";
 import { LOGO_URL } from "@/lib/brand";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 
 interface TradeHeaderProps {
   assetSymbol?: string;
@@ -23,7 +28,7 @@ export function TradeHeader({
   assetSymbol = "Vol 75",
   currentPrice = 9554.32,
   priceChange = 0.14,
-  accountBalance = 5000.00,
+  accountBalance = 5000.0,
 }: TradeHeaderProps) {
   const fetchProfile = useServerFn(getMyProfile);
   const { data: profile } = useQuery({
@@ -62,7 +67,10 @@ export function TradeHeader({
         <div className="flex items-center gap-4">
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
-              <button className="h-9 w-9 grid place-items-center rounded-lg hover:bg-surface border border-border transition-colors" aria-label="Menu">
+              <button
+                className="h-9 w-9 grid place-items-center rounded-lg hover:bg-surface border border-border transition-colors"
+                aria-label="Menu"
+              >
                 <Menu className="h-4 w-4" />
               </button>
             </SheetTrigger>
@@ -112,7 +120,8 @@ export function TradeHeader({
             <div className="text-right">
               <div className="text-sm font-bold text-foreground">{currentPrice.toFixed(2)}</div>
               <div className={`text-xs font-semibold ${isPositive ? "text-bull" : "text-bear"}`}>
-                {isPositive ? "+" : ""}{priceChangePercent}%
+                {isPositive ? "+" : ""}
+                {priceChangePercent}%
               </div>
             </div>
           </div>
@@ -147,15 +156,23 @@ export function TradeHeader({
             <DropdownMenuTrigger asChild>
               <button className="h-9 px-3 flex items-center gap-2 rounded-lg hover:bg-surface border border-border transition-colors">
                 <div className="hidden sm:block text-right">
-                  <div className="text-xs font-semibold text-foreground">{profile?.user?.email?.split("@")[0] || "User"}</div>
-                  <div className="text-xs text-muted-foreground">{profile?.account_type || "Demo"}</div>
+                  <div className="text-xs font-semibold text-foreground">
+                    {profile?.user?.email?.split("@")[0] || "User"}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {profile?.account_type || "Demo"}
+                  </div>
                 </div>
                 <ChevronDown className="h-4 w-4 text-muted-foreground" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={() => navigate({ to: "/profile" })}>Profile Settings</DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => navigate({ to: "/wallet" })}>Wallet</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => navigate({ to: "/profile" })}>
+                Profile Settings
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => navigate({ to: "/wallet" })}>
+                Wallet
+              </DropdownMenuItem>
               <DropdownMenuItem onSelect={signOut}>
                 <LogOut className="h-4 w-4 mr-2" />
                 Sign out

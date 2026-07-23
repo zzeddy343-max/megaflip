@@ -8,7 +8,7 @@ Prices:     [100, 101, 102, 103, 104, 105, 106, 107, 108, 109]
 
 SMA-5:      [null, null, null, null, 102, 103, 104, 105, 106, 107]
             ├─── Warmup (not displayed) ──┤├─ Displayed ─┤
-            
+
 CHART:      ├────────── Empty ──────────┤├─ SMA starts ─┤
             0%        (bad!)            50%             100%
 ```
@@ -41,6 +41,7 @@ CHART:      ├──────── SMA visible ─────────�
 ## How It Works
 
 ### Step 1: Calculate Indicator Normally
+
 ```javascript
 const smaRaw = computeSMA(prices, 20);
 // Result: [null, null, null, ..., null, 100.5, 100.6, 100.7]
@@ -48,6 +49,7 @@ const smaRaw = computeSMA(prices, 20);
 ```
 
 ### Step 2: Forward-Fill with First Valid Value
+
 ```javascript
 const smaAligned = alignIndicatorWithPrices(smaRaw, prices);
 // Result: [100.5, 100.5, 100.5, ..., 100.5, 100.6, 100.7]
@@ -55,6 +57,7 @@ const smaAligned = alignIndicatorWithPrices(smaRaw, prices);
 ```
 
 ### Step 3: Render Full Width
+
 ```javascript
 const path = buildIndicatorPath(smaAligned, width, height, min, range);
 // SVG path spans from x=0 to x=width with no gaps
@@ -65,6 +68,7 @@ const path = buildIndicatorPath(smaAligned, width, height, min, range);
 ## Example: 5-Period SMA
 
 ### Raw Data (What computeSMA Returns)
+
 ```
 Price:     [100, 101, 102, 103, 104]
 SMA-5:     [null, null, null, null, 102]
@@ -72,6 +76,7 @@ SMA-5:     [null, null, null, null, 102]
 ```
 
 ### Aligned Data (What Gets Rendered)
+
 ```
 Price:     [100, 101, 102, 103, 104]
 Aligned:   [102, 102, 102, 102, 102]
@@ -80,6 +85,7 @@ Aligned:   [102, 102, 102, 102, 102]
 ```
 
 ### Visual on Chart
+
 ```
 Line:   ●─────●
          \     \
@@ -94,19 +100,20 @@ SMA:        ●─────●─────●
 
 ## All Indicators Aligned
 
-| Indicator | Warmup Period | After Alignment |
-|-----------|---|---|
-| SMA-20 | [null × 19, ...] | [100.5, 100.5, ..., 100.5, ...] |
-| EMA-20 | [null × 19, ...] | [101.2, 101.2, ..., 101.2, ...] |
-| RSI-14 | [null × 14, ...] | [50.0, 50.0, ..., 50.0, ...] |
-| Bollinger-20 | [null × 19, ...] | [forward-filled bands] |
-| MACD-26 | [null × 25, ...] | [forward-filled MACD] |
+| Indicator    | Warmup Period    | After Alignment                 |
+| ------------ | ---------------- | ------------------------------- |
+| SMA-20       | [null × 19, ...] | [100.5, 100.5, ..., 100.5, ...] |
+| EMA-20       | [null × 19, ...] | [101.2, 101.2, ..., 101.2, ...] |
+| RSI-14       | [null × 14, ...] | [50.0, 50.0, ..., 50.0, ...]    |
+| Bollinger-20 | [null × 19, ...] | [forward-filled bands]          |
+| MACD-26      | [null × 25, ...] | [forward-filled MACD]           |
 
 ---
 
 ## Chart Rendering
 
 ### Before (Misaligned)
+
 ```
         Line Graph
         ╱╲╱╲╱╲╱╲╱╲  ← Visible
@@ -120,6 +127,7 @@ Chart   │░░░░░░░░░│  ← Empty (no SMA)
 ```
 
 ### After (Aligned)
+
 ```
         Line Graph + SMA
         ╱╲╱╲╱╲╱╲╱╲  ← Both visible
@@ -136,6 +144,7 @@ Chart   │────────│  ← SMA line fully visible
 ## Code Examples
 
 ### Example 1: Basic Alignment
+
 ```typescript
 import { computeSMA, alignIndicatorWithPrices } from '@/lib/indicator-engine';
 
@@ -147,10 +156,11 @@ const smaAligned = alignIndicatorWithPrices(smaRaw, prices);
 ```
 
 ### Example 2: All Indicators at Once
-```typescript
-import { prepareIndicatorsForRendering } from '@/lib/indicator-engine';
 
-const indicators = prepareIndicatorsForRendering(prices, ['SMA', 'EMA', 'RSI']);
+```typescript
+import { prepareIndicatorsForRendering } from "@/lib/indicator-engine";
+
+const indicators = prepareIndicatorsForRendering(prices, ["SMA", "EMA", "RSI"]);
 // Returns:
 // {
 //   SMA: [102.5, 102.5, ..., 102.6, 102.7],  // Aligned
@@ -160,6 +170,7 @@ const indicators = prepareIndicatorsForRendering(prices, ['SMA', 'EMA', 'RSI']);
 ```
 
 ### Example 3: In React Component
+
 ```typescript
 function MyChart() {
   const { prices, indicators } = useTickChart({
@@ -170,7 +181,7 @@ function MyChart() {
 
   // The hook already handles alignment internally
   // indicators.sma is already aligned and spans full chart
-  
+
   return (
     <TickBasedLiveChart
       getNextPrice={getNextPrice}
@@ -186,6 +197,7 @@ function MyChart() {
 ## Technical Details
 
 ### Why Forward-Fill?
+
 Trading platforms (TradingView, MetaTrader, Deriv) all do this because:
 
 1. **Visual clarity** - Indicator visible from chart start
@@ -194,12 +206,15 @@ Trading platforms (TradingView, MetaTrader, Deriv) all do this because:
 4. **User expectation** - Users expect indicators to span entire chart
 
 ### Warmup Period Still Exists
+
 The calculations are still mathematically correct:
+
 - SMA needs 20 previous prices before first valid calculation
 - This warmup period is preserved in the math
 - We just "fill backward" the first valid value for display
 
 ### No Data Loss
+
 - Original calculations unchanged
 - Only the display representation is modified
 - All historical calculations remain accurate
@@ -230,7 +245,8 @@ testIndicators.testChartPathAlignment();
 **Before**: Indicators appeared in middle of chart (confusing)
 **After**: Indicators span entire chart from start (professional)
 
-**Implementation**: 
+**Implementation**:
+
 - Calculate indicator normally → gets nulls for warmup
 - Forward-fill first valid value → no more nulls
 - Render full width → indicator visible from start
