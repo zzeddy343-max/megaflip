@@ -27,6 +27,10 @@ type TradeCloseResult = {
   status?: string;
 };
 
+function isTradeStatusCompletedEnumError(message: string) {
+  return /invalid input value/i.test(message) && /trade_status/i.test(message) && /completed/i.test(message);
+}
+
 const PlaceTradeInput = z.object({
   module: z.enum(["forex", "binary", "aviator", "predict", "crypto"]),
   market: z.string().min(1).max(64),
@@ -101,7 +105,7 @@ export const settleTrade = createServerFn({ method: "POST" })
         error,
       });
       const message = error.message ?? String(error);
-      if (/invalid input value for enum trade_status: "completed"/i.test(message)) {
+      if (isTradeStatusCompletedEnumError(message)) {
         const fallback = await settleTradeWithAdminFallback(
           context.userId,
           data.trade_id,
@@ -855,7 +859,7 @@ export const cancelTrade = createServerFn({ method: "POST" })
     );
     if (error) {
       const message = error.message ?? String(error);
-      if (/invalid input value for enum trade_status: "completed"|Trade not found/i.test(message)) {
+      if (isTradeStatusCompletedEnumError(message) || /Trade not found/i.test(message)) {
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const cancelled = await cancelOpenTradeWithRefund(
           supabaseAdmin,
