@@ -52,6 +52,7 @@ type PendingTrade = {
   settlesAt: number;
   entryTickIndex: number;
   exitTickIndex: number;
+  entryPrice: number;
   digitTarget: number | null;
   contractType: ContractType;
   direction: Direction;
@@ -226,7 +227,7 @@ export function BinaryPanel() {
         const won = contractWon(
           pendingTrade.contractType,
           pendingTrade.direction,
-          currentPrice,
+          pendingTrade.entryPrice,
           exitPrice,
           pendingTrade.digitTarget,
           spec.decimals,
@@ -253,7 +254,7 @@ export function BinaryPanel() {
       }
     }, wait);
     return () => clearTimeout(t);
-  }, [pendingTrade, settleFn, qc, spec.decimals, currentPrice, marketId, spec.intervalMs]);
+  }, [pendingTrade, settleFn, qc, spec.decimals, marketId, spec.intervalMs]);
 
   // Fade the last-outcome glow after 4s
   useEffect(() => {
@@ -270,6 +271,10 @@ export function BinaryPanel() {
 
   async function handlePlace(dir: Direction) {
     if (placing || pendingTrade) return;
+    if (openTrades.length > 0) {
+      toast.error("You already have one open binary contract. Wait for it to settle first.");
+      return;
+    }
     if (stakeCents < 35) { toast.error("Minimum stake is $0.35"); return; }
     setPlacing(true);
     setDirection(dir);
@@ -302,6 +307,7 @@ export function BinaryPanel() {
         settlesAt: exitTickIndex * spec.intervalMs,
         entryTickIndex,
         exitTickIndex,
+        entryPrice: currentPrice,
         digitTarget: contract.needsDigit ? digit : null,
         contractType,
         direction: dir,

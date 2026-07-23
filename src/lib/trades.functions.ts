@@ -100,6 +100,17 @@ export const settleTrade = createServerFn({ method: "POST" })
         won: data.won,
         error,
       });
+      const message = error.message ?? String(error);
+      if (/invalid input value for enum trade_status: "completed"/i.test(message)) {
+        const fallback = await settleTradeWithAdminFallback(
+          context.userId,
+          data.trade_id,
+          data.won,
+          data.exit_price ?? null,
+          data.multiplier ?? null,
+        );
+        return fallback;
+      }
       throw new Error(`Could not settle trade ${data.trade_id}: ${error.message ?? String(error)}`);
     }
     const payout = Number((result as { payout?: number | null } | null)?.payout ?? 0);
@@ -239,7 +250,11 @@ export const listMyTransactions = createServerFn({ method: "GET" })
 
 export const settleDueTrades = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async () => ({ settled: 0 }));
+  .handler(async ({ context }) => {
+    const supabase = context.supabase as unknown as RpcClient & { from: (table: string) => any };
+    const released = await cancelStaleBinaryTrades(supabase, context.userId);
+    return { settled: released, released };
+  });
 
 async function enforceTradeRiskRules(
   supabase: any,
@@ -273,15 +288,13 @@ async function enforceTradeRiskRules(
 
   if (input.module === "binary") {
     await cancelStaleBinaryTrades(supabase, userId);
-    const liveBinarySince = new Date(Date.now() - 60_000).toISOString();
     const { count: openBinaryCount } = await supabase
       .from("trades")
       .select("id", { count: "exact", head: true })
       .eq("user_id", userId)
       .eq("account_type", accountType)
       .eq("module", "binary")
-      .eq("status", "open")
-      .gte("created_at", liveBinarySince);
+      .eq("status", "open");
     if ((openBinaryCount ?? 0) > 0) {
       throw new Error("You already have one open binary contract. Wait for it to settle first.");
     }
@@ -424,6 +437,45 @@ async function cancelStaleBinaryTrades(supabase: any, userId: string, accountTyp
       });
     }
   }
+  released += await cancelDuplicateOpenBinaryTrades(supabaseAdmin, userId, accountType);
+  return released;
+}
+
+async function cancelDuplicateOpenBinaryTrades(
+  supabaseAdmin: any,
+  userId: string,
+  accountType?: string,
+) {
+  let query = supabaseAdmin
+    .from("trades")
+    .select("id,account_type,created_at")
+    .eq("user_id", userId)
+    .eq("module", "binary")
+    .eq("status", "open")
+    .order("created_at", { ascending: false });
+
+  if (accountType) query = query.eq("account_type", accountType);
+
+  const { data: openTrades, error } = await query;
+  if (error) throw new Error(error.message);
+
+  const seenAccounts = new Set<string>();
+  let released = 0;
+  for (const trade of openTrades ?? []) {
+    const account = trade.account_type === "demo" ? "demo" : "real";
+    if (!seenAccounts.has(account)) {
+      seenAccounts.add(account);
+      continue;
+    }
+
+    const cancelled = await cancelOpenTradeWithRefund(
+      supabaseAdmin,
+      userId,
+      trade.id,
+      "duplicate_binary_open_guard",
+    );
+    if (cancelled) released += 1;
+  }
   return released;
 }
 
@@ -459,7 +511,7 @@ async function cancelOpenTradeWithRefund(
   if (error) throw new Error(error.message ?? String(error));
   if (!cancelled) return null;
 
-  await refundCancelledStake(supabaseAdmin, userId, cancelled);
+  await refundCancelledStake(supabaseAdmin, userId, cancelled, reason);
   return cancelled;
 }
 
@@ -467,6 +519,7 @@ async function refundCancelledStake(
   supabaseAdmin: any,
   userId: string,
   trade: { id: string; stake?: number | string | null; account_type?: string | null },
+  reason: string,
 ) {
   const stake = Number(trade.stake ?? 0);
   const accountType = trade.account_type === "demo" ? "demo" : "real";
@@ -498,9 +551,94 @@ async function refundCancelledStake(
     amount_usd: stake,
     status: "completed",
     is_virtual: accountType === "demo",
-    meta: { trade_id: trade.id, reason: "stale_binary_timeout" },
+    meta: { trade_id: trade.id, reason },
   });
   if (txError) throw new Error(txError.message);
+}
+
+async function settleTradeWithAdminFallback(
+  userId: string,
+  tradeId: string,
+  won: boolean,
+  exitPrice: number | null,
+  multiplier: number | null,
+) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: trade, error: tradeError } = await supabaseAdmin
+    .from("trades")
+    .select("id,user_id,stake,payout,account_type,status")
+    .eq("id", tradeId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (tradeError) throw new Error(`Could not load trade for fallback settlement: ${tradeError.message}`);
+  if (!trade) throw new Error(`Could not settle trade ${tradeId}: trade not found`);
+  if (trade.status !== "open") {
+    return {
+      ok: true,
+      payout: Number(trade.payout ?? 0),
+      status: trade.status,
+      exit_price: exitPrice,
+    };
+  }
+
+  const stake = Number(trade.stake ?? 0);
+  const payout = won ? Number((stake * Number(multiplier ?? 1.95)).toFixed(2)) : 0;
+  const closedAt = new Date().toISOString();
+  const nextStatus = won ? "won" : "lost";
+
+  const { error: updateError } = await supabaseAdmin
+    .from("trades")
+    .update({
+      status: nextStatus,
+      payout,
+      exit_price: exitPrice,
+      closed_at: closedAt,
+    } as Record<string, unknown>)
+    .eq("id", trade.id)
+    .eq("user_id", userId)
+    .eq("status", "open");
+  if (updateError) throw new Error(`Could not settle trade with fallback: ${updateError.message}`);
+
+  if (payout > 0) {
+    const accountType = trade.account_type === "demo" ? "demo" : "real";
+    const balanceField = accountType === "demo" ? "demo_balance_usd" : "balance_usd";
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .select(balanceField)
+      .eq("id", userId)
+      .single();
+    if (profileError) throw new Error(`Could not load wallet for fallback payout: ${profileError.message}`);
+
+    const { error: balanceError } = await supabaseAdmin
+      .from("profiles")
+      .update({ [balanceField]: Number(profile?.[balanceField] ?? 0) + payout } as Record<
+        string,
+        unknown
+      >)
+      .eq("id", userId);
+    if (balanceError) throw new Error(`Could not credit fallback payout: ${balanceError.message}`);
+
+    const { error: txError } = await supabaseAdmin.from("transactions").insert({
+      user_id: userId,
+      kind: "trade_payout",
+      method: "system",
+      account_type: accountType,
+      amount: payout,
+      currency: "USD",
+      amount_usd: payout,
+      status: "completed",
+      is_virtual: accountType === "demo",
+      meta: { trade_id: trade.id, reason: "settle_trade_fallback" },
+    });
+    if (txError) throw new Error(`Could not write fallback payout transaction: ${txError.message}`);
+  }
+
+  return {
+    ok: true,
+    payout,
+    status: nextStatus,
+    exit_price: exitPrice,
+  };
 }
 
 async function getUserSegmentStats(supabase: any, userId: string, accountType: string) {

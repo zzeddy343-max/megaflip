@@ -1,7 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { ArrowLeft } from "lucide-react";
 import {
   listMyTrades,
   listMyTransactions,
@@ -29,6 +30,7 @@ type Tab = "open" | "closed" | "transactions";
 function Positions() {
   const [tab, setTab] = useState<Tab>("open");
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const fetchTrades = useServerFn(listMyTrades);
   const fetchTxns = useServerFn(listMyTransactions);
   const releaseStale = useServerFn(releaseStaleBinaryTrades);
@@ -63,7 +65,20 @@ function Positions() {
 
   return (
     <div>
-      <h1 className="mb-6 font-display text-2xl font-semibold">Positions</h1>
+      <div className="mb-6 flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => {
+            if (window.history.length > 1) window.history.back();
+            else navigate({ to: "/binary" });
+          }}
+          className="grid h-10 w-10 place-items-center rounded-full border border-border bg-surface text-foreground transition hover:border-primary/60 hover:text-primary lg:hidden"
+          aria-label="Go back"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </button>
+        <h1 className="font-display text-2xl font-semibold">Positions</h1>
+      </div>
 
       <div className="mb-4 inline-flex rounded-lg border border-border bg-surface p-1">
         <TabBtn active={tab === "open"} onClick={() => setTab("open")}>Open ({open.length})</TabBtn>
@@ -113,7 +128,7 @@ function Empty({ children }: { children: React.ReactNode }) {
 
 function TradeList({ list }: { list: any[] }) {
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 overflow-x-auto">
       {list.map((t) => {
         const spec = MARKETS[t.market as MarketId];
         const pnl = t.status === "won" ? t.payout_cents - t.stake_cents
@@ -124,7 +139,7 @@ function TradeList({ list }: { list: any[] }) {
                     : t.status === "open" ? "text-primary"
                     : "text-muted-foreground";
         return (
-          <div key={t.id} className="grid grid-cols-2 gap-3 rounded-xl border border-border bg-surface p-4 sm:grid-cols-5">
+          <div key={t.id} className="grid min-w-[760px] grid-cols-5 gap-3 rounded-xl border border-border bg-surface p-4">
             <div>
               <div className="text-xs text-muted-foreground">Market</div>
               <div className="font-medium">{spec?.label ?? t.market}</div>
@@ -160,8 +175,8 @@ function TradeList({ list }: { list: any[] }) {
 
 function TxnList({ list }: { list: any[] }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-surface">
-      <table className="w-full text-sm">
+    <div className="overflow-x-auto rounded-xl border border-border bg-surface">
+      <table className="min-w-[720px] w-full text-sm">
         <thead className="bg-surface-2 text-xs uppercase tracking-wider text-muted-foreground">
           <tr>
             <th className="px-4 py-2 text-left">Time</th>

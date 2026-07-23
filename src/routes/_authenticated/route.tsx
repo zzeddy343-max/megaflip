@@ -1,12 +1,13 @@
 import { createFileRoute, Outlet, redirect, useLocation } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { AppHeader } from "@/components/AppHeader";
 import { BottomNav } from "@/components/BottomNav";
 import { DebugConsole } from "@/components/DebugConsole";
 import { getAdminSupportUnreadCount } from "@/lib/support.functions";
+import { releaseStaleBinaryTrades } from "@/lib/trades.functions";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated")({
@@ -50,11 +51,13 @@ export const Route = createFileRoute("/_authenticated")({
 });
 
 function AuthedLayout() {
+  const qc = useQueryClient();
   const [isAdmin, setIsAdmin] = useState(false);
   const [lastUnread, setLastUnread] = useState(0);
   const [isFullWidth, setIsFullWidth] = useState(false);
   const location = useLocation();
   const unreadSupport = useServerFn(getAdminSupportUnreadCount);
+  const releaseStale = useServerFn(releaseStaleBinaryTrades);
 
   useEffect(() => {
     let cancelled = false;
@@ -83,6 +86,29 @@ function AuthedLayout() {
       toast.info(`Support has ${count} unread user message${count === 1 ? "" : "s"}`);
     setLastUnread(count);
   }, [isAdmin, lastUnread, supportUnread?.count]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function releaseExpiredBinaryTrades() {
+      try {
+        const result = await releaseStale();
+        if (cancelled || !result?.released) return;
+        qc.invalidateQueries({ queryKey: ["wallet"] });
+        qc.invalidateQueries({ queryKey: ["my-trades"] });
+        qc.invalidateQueries({ queryKey: ["my-txns"] });
+      } catch {
+        // Stale trade cleanup is best-effort; placing a trade also runs the same guard.
+      }
+    }
+
+    releaseExpiredBinaryTrades();
+    const id = window.setInterval(releaseExpiredBinaryTrades, 5000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [releaseStale, qc]);
 
   const isAdminConsole = location.pathname === "/admin" || location.pathname.startsWith("/admin/");
   const isPositionsPage =
