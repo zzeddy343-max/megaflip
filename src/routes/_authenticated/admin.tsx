@@ -347,7 +347,7 @@ function SettingsTab() {
   const [userLiability, setUserLiability] = useState("2000");
   const [fraudSectionEnabled, setFraudSectionEnabled] = useState(true);
   const [fraudEnabled, setFraudEnabled] = useState(true);
-  const [fraudRules, setFraudRules] = useState("bot,arbitrage");
+  const [fraudRules, setFraudRules] = useState("");
   const [engagementEnabled, setEngagementEnabled] = useState(true);
   const [engagementTriggers, setEngagementTriggers] = useState("trade,withdrawal");
   const [capsEnabled, setCapsEnabled] = useState(true);
@@ -374,7 +374,9 @@ function SettingsTab() {
     setUserLiability(String(Number(settings.liability_limits_user_usd ?? 2000)));
     setFraudSectionEnabled(true);
     setFraudEnabled(Boolean(settings.fraud_detection_enabled ?? true));
-    setFraudRules(String(settings.fraud_detection_rules ?? "bot,arbitrage"));
+    setFraudRules(
+      String(settings.fraud_detection_rules ?? DEFAULT_SYSTEM_SETTINGS.fraud_detection_rules),
+    );
     setEngagementEnabled(true);
     setEngagementTriggers(String(settings.engagement_notification_triggers ?? "trade,withdrawal"));
     setCapsEnabled(true);

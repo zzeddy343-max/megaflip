@@ -35,8 +35,8 @@ export const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
   user_segmentation_tags: "VIP,HIGH ROLLER",
   liability_limits_market_usd: 5000,
   liability_limits_user_usd: 2000,
-  fraud_detection_enabled: true,
-  fraud_detection_rules: "bot,arbitrage",
+  fraud_detection_enabled: false,
+  fraud_detection_rules: "",
   engagement_notification_triggers: "trade,withdrawal",
   caps_daily_loss_usd: 10000,
   caps_weekly_loss_usd: 50000,
@@ -216,7 +216,7 @@ export async function writeSystemSettings(
     fraud_detection_enabled: changes.fraud_detection_enabled ?? current.fraud_detection_enabled,
     fraud_detection_rules: normalizeText(
       changes.fraud_detection_rules ?? current.fraud_detection_rules,
-      "bot,arbitrage",
+      "",
     ),
     engagement_notification_triggers: normalizeText(
       changes.engagement_notification_triggers ?? current.engagement_notification_triggers,

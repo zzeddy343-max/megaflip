@@ -1,29 +1,28 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { detectFraudSignals } from "./trades.functions.ts";
+import { shouldControlledBinaryTradeWin } from "./controlled-binary-outcomes.ts";
 
-test("does not flag ordinary market switching as arbitrage", () => {
-  const recentTrades = [
-    { market: "Vol 100", direction: "BUY", created_at: new Date().toISOString() },
-    { market: "Vol 75", direction: "SELL", created_at: new Date().toISOString() },
-    { market: "Vol 50", direction: "BUY", created_at: new Date().toISOString() },
-  ];
+test("controlled binary outcomes produce 8 wins and 2 losses per 10 trades", () => {
+  const results = Array.from({ length: 10 }, (_, index) =>
+    shouldControlledBinaryTradeWin("user-a", "demo", index),
+  );
 
-  assert.deepEqual(detectFraudSignals(recentTrades, "bot,arbitrage"), []);
+  assert.equal(results.filter(Boolean).length, 8);
+  assert.equal(results.filter((won) => !won).length, 2);
 });
 
-test("flags a clear rapid burst of alternating trades", () => {
-  const now = new Date();
-  const recentTrades = [
-    { market: "Vol 100", direction: "BUY", created_at: now.toISOString() },
-    { market: "Vol 75", direction: "SELL", created_at: now.toISOString() },
-    { market: "Vol 50", direction: "BUY", created_at: now.toISOString() },
-    { market: "Vol 25", direction: "SELL", created_at: now.toISOString() },
-    { market: "Vol 10", direction: "BUY", created_at: now.toISOString() },
-  ];
+test("controlled binary outcomes stay at 80 wins per 100 without a constant loss pattern", () => {
+  const results = Array.from({ length: 100 }, (_, index) =>
+    shouldControlledBinaryTradeWin("user-a", "demo", index),
+  );
+  const lossSlotsByBlock = Array.from({ length: 10 }, (_, block) =>
+    results
+      .slice(block * 10, block * 10 + 10)
+      .map((won, slot) => (won ? null : slot))
+      .filter((slot): slot is number => slot != null)
+      .join(","),
+  );
 
-  assert.deepEqual(detectFraudSignals(recentTrades, "bot,arbitrage"), [
-    "rapid trade burst",
-    "arbitrage-like market switching",
-  ]);
+  assert.equal(results.filter(Boolean).length, 80);
+  assert.ok(new Set(lossSlotsByBlock).size > 1);
 });

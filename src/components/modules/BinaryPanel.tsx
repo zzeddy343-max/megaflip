@@ -2,7 +2,16 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { LineChart as RCLineChart, Line, YAxis, CartesianGrid, ResponsiveContainer, ReferenceLine, ComposedChart, Bar } from "recharts";
+import {
+  LineChart as RCLineChart,
+  Line,
+  YAxis,
+  CartesianGrid,
+  ResponsiveContainer,
+  ReferenceLine,
+  ComposedChart,
+  Bar,
+} from "recharts";
 import {
   ChevronDown,
   TrendingUp,
@@ -19,7 +28,6 @@ import {
   StopCircle,
 } from "lucide-react";
 
-
 import { useAccountMode } from "@/hooks/use-account-mode";
 import {
   MARKETS,
@@ -33,7 +41,6 @@ import {
   type ContractType,
   type Direction,
 } from "@/lib/markets";
-
 
 import {
   placeTrade,
@@ -81,7 +88,6 @@ type LoadedAutoBot = {
   ticks: number;
 };
 
-
 export function BinaryPanel() {
   const qc = useQueryClient();
   const chartShellRef = useRef<HTMLDivElement | null>(null);
@@ -110,7 +116,6 @@ export function BinaryPanel() {
   const [autoBot, setAutoBot] = useState<LoadedAutoBot | null>(null);
   const [autoTrading, setAutoTrading] = useState(false);
 
-
   const spec = MARKETS[marketId];
   const contract = contractFor(contractType);
 
@@ -138,7 +143,14 @@ export function BinaryPanel() {
   // Candles derived from the series by grouping ticks. ~40 candles visible.
   const candles = useMemo(() => {
     const groupSize = Math.max(1, Math.floor(visiblePoints / 40));
-    const out: { t: number; o: number; h: number; l: number; c: number; range: [number, number] }[] = [];
+    const out: {
+      t: number;
+      o: number;
+      h: number;
+      l: number;
+      c: number;
+      range: [number, number];
+    }[] = [];
     for (let i = 0; i < series.length; i += groupSize) {
       const slice = series.slice(i, i + groupSize);
       if (!slice.length) continue;
@@ -150,7 +162,6 @@ export function BinaryPanel() {
     }
     return out;
   }, [series, visiblePoints]);
-
 
   // Digit distribution over the last DIGIT_WINDOW ticks
   const digitStats = useMemo(() => {
@@ -181,9 +192,21 @@ export function BinaryPanel() {
 
   const [accountMode] = useAccountMode();
 
-  const { data: wallet } = useQuery({ queryKey: ["wallet"], queryFn: () => walletFn(), refetchInterval: 3000 });
-  const { data: trades } = useQuery({ queryKey: ["my-trades"], queryFn: () => tradesFn(), refetchInterval: 2500 });
-  const { data: txns } = useQuery({ queryKey: ["my-txns"], queryFn: () => txnsFn(), refetchInterval: 4000 });
+  const { data: wallet } = useQuery({
+    queryKey: ["wallet"],
+    queryFn: () => walletFn(),
+    refetchInterval: 3000,
+  });
+  const { data: trades } = useQuery({
+    queryKey: ["my-trades"],
+    queryFn: () => tradesFn(),
+    refetchInterval: 2500,
+  });
+  const { data: txns } = useQuery({
+    queryKey: ["my-txns"],
+    queryFn: () => txnsFn(),
+    refetchInterval: 4000,
+  });
 
   useEffect(() => {
     const loaded = readLoadedAutoBot();
@@ -212,13 +235,21 @@ export function BinaryPanel() {
           qc.invalidateQueries({ queryKey: ["my-txns"] });
           qc.invalidateQueries({ queryKey: ["bots"] });
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }, 2000);
     return () => clearInterval(iv);
   }, [settleDueFn, qc]);
 
-  const openTrades = useMemo(() => (trades ?? []).filter((t: any) => t.status === "open"), [trades]);
-  const closedTrades = useMemo(() => (trades ?? []).filter((t: any) => t.status !== "open"), [trades]);
+  const openTrades = useMemo(
+    () => (trades ?? []).filter((t: any) => t.status === "open"),
+    [trades],
+  );
+  const closedTrades = useMemo(
+    () => (trades ?? []).filter((t: any) => t.status !== "open"),
+    [trades],
+  );
 
   // Session P/L across closed trades of the current session (last hour)
   const sessionPL = useMemo(() => {
@@ -234,7 +265,8 @@ export function BinaryPanel() {
 
   const sessionCount = useMemo(() => {
     const cutoff = Date.now() - 60 * 60 * 1000;
-    let w = 0, l = 0;
+    let w = 0,
+      l = 0;
     for (const t of closedTrades as any[]) {
       const at = new Date(t.settled_at ?? t.opened_at).getTime();
       if (at < cutoff) continue;
@@ -272,9 +304,10 @@ export function BinaryPanel() {
             multiplier: payoutMultiplier(pendingTrade.contractType, pendingTrade.direction),
           },
         });
-        setLastOutcome({ digit: exitDigit, won, at: Date.now() });
+        const serverWon = String(res.status ?? "") === "won" || res.won === true;
+        setLastOutcome({ digit: exitDigit, won: serverWon, at: Date.now() });
         const payoutCents = Math.round(Number(res.payout ?? 0) * 100);
-        if (won) toast.success(`Won +${formatUSD(payoutCents - pendingTrade.stakeCents)}`);
+        if (serverWon) toast.success(`Won +${formatUSD(payoutCents - pendingTrade.stakeCents)}`);
         else toast.error("Trade lost");
       } catch (e) {
         toast.error((e as Error).message);
@@ -332,9 +365,6 @@ export function BinaryPanel() {
   // (Per-tick digit glow removed — only the final settlement flashes green/red;
   // the orange glow persists on the target digit while the contract is open.)
 
-
-
-
   async function handlePlace(
     dir: Direction,
     options: { automated?: boolean; tickCount?: number; source?: string } = {},
@@ -346,7 +376,10 @@ export function BinaryPanel() {
       }
       return;
     }
-    if (stakeCents < 35) { toast.error("Minimum stake is $0.35"); return; }
+    if (stakeCents < 35) {
+      toast.error("Minimum stake is $0.35");
+      return;
+    }
     setPlacing(true);
     setDirection(dir);
     try {
@@ -445,7 +478,9 @@ export function BinaryPanel() {
     qc.invalidateQueries({ queryKey: ["wallet"] });
     qc.invalidateQueries({ queryKey: ["my-trades"] });
     qc.invalidateQueries({ queryKey: ["my-txns"] });
-    toast.success(`Auto trading stopped${cancelled ? ` and ${cancelled} open trade${cancelled === 1 ? "" : "s"} cancelled` : ""}`);
+    toast.success(
+      `Auto trading stopped${cancelled ? ` and ${cancelled} open trade${cancelled === 1 ? "" : "s"} cancelled` : ""}`,
+    );
   }
 
   function zoomIn() {
@@ -480,16 +515,18 @@ export function BinaryPanel() {
   }
 
   const priceValues = series.map((s) => s.p);
-  const min = Math.min(...priceValues), max = Math.max(...priceValues);
+  const min = Math.min(...priceValues),
+    max = Math.max(...priceValues);
   const priceDelta = series.length > 1 ? currentPrice - series[0].p : 0;
   const pctChange = series[0].p ? (priceDelta / series[0].p) * 100 : 0;
   const isUp = priceDelta >= 0;
 
-  const secondsLeft = pendingTrade ? Math.max(0, Math.ceil((pendingTrade.settlesAt - now) / 1000)) : 0;
+  const secondsLeft = pendingTrade
+    ? Math.max(0, Math.ceil((pendingTrade.settlesAt - now) / 1000))
+    : 0;
   // Zoom scale: max zoom in (~60 visible pts) reads 50%, and upscales as more
   // ticks come into view.
   const zoomPercent = Math.round((visiblePoints / 60) * 50);
-
 
   return (
     <div className="flex h-[calc(100dvh-56px)] flex-col overflow-hidden">
@@ -510,18 +547,43 @@ export function BinaryPanel() {
 
         {/* Chart column — mobile: 40vh; desktop: 1fr */}
         <div className="flex h-[40vh] shrink-0 flex-col gap-2 lg:h-auto lg:min-h-0 lg:flex-1 lg:shrink">
-          <div ref={chartShellRef} className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-surface">
-
+          <div
+            ref={chartShellRef}
+            className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border bg-surface"
+          >
             {/* Chart toolbar (left) */}
             <div className="absolute left-3 top-3 z-10 flex flex-col gap-1 rounded-xl border border-border bg-background/80 p-1 backdrop-blur">
-              <ChartTool label="Candles" active={chartType === "candles"} onClick={() => setChartType("candles")}><CandlestickChart className="h-4 w-4" /></ChartTool>
-              <ChartTool label="Line" active={chartType === "line"} onClick={() => setChartType("line")}><LineIcon className="h-4 w-4" /></ChartTool>
-              <ChartTool label="Trend line" active={showReference} onClick={() => setShowReference((v) => !v)}><TrendingUp className="h-4 w-4" /></ChartTool>
-              <ChartTool label="Tick dots" active={showDots} onClick={() => setShowDots((v) => !v)}><BarChart3 className="h-4 w-4" /></ChartTool>
-              <ChartTool label="Guide" active={drawGuide} onClick={() => setDrawGuide((v) => !v)}><Palette className="h-4 w-4" /></ChartTool>
-              <ChartTool label="Save chart" onClick={saveChart}><Download className="h-4 w-4" /></ChartTool>
+              <ChartTool
+                label="Candles"
+                active={chartType === "candles"}
+                onClick={() => setChartType("candles")}
+              >
+                <CandlestickChart className="h-4 w-4" />
+              </ChartTool>
+              <ChartTool
+                label="Line"
+                active={chartType === "line"}
+                onClick={() => setChartType("line")}
+              >
+                <LineIcon className="h-4 w-4" />
+              </ChartTool>
+              <ChartTool
+                label="Trend line"
+                active={showReference}
+                onClick={() => setShowReference((v) => !v)}
+              >
+                <TrendingUp className="h-4 w-4" />
+              </ChartTool>
+              <ChartTool label="Tick dots" active={showDots} onClick={() => setShowDots((v) => !v)}>
+                <BarChart3 className="h-4 w-4" />
+              </ChartTool>
+              <ChartTool label="Guide" active={drawGuide} onClick={() => setDrawGuide((v) => !v)}>
+                <Palette className="h-4 w-4" />
+              </ChartTool>
+              <ChartTool label="Save chart" onClick={saveChart}>
+                <Download className="h-4 w-4" />
+              </ChartTool>
             </div>
-
 
             {/* Market picker */}
             <div className="absolute left-16 top-3 z-10">
@@ -537,7 +599,8 @@ export function BinaryPanel() {
                   <div className="flex items-baseline gap-1.5 font-mono text-xs">
                     <span>{formatPrice(currentPrice, spec.decimals)}</span>
                     <span className={isUp ? "text-bull" : "text-bear"}>
-                      {isUp ? "+" : ""}{formatPrice(priceDelta, spec.decimals)} ({pctChange.toFixed(2)}%)
+                      {isUp ? "+" : ""}
+                      {formatPrice(priceDelta, spec.decimals)} ({pctChange.toFixed(2)}%)
                     </span>
                   </div>
                 </div>
@@ -548,7 +611,10 @@ export function BinaryPanel() {
                   {MARKET_LIST.map((m) => (
                     <button
                       key={m.id}
-                      onClick={() => { setMarketId(m.id); setMarketMenuOpen(false); }}
+                      onClick={() => {
+                        setMarketId(m.id);
+                        setMarketMenuOpen(false);
+                      }}
                       className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-surface ${
                         m.id === marketId ? "bg-surface text-primary" : ""
                       }`}
@@ -581,49 +647,111 @@ export function BinaryPanel() {
                         </feMerge>
                       </filter>
                     </defs>
-                    <CartesianGrid stroke="oklch(0.28 0.02 260)" strokeOpacity={0.25} vertical horizontal />
+                    <CartesianGrid
+                      stroke="oklch(0.28 0.02 260)"
+                      strokeOpacity={0.25}
+                      vertical
+                      horizontal
+                    />
                     <YAxis
                       domain={[min - (max - min) * 0.08, max + (max - min) * 0.08]}
-                      orientation="right" tickLine={false} axisLine={false} width={44}
-                      tick={{ fill: "oklch(0.72 0.02 255)", fontSize: 10, fontFamily: "JetBrains Mono" }}
+                      orientation="right"
+                      tickLine={false}
+                      axisLine={false}
+                      width={44}
+                      tick={{
+                        fill: "oklch(0.72 0.02 255)",
+                        fontSize: 10,
+                        fontFamily: "JetBrains Mono",
+                      }}
                       tickFormatter={(v) => formatPrice(v, spec.decimals)}
                     />
                     {showReference && (
-                      <ReferenceLine y={currentPrice} stroke="oklch(0.95 0 0)" strokeDasharray="3 3" strokeOpacity={0.4}
-                        label={{ value: formatPrice(currentPrice, spec.decimals), position: "right", fill: "oklch(0.95 0 0)", fontSize: 11 }} />
+                      <ReferenceLine
+                        y={currentPrice}
+                        stroke="oklch(0.95 0 0)"
+                        strokeDasharray="3 3"
+                        strokeOpacity={0.4}
+                        label={{
+                          value: formatPrice(currentPrice, spec.decimals),
+                          position: "right",
+                          fill: "oklch(0.95 0 0)",
+                          fontSize: 11,
+                        }}
+                      />
                     )}
                     {drawGuide && (
-                      <ReferenceLine y={(min + max) / 2} stroke="oklch(0.75 0.15 85)" strokeDasharray="6 5" strokeOpacity={0.55} />
+                      <ReferenceLine
+                        y={(min + max) / 2}
+                        stroke="oklch(0.75 0.15 85)"
+                        strokeDasharray="6 5"
+                        strokeOpacity={0.55}
+                      />
                     )}
                     <Line
-                      type="stepAfter" dataKey="p" stroke="oklch(0.97 0 0)" strokeWidth={1.5}
-                      strokeLinecap="round" strokeLinejoin="round"
+                      type="stepAfter"
+                      dataKey="p"
+                      stroke="oklch(0.97 0 0)"
+                      strokeWidth={1.5}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
                       dot={showDots ? { r: 1.4, strokeWidth: 0, fill: "oklch(0.97 0 0)" } : false}
-                      isAnimationActive={false} filter="url(#lineGlow)"
+                      isAnimationActive={false}
+                      filter="url(#lineGlow)"
                     />
                   </RCLineChart>
                 ) : (
                   <ComposedChart data={candles} margin={{ top: 56, right: 48, bottom: 4, left: 0 }}>
-                    <CartesianGrid stroke="oklch(0.28 0.02 260)" strokeOpacity={0.25} vertical horizontal />
+                    <CartesianGrid
+                      stroke="oklch(0.28 0.02 260)"
+                      strokeOpacity={0.25}
+                      vertical
+                      horizontal
+                    />
                     <YAxis
                       domain={[min - (max - min) * 0.08, max + (max - min) * 0.08]}
-                      orientation="right" tickLine={false} axisLine={false} width={44}
-                      tick={{ fill: "oklch(0.72 0.02 255)", fontSize: 10, fontFamily: "JetBrains Mono" }}
+                      orientation="right"
+                      tickLine={false}
+                      axisLine={false}
+                      width={44}
+                      tick={{
+                        fill: "oklch(0.72 0.02 255)",
+                        fontSize: 10,
+                        fontFamily: "JetBrains Mono",
+                      }}
                       tickFormatter={(v) => formatPrice(v, spec.decimals)}
                     />
                     {showReference && (
-                      <ReferenceLine y={currentPrice} stroke="oklch(0.95 0 0)" strokeDasharray="3 3" strokeOpacity={0.4}
-                        label={{ value: formatPrice(currentPrice, spec.decimals), position: "right", fill: "oklch(0.95 0 0)", fontSize: 11 }} />
+                      <ReferenceLine
+                        y={currentPrice}
+                        stroke="oklch(0.95 0 0)"
+                        strokeDasharray="3 3"
+                        strokeOpacity={0.4}
+                        label={{
+                          value: formatPrice(currentPrice, spec.decimals),
+                          position: "right",
+                          fill: "oklch(0.95 0 0)",
+                          fontSize: 11,
+                        }}
+                      />
                     )}
                     {drawGuide && (
-                      <ReferenceLine y={(min + max) / 2} stroke="oklch(0.75 0.15 85)" strokeDasharray="6 5" strokeOpacity={0.55} />
+                      <ReferenceLine
+                        y={(min + max) / 2}
+                        stroke="oklch(0.75 0.15 85)"
+                        strokeDasharray="6 5"
+                        strokeOpacity={0.55}
+                      />
                     )}
-                    <Bar dataKey="range" isAnimationActive={false} shape={(props: any) => <CandleShape {...props} />} />
+                    <Bar
+                      dataKey="range"
+                      isAnimationActive={false}
+                      shape={(props: any) => <CandleShape {...props} />}
+                    />
                   </ComposedChart>
                 )}
               </ResponsiveContainer>
             </div>
-
 
             {/* Digit strip */}
             <DigitStrip
@@ -640,14 +768,25 @@ export function BinaryPanel() {
 
             {/* Zoom controls (always visible) */}
             <div className="absolute bottom-32 left-3 z-10 flex flex-col gap-1 rounded-xl border border-border bg-background/80 p-1 backdrop-blur">
-
-              <button onClick={zoomIn} className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:text-foreground" aria-label="Zoom in">
+              <button
+                onClick={zoomIn}
+                className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:text-foreground"
+                aria-label="Zoom in"
+              >
                 <Plus className="h-3.5 w-3.5" />
               </button>
-              <button onClick={resetZoom} className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:text-foreground" aria-label="Reset chart zoom">
+              <button
+                onClick={resetZoom}
+                className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:text-foreground"
+                aria-label="Reset chart zoom"
+              >
                 <Crosshair className="h-3.5 w-3.5" />
               </button>
-              <button onClick={zoomOut} className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:text-foreground" aria-label="Zoom out">
+              <button
+                onClick={zoomOut}
+                className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:text-foreground"
+                aria-label="Zoom out"
+              >
                 <Minus className="h-3.5 w-3.5" />
               </button>
             </div>
@@ -675,7 +814,8 @@ export function BinaryPanel() {
                     {autoBot.label} / {MARKETS[autoBot.market].label} / {autoBot.direction}
                   </div>
                   <div className="mt-1 font-mono text-[11px] text-muted-foreground">
-                    Auto trades: {((autoBot.ticks * MARKETS[autoBot.market].intervalMs) / 1000).toFixed(1)}s each
+                    Auto trades:{" "}
+                    {((autoBot.ticks * MARKETS[autoBot.market].intervalMs) / 1000).toFixed(1)}s each
                   </div>
                 </div>
                 <button
@@ -692,18 +832,22 @@ export function BinaryPanel() {
 
           {/* Mobile-only pending/last outcome banner */}
           {(pendingTrade || lastOutcome) && (
-            <div className={`mb-2 flex items-center justify-between rounded-lg border px-3 py-2 text-xs lg:hidden ${
-              pendingTrade
-                ? "border-primary/40 bg-primary/10 text-primary"
-                : lastOutcome?.won
-                  ? "border-bull/40 bg-bull/10 text-bull"
-                  : "border-bear/40 bg-bear/10 text-bear"
-            }`}>
+            <div
+              className={`mb-2 flex items-center justify-between rounded-lg border px-3 py-2 text-xs lg:hidden ${
+                pendingTrade
+                  ? "border-primary/40 bg-primary/10 text-primary"
+                  : lastOutcome?.won
+                    ? "border-bull/40 bg-bull/10 text-bull"
+                    : "border-bear/40 bg-bear/10 text-bear"
+              }`}
+            >
               <span className="flex items-center gap-2">
                 <span className="live-dot" />
                 {pendingTrade
                   ? `Contract running · ${secondsLeft}s`
-                  : lastOutcome?.won ? "✓ Won last trade" : "✗ Lost last trade"}
+                  : lastOutcome?.won
+                    ? "✓ Won last trade"
+                    : "✗ Lost last trade"}
               </span>
               <span className="font-mono">
                 {openTrades.length} open · {closedTrades.length} closed
@@ -770,7 +914,9 @@ function readLoadedAutoBot(): LoadedAutoBot | null {
     const fallbackDirection = contract.directions[0].key as Direction;
     const source = data.source === "builder" ? "builder" : "scanner";
     const stake = Math.max(0.35, Number(data.stake ?? 10));
-    const digit = Number.isFinite(Number(data.digit)) ? Math.max(0, Math.min(9, Number(data.digit))) : null;
+    const digit = Number.isFinite(Number(data.digit))
+      ? Math.max(0, Math.min(9, Number(data.digit)))
+      : null;
 
     return {
       source,
@@ -809,7 +955,13 @@ function mapLoadedMarket(value: unknown, volatility: unknown): MarketId {
 
 function mapLoadedContract(value: unknown): ContractType {
   const text = String(value ?? "").toLowerCase();
-  if (text.includes("buy") || text.includes("sell") || text.includes("rise") || text.includes("fall")) return "rise_fall";
+  if (
+    text.includes("buy") ||
+    text.includes("sell") ||
+    text.includes("rise") ||
+    text.includes("fall")
+  )
+    return "rise_fall";
   if (text.includes("over") || text.includes("under")) return "over_under";
   if (text.includes("match") || text.includes("differ")) return "matches_differs";
   return "even_odd";
@@ -817,7 +969,8 @@ function mapLoadedContract(value: unknown): ContractType {
 
 function mapLoadedDirection(value: unknown, contractType: ContractType): Direction {
   const text = String(value ?? "").toLowerCase();
-  if (contractType === "rise_fall") return text.includes("sell") || text.includes("fall") ? "fall" : "rise";
+  if (contractType === "rise_fall")
+    return text.includes("sell") || text.includes("fall") ? "fall" : "rise";
   if (contractType === "over_under") return text.includes("under") ? "under" : "over";
   if (contractType === "matches_differs") return text.includes("differ") ? "differs" : "matches";
   return text.includes("odd") ? "odd" : "even";
@@ -841,7 +994,8 @@ function contractWon(
 ) {
   const exitDigit = lastDigit(exitPrice, decimals);
   const target = digitTarget ?? 0;
-  if (type === "rise_fall") return direction === "rise" ? exitPrice > entryPrice : exitPrice < entryPrice;
+  if (type === "rise_fall")
+    return direction === "rise" ? exitPrice > entryPrice : exitPrice < entryPrice;
   if (type === "even_odd") return direction === "even" ? exitDigit % 2 === 0 : exitDigit % 2 === 1;
   if (type === "over_under") return direction === "over" ? exitDigit > target : exitDigit < target;
   return direction === "matches" ? exitDigit === target : exitDigit !== target;
@@ -854,7 +1008,12 @@ function ChartTool({
   active,
   label,
   onClick,
-}: { children: React.ReactNode; label: string; active?: boolean; onClick?: () => void }) {
+}: {
+  children: React.ReactNode;
+  label: string;
+  active?: boolean;
+  onClick?: () => void;
+}) {
   return (
     <button
       type="button"
@@ -915,9 +1074,7 @@ function DigitStrip({
           //  - The final landed digit switches to green/red because it decides
           //    the result.
           let glow: "bull" | "bear" | "primary" | null = null;
-          const landed = [...tickOutcomes]
-            .reverse()
-            .find((outcome) => outcome.digit === d);
+          const landed = [...tickOutcomes].reverse().find((outcome) => outcome.digit === d);
           if (pending && landed) {
             glow = landed.final ? (landed.won ? "bull" : "bear") : "primary";
           } else if (lastOutcome && lastOutcome.digit === d) {
@@ -926,14 +1083,8 @@ function DigitStrip({
             glow = "primary";
           }
 
-
-
           const pct = digitStats[d];
-          const pctColor = isMax
-            ? "text-bull"
-            : isMin
-              ? "text-bear"
-              : "text-muted-foreground";
+          const pctColor = isMax ? "text-bull" : isMin ? "text-bear" : "text-muted-foreground";
 
           const ringColor =
             glow === "bull"
@@ -999,11 +1150,18 @@ function PositionsPanel({
       <div className="flex-1 overflow-y-auto">
         {list.length === 0 && (
           <div className="flex h-full min-h-[240px] items-center justify-center px-4 py-10 text-center text-sm text-muted-foreground">
-            No {tab === "open" ? "open contracts" : tab === "closed" ? "closed trades" : "transactions"} yet.
+            No{" "}
+            {tab === "open"
+              ? "open contracts"
+              : tab === "closed"
+                ? "closed trades"
+                : "transactions"}{" "}
+            yet.
           </div>
         )}
 
-        {tab !== "txns" && list.map((t: any) => <TradeCard key={t.id} trade={t} decimals={spec.decimals} />)}
+        {tab !== "txns" &&
+          list.map((t: any) => <TradeCard key={t.id} trade={t} decimals={spec.decimals} />)}
         {tab === "txns" && list.map((tx: any) => <TxnRow key={tx.id} txn={tx} />)}
       </div>
 
@@ -1021,7 +1179,8 @@ function PositionsPanel({
         <div className="mt-1 flex items-center justify-between">
           <span className="text-muted-foreground">Session P/L:</span>
           <span className={`font-mono font-semibold ${sessionPL >= 0 ? "text-bull" : "text-bear"}`}>
-            {sessionPL >= 0 ? "+" : ""}{formatUSD(sessionPL)}
+            {sessionPL >= 0 ? "+" : ""}
+            {formatUSD(sessionPL)}
           </span>
         </div>
       </div>
@@ -1029,7 +1188,15 @@ function PositionsPanel({
   );
 }
 
-function TabBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+function TabBtn({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
   return (
     <button
       onClick={onClick}
@@ -1050,14 +1217,17 @@ function TradeCard({ trade, decimals: _decimals }: { trade: any; decimals: numbe
   const open = trade.status === "open";
   const pl = (trade.payout_cents ?? 0) - trade.stake_cents;
   const contract = contractFor(trade.contract_type as ContractType);
-  const dirLabel = contract.directions.find((d) => d.key === trade.direction)?.label ?? trade.direction;
+  const dirLabel =
+    contract.directions.find((d) => d.key === trade.direction)?.label ?? trade.direction;
   const marketLabel = MARKETS[trade.market as MarketId]?.label ?? trade.market;
 
   return (
     <div className="border-b border-border px-3 py-3">
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-start gap-2">
-          <div className={`mt-0.5 grid h-6 w-6 place-items-center rounded-md ${won ? "bg-bull/20 text-bull" : lost ? "bg-bear/20 text-bear" : "bg-primary/20 text-primary"}`}>
+          <div
+            className={`mt-0.5 grid h-6 w-6 place-items-center rounded-md ${won ? "bg-bull/20 text-bull" : lost ? "bg-bear/20 text-bear" : "bg-primary/20 text-primary"}`}
+          >
             <TrendingUp className="h-3.5 w-3.5" />
           </div>
           <div className="min-w-0">
@@ -1065,7 +1235,9 @@ function TradeCard({ trade, decimals: _decimals }: { trade: any; decimals: numbe
             <div className="text-[11px] text-muted-foreground">Index · Tick {trade.ticks}</div>
           </div>
         </div>
-        <span className={`text-xs font-medium ${won ? "text-bull" : lost ? "text-bear" : "text-primary"}`}>
+        <span
+          className={`text-xs font-medium ${won ? "text-bull" : lost ? "text-bear" : "text-primary"}`}
+        >
           ● {dirLabel}
         </span>
       </div>
@@ -1078,10 +1250,28 @@ function TradeCard({ trade, decimals: _decimals }: { trade: any; decimals: numbe
       </div>
 
       <div className="mt-2 grid grid-cols-2 gap-2 text-[11px]">
-        <Stat label="Total profit/loss:" value={<span className={pl > 0 ? "text-bull" : pl < 0 ? "text-bear" : ""}>{pl > 0 ? "+" : ""}{formatUSD(pl)}</span>} />
-        <Stat label="Contract value:" value={<span className={pl > 0 ? "text-bull" : pl < 0 ? "text-bear" : ""}>{formatUSD(trade.payout_cents ?? 0)}</span>} />
+        <Stat
+          label="Total profit/loss:"
+          value={
+            <span className={pl > 0 ? "text-bull" : pl < 0 ? "text-bear" : ""}>
+              {pl > 0 ? "+" : ""}
+              {formatUSD(pl)}
+            </span>
+          }
+        />
+        <Stat
+          label="Contract value:"
+          value={
+            <span className={pl > 0 ? "text-bull" : pl < 0 ? "text-bear" : ""}>
+              {formatUSD(trade.payout_cents ?? 0)}
+            </span>
+          }
+        />
         <Stat label="Stake:" value={formatUSD(trade.stake_cents)} />
-        <Stat label="Potential payout:" value={formatUSD(Math.floor(trade.stake_cents * Number(trade.payout_multiplier)))} />
+        <Stat
+          label="Potential payout:"
+          value={formatUSD(Math.floor(trade.stake_cents * Number(trade.payout_multiplier)))}
+        />
       </div>
     </div>
   );
@@ -1102,7 +1292,14 @@ function TxnRow({ txn }: { txn: any }) {
   const isStake = kind === "trade_stake";
   const color = isStake ? "text-primary" : isNeg ? "text-bear" : "text-bull";
   const iconBg = isStake ? "bg-primary/15" : isNeg ? "bg-bear/15" : "bg-bull/15";
-  const label = kind === "trade_stake" ? "Stake" : kind === "trade_payout" ? "Payout" : kind === "deposit" ? "Deposit" : kind.replace("_", " ");
+  const label =
+    kind === "trade_stake"
+      ? "Stake"
+      : kind === "trade_payout"
+        ? "Payout"
+        : kind === "deposit"
+          ? "Deposit"
+          : kind.replace("_", " ");
 
   return (
     <div className="flex items-start justify-between gap-2 border-b border-border px-3 py-3">
@@ -1113,13 +1310,18 @@ function TxnRow({ txn }: { txn: any }) {
         <div>
           <div className={`text-sm font-semibold ${color}`}>{label}</div>
           <div className="text-[11px] text-muted-foreground">
-            {new Date(txn.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+            {new Date(txn.created_at).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
+            })}
           </div>
         </div>
       </div>
       <div className="text-right">
         <div className={`font-mono text-sm font-bold ${color}`}>
-          {isNeg ? "" : "+"}{formatUSD(txn.amount_cents)}
+          {isNeg ? "" : "+"}
+          {formatUSD(txn.amount_cents)}
         </div>
         <div className="text-[10px] text-muted-foreground">
           Bal: {formatUSD(txn.balance_after_cents)}
@@ -1167,10 +1369,14 @@ function TradeConfig({
           <div className="grid grid-cols-2 gap-1 rounded-lg border border-border bg-background p-1">
             {CONTRACTS.map((c) => {
               const active = c.type === contractType;
-              const short = c.type === "even_odd" ? "Even / Odd"
-                : c.type === "over_under" ? "Over / Under"
-                : c.type === "matches_differs" ? "Matches / Differs"
-                : "Rise / Fall";
+              const short =
+                c.type === "even_odd"
+                  ? "Even / Odd"
+                  : c.type === "over_under"
+                    ? "Over / Under"
+                    : c.type === "matches_differs"
+                      ? "Matches / Differs"
+                      : "Rise / Fall";
               return (
                 <button
                   key={c.type}
@@ -1188,7 +1394,6 @@ function TradeConfig({
           </div>
         </div>
 
-
         {/* Learn about link */}
         <div className="mb-3 flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-2 text-xs text-muted-foreground">
           <Sparkles className="h-3.5 w-3.5 text-primary" />
@@ -1201,15 +1406,37 @@ function TradeConfig({
           <span className="text-muted-foreground">Runs until target hit</span>
         </div>
         <div className="mb-4 grid grid-cols-2 gap-1 rounded-lg border border-border bg-background p-1">
-          <ModeBtn active={mode === "auto"} onClick={() => onMode("auto")}>Auto</ModeBtn>
-          <ModeBtn active={mode === "manual"} onClick={() => onMode("manual")}>Manual</ModeBtn>
+          <ModeBtn active={mode === "auto"} onClick={() => onMode("auto")}>
+            Auto
+          </ModeBtn>
+          <ModeBtn active={mode === "manual"} onClick={() => onMode("manual")}>
+            Manual
+          </ModeBtn>
         </div>
 
         {mode === "auto" && (
           <>
-            <FieldRow icon={Target} label="Target Profit" value={targetProfit} onChange={onTargetProfit} prefix="$" />
-            <FieldRow icon={Target} label="Target Loss" value={targetLoss} onChange={onTargetLoss} prefix="$" />
-            <FieldRow icon={TrendingUp} label="Loss Multiple" value={lossMultiple} onChange={onLossMultiple} prefix="x" />
+            <FieldRow
+              icon={Target}
+              label="Target Profit"
+              value={targetProfit}
+              onChange={onTargetProfit}
+              prefix="$"
+            />
+            <FieldRow
+              icon={Target}
+              label="Target Loss"
+              value={targetLoss}
+              onChange={onTargetLoss}
+              prefix="$"
+            />
+            <FieldRow
+              icon={TrendingUp}
+              label="Loss Multiple"
+              value={lossMultiple}
+              onChange={onLossMultiple}
+              prefix="x"
+            />
           </>
         )}
 
@@ -1220,7 +1447,7 @@ function TradeConfig({
               {contractType_ === "over_under" ? "Barrier digit" : "Target digit"}
             </div>
             <div className="grid grid-cols-10 gap-1">
-              {[0,1,2,3,4,5,6,7,8,9].map((d) => (
+              {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((d) => (
                 <button
                   key={d}
                   onClick={() => onDigit(d)}
@@ -1239,7 +1466,9 @@ function TradeConfig({
 
         {/* Ticks */}
         <div className="mb-3">
-          <div className="mb-1.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Ticks</div>
+          <div className="mb-1.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+            Ticks
+          </div>
           <div className="grid grid-cols-4 gap-1">
             {[1, 2, 5, 10].map((t) => (
               <button
@@ -1259,8 +1488,12 @@ function TradeConfig({
 
         {/* Stake / Payout tabs */}
         <div className="mb-3 grid grid-cols-2 gap-1 rounded-lg border border-border bg-background p-1">
-          <ModeBtn active={stakeMode === "stake"} onClick={() => onStakeMode("stake")}>Stake</ModeBtn>
-          <ModeBtn active={stakeMode === "payout"} onClick={() => onStakeMode("payout")}>Payout</ModeBtn>
+          <ModeBtn active={stakeMode === "stake"} onClick={() => onStakeMode("stake")}>
+            Stake
+          </ModeBtn>
+          <ModeBtn active={stakeMode === "payout"} onClick={() => onStakeMode("payout")}>
+            Payout
+          </ModeBtn>
         </div>
 
         {/* Stake with +/- and AI Scanner */}
@@ -1280,7 +1513,9 @@ function TradeConfig({
               onChange={(e) => onStake(e.target.value)}
               className="w-full rounded-lg border border-border bg-background px-3 py-2 pr-12 text-center font-mono text-sm font-semibold outline-none focus:border-primary"
             />
-            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-muted-foreground">USD</span>
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-muted-foreground">
+              USD
+            </span>
           </div>
           <button
             onClick={() => onStake(String(parseFloat(stake || "0") + 1))}
@@ -1299,7 +1534,9 @@ function TradeConfig({
         </div>
 
         {/* Place buttons — one per direction */}
-        <div className={`grid gap-2 ${contract.directions.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
+        <div
+          className={`grid gap-2 ${contract.directions.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}
+        >
           {contract.directions.map((d: any, i: number) => (
             <button
               key={d.key}
@@ -1334,9 +1571,12 @@ function TradeConfig({
           <span className="text-xs font-medium">{contract.directions[1]?.label ?? "—"}</span>
           <div className="ml-auto flex items-center gap-2">
             <div className="h-1.5 w-16 overflow-hidden rounded-full bg-surface-2">
-              <div className="h-full rounded-full bg-bear" style={{ width: `${Math.min(100, (100/mult)).toFixed(0)}%` }} />
+              <div
+                className="h-full rounded-full bg-bear"
+                style={{ width: `${Math.min(100, 100 / mult).toFixed(0)}%` }}
+              />
             </div>
-            <span className="font-mono text-xs text-bear">{(100/mult).toFixed(2)}%</span>
+            <span className="font-mono text-xs text-bear">{(100 / mult).toFixed(2)}%</span>
           </div>
         </div>
       </div>
@@ -1344,12 +1584,22 @@ function TradeConfig({
   );
 }
 
-function ModeBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+function ModeBtn({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
   return (
     <button
       onClick={onClick}
       className={`rounded-md py-1.5 text-xs font-semibold transition ${
-        active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+        active
+          ? "bg-primary text-primary-foreground"
+          : "text-muted-foreground hover:text-foreground"
       }`}
     >
       {children}
@@ -1377,7 +1627,9 @@ function FieldRow({
         <span className="font-medium">{label}</span>
       </div>
       <div className="relative">
-        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{prefix}</span>
+        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+          {prefix}
+        </span>
         <input
           value={value}
           onChange={(e) => onChange(e.target.value)}
@@ -1410,4 +1662,3 @@ function CandleShape(props: any) {
     </g>
   );
 }
-
