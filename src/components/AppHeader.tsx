@@ -180,6 +180,15 @@ export function AppHeader() {
         <span className="hidden sm:inline text-xs font-extrabold tracking-wider">MEGAFLIP</span>
       </Link>
 
+      <Link
+        to="/wallet"
+        aria-label="Wallet"
+        title="Wallet"
+        className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-border bg-surface text-primary transition-colors hover:bg-primary/10"
+      >
+        <Wallet className="h-5 w-5" />
+      </Link>
+
       <nav className="hidden xl:flex items-center gap-6 text-muted-foreground">
         {desktopNav.map((m) => (
           <Link
