@@ -1,0 +1,22 @@
+<svg width="64" height="64" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="160" height="160" rx="24" fill="#15130C"/>
+  <defs>
+    <linearGradient id="gold" x1="34" y1="24" x2="126" y2="136" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFE19A"/>
+      <stop offset="0.3" stop-color="#B77A20"/>
+      <stop offset="0.55" stop-color="#FFE8A8"/>
+      <stop offset="0.82" stop-color="#A46A18"/>
+      <stop offset="1" stop-color="#E7AC4E"/>
+    </linearGradient>
+    <linearGradient id="dark" x1="80" y1="36" x2="80" y2="123" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#242321"/>
+      <stop offset="1" stop-color="#0B0C0D"/>
+    </linearGradient>
+  </defs>
+  <path d="M80 13L138 43V115L80 151L22 115V43L80 13Z" fill="url(#gold)"/>
+  <path d="M80 21L130 47V110L80 141L30 110V47L80 21Z" fill="#090A0B"/>
+  <path d="M80 28L122 50V106L80 132L38 106V50L80 28Z" fill="url(#dark)" stroke="url(#gold)" stroke-width="2"/>
+  <path d="M43 53H117L107 68H94L86 76H74L66 68H53L43 53Z" fill="url(#gold)" stroke="#201508" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M68 68L80 78L92 68V113L80 121L68 113V68Z" fill="url(#gold)" stroke="#201508" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M50 56H110" stroke="#FFF0BC" stroke-width="2" stroke-linecap="round" opacity="0.8"/>
+</svg>
