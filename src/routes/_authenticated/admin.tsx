@@ -46,6 +46,13 @@ import {
   setAgentWithdrawalsEnabled,
   listClients,
   listWithdrawalApprovalRequests,
+  listAdminDeposits,
+  approveAdminDeposit,
+  rejectAdminDeposit,
+  listAdminWithdrawals,
+  markAdminWithdrawalPaid,
+  rejectAdminWithdrawal,
+  getAccountsReport,
   moderateClientAccount,
   promoteUserRole,
   reconcileSuccessfulB2cCallbacks,
@@ -222,20 +229,95 @@ function AdminPage() {
             <button onClick={() => reconcileMut.mutate()} disabled={reconcileMut.isPending} className="rounded-xl bg-[#bcebf7] px-3 py-2 text-xs font-bold text-[#009fe3]"><RotateCcw className="mr-1 inline h-4 w-4" />{reconcileMut.isPending ? "Checking..." : "Sync paid M-Pesa"}</button>
             <button onClick={() => repairMut.mutate()} disabled={repairMut.isPending} className="rounded-xl bg-[#ffdfe1] px-3 py-2 text-xs font-bold text-[#e32635]"><RotateCcw className="mr-1 inline h-4 w-4" />{repairMut.isPending ? "Checking..." : "Refund stale B2C"}</button>
           </div>
-          {tab === "accounts" && <AccountsReportPanel scope="admin" mode="all_time" />}
+          {tab === "accounts" && <AccountsReportPanel scope="admin" mode="all_time" presentation="dashboard" />}
           {tab === "users" && <UsersTab />}
-          {tab === "deposits" && <AccountsReportPanel scope="admin" mode="all_time" initialView="deposits" />}
+          {tab === "deposits" && <AdminDepositsTab />}
           {tab === "trades" && <TradesTab />}
           {tab === "agents" && <AgentsTab />}
-          {tab === "withdrawals" && <WithdrawalApprovalsTab />}
+          {tab === "withdrawals" && <AdminWithdrawalsTab />}
           {tab === "support" && <SupportPanel adminMode />}
           {tab === "settings" && <SettingsTab />}
-          {tab === "ledger" && <LedgerReconciliationTab />}
+          {tab === "ledger" && <TreasuryDashboard />}
           {tab === "admins" && <HiddenAdminVault page="tools" onPageChange={() => undefined} />}
         </div>
       </main>
     </div>
   );
+}
+
+function TreasuryDashboard() {
+  const report = useServerFn(getAccountsReport);
+  const sync = useServerFn(reconcileSuccessfulB2cCallbacks);
+  const reconcile = useServerFn(runScheduledLedgerReconciliation);
+  const { data } = useQuery({ queryKey: ["treasury-report"], queryFn: () => report({ data: { scope: "admin", mode: "all_time" } }), refetchInterval: 15000 });
+  const syncMut = useMutation({ mutationFn: () => sync(), onSuccess: () => toast.success("Payouts synchronized"), onError: (e) => toast.error(e instanceof Error ? e.message : "Payout sync failed") });
+  const reconcileMut = useMutation({ mutationFn: () => reconcile(), onSuccess: () => toast.success("Treasury reconciliation complete"), onError: (e) => toast.error(e instanceof Error ? e.message : "Reconciliation failed") });
+  const s = data?.summary;
+  const money = (v: unknown) => `KES ${(Number(v ?? 0) * 130).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+  return <div className="space-y-5">
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4"><DashboardCard label="Current treasury balance" value={money(Number(s?.deposits_usd ?? 0) - Number(s?.withdrawals_usd ?? 0) + Number(s?.fees_usd ?? 0))} tone="red" /><DashboardCard label="Locked profit runway" value="No daily drain" tone="green" /><DashboardCard label="Valid-signal liability" value={money(s?.stakes_usd)} tone="red" /><DashboardCard label="Total active clients" value={String(s?.clients ?? 0)} /></div>
+    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]"><div className="overflow-hidden rounded-[28px] border border-[#afdbe3] bg-white/55 shadow-[0_14px_30px_rgba(35,79,92,0.08)]"><div className="border-b border-[#c5e4e8] p-5"><div className="text-lg font-bold">Copy Trade Liability Matrix</div><div className="text-sm text-[#315c72]">Valid-signal payout exposure, house-side capital, and near-term closings</div></div><div className="grid grid-cols-7 gap-3 border-b border-[#c5e4e8] px-5 py-4 text-xs font-bold uppercase text-[#315c72]"><span>Copy trade type</span><span>Open trades</span><span>Valid signals</span><span>Daily locked accrual</span><span>Remaining profit</span><span>Closing payout</span><span>Total risk exposure</span></div><div className="p-12 text-center text-[#315c72]">No open copy-trade liabilities.</div></div><div className="space-y-5"><div className="rounded-[28px] border border-[#afdbe3] bg-white/55 p-5"><div className="text-sm uppercase text-[#315c72]">Liquidity health index</div><div className="mt-3 text-3xl font-bold text-[#00b969]">No outflow</div><div className="mt-5 grid grid-cols-3 gap-2">{[["Inflow", money(s?.deposits_usd)], ["Payouts", money(s?.profit_usd)], ["Withdrawals", money(s?.withdrawals_usd)]].map(([k, v]) => <div key={k} className="rounded-2xl bg-[#e4f6f7] p-3"><div className="text-xs uppercase text-[#315c72]">{k}</div><div className="mt-2 text-sm font-bold">{v}</div></div>)}</div></div><div className="rounded-[28px] border border-[#afdbe3] bg-white/55 p-5"><div className="text-sm uppercase text-[#315c72]">Treasury controls</div><div className="mt-4 grid gap-3"><button onClick={() => syncMut.mutate()} disabled={syncMut.isPending} className="rounded-xl bg-[#bcebf7] px-4 py-3 font-semibold text-[#009fe3]">{syncMut.isPending ? "Syncing payouts…" : "Sync paid payouts"}</button><button onClick={() => reconcileMut.mutate()} disabled={reconcileMut.isPending} className="rounded-xl bg-[#b9f0df] px-4 py-3 font-semibold text-[#00a968]">{reconcileMut.isPending ? "Reconciling…" : "Run reconciliation"}</button></div></div></div></div>
+  </div>;
+}
+
+function AdminTableShell({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="overflow-hidden rounded-[28px] border border-[#afdbe3] bg-white/55 shadow-[0_14px_30px_rgba(35,79,92,0.08)]">
+      <div className="grid grid-cols-[minmax(230px,2fr)_minmax(120px,1fr)_minmax(120px,1fr)_minmax(140px,1fr)_minmax(220px,1.3fr)] gap-4 border-b border-[#c5e4e8] bg-white/35 px-5 py-4 text-sm font-bold uppercase tracking-wide text-[#315c72]">
+        {title === "Deposits" ? <><span>User</span><span>Amount</span><span>Receipt</span><span>Status</span><span>Actions</span></> : <><span>User</span><span>Requested</span><span>Fee</span><span>Payout</span><span>Phone · Status · Actions</span></>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function AdminDepositsTab() {
+  const list = useServerFn(listAdminDeposits);
+  const approve = useServerFn(approveAdminDeposit);
+  const reject = useServerFn(rejectAdminDeposit);
+  const qc = useQueryClient();
+  const { data: rows = [], isLoading } = useQuery({ queryKey: ["admin-deposits"], queryFn: () => list(), refetchInterval: 10000 });
+  const approveMut = useMutation({ mutationFn: (id: string) => approve({ data: { transaction_id: id } }), onSuccess: () => { toast.success("Deposit approved"); qc.invalidateQueries({ queryKey: ["admin-deposits"] }); qc.invalidateQueries({ queryKey: ["accounts-report"] }); }, onError: (e) => toast.error(e instanceof Error ? e.message : "Deposit approval failed") });
+  const rejectMut = useMutation({ mutationFn: (id: string) => reject({ data: { transaction_id: id } }), onSuccess: () => { toast.success("Deposit rejected"); qc.invalidateQueries({ queryKey: ["admin-deposits"] }); }, onError: (e) => toast.error(e instanceof Error ? e.message : "Deposit rejection failed") });
+  return (
+    <div className="space-y-5">
+      <AdminTableShell title="Deposits">
+        {isLoading && <div className="p-8 text-center text-[#315c72]">Loading deposits…</div>}
+        {!isLoading && rows.length === 0 && <div className="p-8 text-center text-[#315c72]">No deposits found.</div>}
+        {rows.map((row) => {
+          const pending = !["completed", "success", "successful"].includes(String(row.status).toLowerCase());
+          return <div key={row.id} className="grid grid-cols-[minmax(230px,2fr)_minmax(120px,1fr)_minmax(120px,1fr)_minmax(140px,1fr)_minmax(220px,1.3fr)] items-center gap-4 border-b border-[#c5e4e8] px-5 py-4 last:border-0">
+            <div><div className="font-semibold">{row.user_name}</div><div className="text-sm text-[#315c72]">{row.phone ?? row.user_id} · {new Date(row.created_at).toLocaleString()}</div></div>
+            <div className="font-medium">KES {Number(row.amount ?? 0).toLocaleString()}</div><div className="text-[#315c72]">{row.meta?.receipt ?? "—"}</div>
+            <StatusPill status={pending ? "Pending" : "Success"} />
+            <div className="flex gap-2">{pending ? <><button onClick={() => approveMut.mutate(row.id)} disabled={approveMut.isPending || rejectMut.isPending} className="rounded-full bg-[#b9f0df] px-4 py-2 text-sm font-semibold text-[#00a968]">Approve</button><button onClick={() => rejectMut.mutate(row.id)} disabled={approveMut.isPending || rejectMut.isPending} className="rounded-full bg-[#f8d9dc] px-4 py-2 text-sm font-semibold text-[#e52e3b]">Reject</button></> : <span className="text-sm text-[#315c72]">Completed</span>}</div>
+          </div>;
+        })}
+      </AdminTableShell>
+    </div>
+  );
+}
+
+function AdminWithdrawalsTab() {
+  const list = useServerFn(listAdminWithdrawals);
+  const approve = useServerFn(approveWithdrawalApprovalRequest);
+  const paid = useServerFn(markAdminWithdrawalPaid);
+  const reject = useServerFn(rejectAdminWithdrawal);
+  const qc = useQueryClient();
+  const { data: rows = [], isLoading } = useQuery({ queryKey: ["admin-withdrawals"], queryFn: () => list(), refetchInterval: 10000 });
+  const refresh = () => { qc.invalidateQueries({ queryKey: ["admin-withdrawals"] }); qc.invalidateQueries({ queryKey: ["accounts-report"] }); qc.invalidateQueries({ queryKey: ["admin-clients"] }); };
+  const action = useMutation({ mutationFn: async ({ id, type }: { id: string; type: "approve" | "paid" | "reject" }) => type === "approve" ? approve({ data: { transaction_id: id } }) : type === "paid" ? paid({ data: { transaction_id: id } }) : reject({ data: { transaction_id: id } }), onSuccess: (_, vars) => { toast.success(vars.type === "reject" ? "Withdrawal rejected" : vars.type === "paid" ? "Withdrawal marked paid" : "Withdrawal approved"); refresh(); }, onError: (e) => toast.error(e instanceof Error ? e.message : "Withdrawal action failed") });
+  return <AdminTableShell title="Withdrawals">
+    {isLoading && <div className="p-8 text-center text-[#315c72]">Loading withdrawals…</div>}
+    {!isLoading && rows.length === 0 && <div className="p-8 text-center text-[#315c72]">No withdrawals found.</div>}
+    {rows.map((row) => { const status = String(row.status).toLowerCase(); const active = ["pending", "processing"].includes(status); return <div key={row.id} className="grid grid-cols-[minmax(230px,2fr)_minmax(120px,1fr)_minmax(120px,1fr)_minmax(140px,1fr)_minmax(220px,1.3fr)] items-center gap-4 border-b border-[#c5e4e8] px-5 py-4 last:border-0"><div><div className="font-semibold">{row.user_name}</div><div className="text-sm text-[#315c72]">{new Date(row.created_at).toLocaleString()}</div></div><div className="font-medium">KES {Number(row.amount ?? 0).toLocaleString()}</div><div className="text-[#315c72]">KES {Number(row.fee ?? 0).toLocaleString()}</div><div className="font-medium">KES {Number(row.payout ?? 0).toLocaleString()}</div><div className="flex flex-wrap items-center gap-2"><span className="text-sm text-[#315c72]">{row.phone ?? "—"}</span><StatusPill status={status === "completed" ? "Success" : status === "failed" ? "Failed" : "Pending"} /><button onClick={() => action.mutate({ id: row.id, type: "approve" })} disabled={!active || action.isPending} className="rounded-full bg-[#bcebf7] px-3 py-2 text-sm font-semibold text-[#009fe3]">Approve</button><button onClick={() => action.mutate({ id: row.id, type: "paid" })} disabled={!active || action.isPending} className="rounded-full bg-[#b9f0df] px-3 py-2 text-sm font-semibold text-[#00a968]">Mark paid</button><button onClick={() => action.mutate({ id: row.id, type: "reject" })} disabled={!active || action.isPending} className="rounded-full bg-[#f8d9dc] px-3 py-2 text-sm font-semibold text-[#e52e3b]">Reject</button></div></div>; })}
+  </AdminTableShell>;
+}
+
+function StatusPill({ status }: { status: string }) {
+  const lower = status.toLowerCase();
+  const cls = lower === "success" ? "bg-[#b9f0df] text-[#00a968]" : lower === "failed" ? "bg-[#e3edf0] text-[#0b1930]" : "bg-[#fff1c7] text-[#eeb300]";
+  return <span className={`inline-flex rounded-full px-3 py-1 text-sm font-semibold ${cls}`}>{status}</span>;
 }
 
 type WithdrawalApproval = {

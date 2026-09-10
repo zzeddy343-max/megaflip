@@ -947,6 +947,107 @@ export const listWithdrawalApprovalRequests = createServerFn({ method: "GET" })
     };
   });
 
+export const listAdminDeposits = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin
+      .from("transactions")
+      .select("id,user_id,amount,amount_usd,currency,status,method,meta,created_at,profiles:user_id(email,full_name,username,phone)")
+      .eq("kind", "deposit")
+      .eq("account_type", "real")
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((row) => ({
+      ...row,
+      user_name: row.profiles?.full_name ?? row.profiles?.username ?? row.profiles?.email ?? "Client",
+      phone: row.profiles?.phone ?? row.meta?.phone ?? null,
+    }));
+  });
+
+export const approveAdminDeposit = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ transaction_id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: transaction, error } = await (supabaseAdmin as unknown as RpcAdminClient).rpc(
+      "apply_transaction",
+      { _transaction_id: data.transaction_id, _status: "completed", _meta: { approved_by: context.userId, approved_at: new Date().toISOString() } },
+    );
+    if (error) throw new Error(error.message);
+    return { ok: true, transaction };
+  });
+
+export const rejectAdminDeposit = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ transaction_id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await (supabaseAdmin as unknown as RpcAdminClient).rpc("apply_transaction", {
+      _transaction_id: data.transaction_id,
+      _status: "cancelled",
+      _meta: { rejected_by: context.userId, rejected_at: new Date().toISOString() },
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const listAdminWithdrawals = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin
+      .from("transactions")
+      .select("id,user_id,amount,amount_usd,currency,status,method,meta,created_at,profiles:user_id(email,full_name,username,phone)")
+      .eq("kind", "withdraw")
+      .eq("account_type", "real")
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((row) => ({
+      ...row,
+      user_name: row.profiles?.full_name ?? row.profiles?.username ?? row.profiles?.email ?? "Client",
+      phone: row.profiles?.phone ?? row.meta?.phone ?? null,
+      fee: Number(row.meta?.fee_amount ?? 0),
+      payout: Number(row.meta?.net_amount ?? row.amount ?? 0),
+    }));
+  });
+
+export const markAdminWithdrawalPaid = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ transaction_id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await (supabaseAdmin as unknown as RpcAdminClient).rpc("apply_transaction", {
+      _transaction_id: data.transaction_id,
+      _status: "completed",
+      _meta: { marked_paid_by: context.userId, marked_paid_at: new Date().toISOString() },
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const rejectAdminWithdrawal = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ transaction_id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await (supabaseAdmin as unknown as RpcAdminClient).rpc("apply_transaction", {
+      _transaction_id: data.transaction_id,
+      _status: "cancelled",
+      _meta: { rejected_by: context.userId, rejected_at: new Date().toISOString() },
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 export const approveWithdrawalApprovalRequest = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ transaction_id: z.string().uuid() }).parse(d))

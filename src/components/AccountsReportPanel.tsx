@@ -20,11 +20,13 @@ export function AccountsReportPanel({
   mode = "current",
   title,
   initialView = "summary",
+  presentation = "compact",
 }: {
   scope: Scope;
   mode?: Mode;
   title?: string;
   initialView?: View;
+  presentation?: "compact" | "dashboard";
 }) {
   const reportFn = useServerFn(getAccountsReport);
   const today = new Date().toISOString().slice(0, 10);
@@ -55,6 +57,46 @@ export function AccountsReportPanel({
     if (view === "clients") return data?.by_client ?? [];
     return [];
   }, [data, view]);
+
+  const summary = data?.summary;
+  const ksh = (value: unknown) => `KES ${Number(value ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+  const houseBalance = Number(summary?.deposits_usd ?? 0) + Number(summary?.fees_usd ?? 0) - Number(summary?.withdrawals_usd ?? 0);
+  const liability = Number(summary?.user_balances_usd ?? 0);
+  const coverage = liability > 0 ? Math.max(0, Math.min(100, (houseBalance / liability) * 100)) : 0;
+
+  if (presentation === "dashboard") {
+    return (
+      <div className="space-y-7">
+        <DashboardGroup title="House">
+          <DashboardCard label="House balance" value={ksh(houseBalance * 130)} tone="gold" note="Deposits + unclaimed red packets + fees - withdrawals paid" />
+          <DashboardCard label="Coverage ratio" value={`${coverage.toFixed(1)}%`} tone="gold" note="House cash vs total client balances" />
+          <DashboardCard label="Client liability" value={ksh(liability * 130)} note={`Across ${summary?.clients ?? 0} clients`} />
+          <DashboardCard label="Locked profit runway" value={houseBalance >= 0 ? "No net outflow" : "Net outflow"} note="At current locked-copy daily accrual" />
+        </DashboardGroup>
+        <DashboardGroup title="Copy trading exposure">
+          <DashboardCard label="Valid-signal closing payout" value={ksh(Math.max(0, Number(summary?.stakes_usd ?? 0) - Number(summary?.retained_usd ?? 0)) * 130)} tone="gold" note="Principal + remaining profit owed if valid-signal trades close" />
+          <DashboardCard label="Remaining profit" value={ksh(Math.max(0, -Number(summary?.profit_usd ?? 0)) * 130)} note="Signal and locked profit exposure" />
+          <DashboardCard label="Open copy capital" value={ksh(Number(summary?.stakes_usd ?? 0) * 130)} note={`${summary?.trades ?? 0} total trades`} />
+          <DashboardCard label="House-side capital" value={ksh(Math.max(0, Number(summary?.retained_usd ?? 0)) * 130)} tone="green" note="Current retained capital" />
+        </DashboardGroup>
+        <DashboardGroup title="Locked-copy accrual pace">
+          <DashboardCard label="Daily accrual" value="KES 0" />
+          <DashboardCard label="7-day projection" value="KES 0" />
+          <DashboardCard label="30-day projection" value="KES 0" />
+        </DashboardGroup>
+        <DashboardGroup title="Cash flow (all-time)">
+          <DashboardCard label="Total deposits" value={ksh(Number(summary?.deposits_usd ?? 0) * 130)} tone="green" />
+          <DashboardCard label="Total withdrawn (gross)" value={ksh(Number(summary?.withdrawals_usd ?? 0) * 130)} tone="red" />
+          <DashboardCard label="Paid out to clients (net)" value={ksh(Number(summary?.withdrawals_usd ?? 0) * 130)} note="After fees retained" />
+          <DashboardCard label="Total earnings paid" value={ksh(Math.max(0, Number(summary?.profit_usd ?? 0)) * 130)} />
+        </DashboardGroup>
+        <div className="rounded-2xl border border-[#afdbe3] bg-white/55 p-5">
+          <div className="mb-4 text-sm font-bold uppercase tracking-wide text-[#315c72]">Detailed account reporting</div>
+          <div className="grid grid-cols-2 gap-3">{(["summary", "deposits", "withdrawals", "trades", "clients"] as const).map((item) => <button key={item} onClick={() => setView(item)} className={`rounded-xl px-3 py-2 text-sm font-bold capitalize ${view === item ? "bg-[#bcebf7] text-[#009fe3]" : "bg-white text-[#315c72]"}`}>{item}</button>)}</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-2">
@@ -208,6 +250,15 @@ export function AccountsReportPanel({
       )}
     </div>
   );
+}
+
+function DashboardGroup({ title, children }: { title: string; children: React.ReactNode }) {
+  return <section className="space-y-3"><h2 className="text-lg font-bold uppercase text-[#315c72]">{title}</h2><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">{children}</div></section>;
+}
+
+function DashboardCard({ label, value, note, tone }: { label: string; value: string; note?: string; tone?: "gold" | "green" | "red" }) {
+  const toneClass = tone === "gold" ? "text-[#f1bd1b]" : tone === "green" ? "text-[#00b969]" : tone === "red" ? "text-[#ec3038]" : "text-[#0b1930]";
+  return <div className="min-h-[146px] rounded-[26px] border border-[#afdbe3] bg-white/55 p-5 shadow-[0_14px_28px_rgba(35,79,92,0.10)]"><div className="text-sm uppercase text-[#315c72]">{label}</div><div className={`mt-3 text-3xl font-bold ${toneClass}`}>{value}</div>{note && <div className="mt-2 text-sm leading-5 text-[#315c72]">{note}</div>}</div>;
 }
 
 function DateField({
