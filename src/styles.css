@@ -241,6 +241,20 @@
 }
 
 /* Admin console follows the same theme preference as the main application. */
+.admin-console.light {
+  --background: #effcfc;
+  --foreground: #0b1930;
+  --surface: #e7f8fa;
+  --surface-2: #dff3f6;
+  --card: #f6ffff;
+  --card-foreground: #0b1930;
+  --border: #c3e4e9;
+  --muted-foreground: #315c72;
+  --primary: #009fe3;
+  --primary-foreground: #ffffff;
+  --bull: #00b969;
+  --bear: #e32635;
+}
 .admin-console.dark {
   background: oklch(0.13 0.012 250) !important;
   color: oklch(0.96 0.008 80) !important;

@@ -24,7 +24,6 @@ import {
   Building2,
   ClipboardCheck,
   Download,
-  Gift,
   Headset,
   Network,
   Settings2,
@@ -80,6 +79,7 @@ import {
 } from "@/lib/system-settings";
 import { LOGO_URL } from "@/lib/brand";
 import { applyTheme, getInitialTheme, type Theme } from "@/lib/theme";
+import { AdminCurrencyProvider, formatAdminMoney, useAdminCurrency } from "@/components/AdminCurrency";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({ meta: [{ title: "Admin — MEGAFLIP" }] }),
@@ -143,7 +143,12 @@ type AdminRow = {
 };
 
 function AdminPage() {
+  return <AdminCurrencyProvider><AdminWorkspace /></AdminCurrencyProvider>;
+}
+
+function AdminWorkspace() {
   const [theme] = useState<Theme>(() => getInitialTheme());
+  const { currency, setCurrency } = useAdminCurrency();
   useEffect(() => applyTheme(theme), [theme]);
   const [tab, setTab] = useState<
     | "accounts"
@@ -198,7 +203,7 @@ function AdminPage() {
     ["deposits", "Deposits", Download, "deposits"],
     ["withdrawals", "Withdrawals", Upload, "withdrawals"],
     ["settings", "KYC Approval", ClipboardCheck, "kyc"],
-    ["settings", "Red Packets", Gift, "red"],
+    ["settings", "Settings", Settings2, "settings"],
     ["agents", "Teams", Network, "teams"],
     ["support", "Support", Headset, "support"],
     ["trades", "Trades", SlidersHorizontal, "trades"],
@@ -222,7 +227,7 @@ function AdminPage() {
       <main className="min-w-0 flex-1">
         <header className="flex h-16 items-center justify-between border-b border-[#c3e4e9] px-5 lg:px-8">
           <h1 className="text-xl font-bold">{nav.find(([key]) => key === tab)?.[1] ?? "Admin Console"}</h1>
-          <Link to="/binary" className="flex items-center gap-2 text-[#315c72] hover:text-[#009fe3]"><ArrowLeft className="h-4 w-4" /> Client view</Link>
+          <div className="flex items-center gap-4"><div className="flex items-center gap-1 rounded-lg border border-[#c3e4e9] bg-white/70 p-1"><span className="px-2 text-xs text-[#315c72]">Currency</span>{(["USD", "KES"] as const).map((item) => <button key={item} onClick={() => setCurrency(item)} className={`rounded-md px-2.5 py-1 text-xs font-bold ${currency === item ? "bg-[#bcebf7] text-[#009fe3]" : "text-[#315c72]"}`}>{item}</button>)}</div><Link to="/binary" className="flex items-center gap-2 text-[#315c72] hover:text-[#009fe3]"><ArrowLeft className="h-4 w-4" /> Client view</Link></div>
         </header>
         <div className="space-y-5 p-5 lg:p-8">
           <div className="flex flex-wrap gap-2 lg:hidden">
@@ -249,6 +254,7 @@ function AdminPage() {
 }
 
 function TreasuryDashboard() {
+  const { currency } = useAdminCurrency();
   const report = useServerFn(getAccountsReport);
   const sync = useServerFn(reconcileSuccessfulB2cCallbacks);
   const reconcile = useServerFn(runScheduledLedgerReconciliation);
@@ -256,7 +262,7 @@ function TreasuryDashboard() {
   const syncMut = useMutation({ mutationFn: () => sync(), onSuccess: () => toast.success("Payouts synchronized"), onError: (e) => toast.error(e instanceof Error ? e.message : "Payout sync failed") });
   const reconcileMut = useMutation({ mutationFn: () => reconcile(), onSuccess: () => toast.success("Treasury reconciliation complete"), onError: (e) => toast.error(e instanceof Error ? e.message : "Reconciliation failed") });
   const s = data?.summary;
-  const money = (v: unknown) => `KES ${(Number(v ?? 0) * 130).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+  const money = (v: unknown) => formatAdminMoney(v, currency);
   return <div className="space-y-5">
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4"><AdminDashboardCard label="Current treasury balance" value={money(Number(s?.deposits_usd ?? 0) - Number(s?.withdrawals_usd ?? 0) + Number(s?.fees_usd ?? 0))} tone="red" /><AdminDashboardCard label="Available balance" value={money(s?.user_balances_usd)} tone="green" /><AdminDashboardCard label="Trading liability" value={money(s?.stakes_usd)} tone="red" /><AdminDashboardCard label="Active clients" value={String(s?.clients ?? 0)} /></div>
     <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]"><div className="overflow-hidden rounded-[28px] border border-[#afdbe3] bg-white/55 shadow-[0_14px_30px_rgba(35,79,92,0.08)]"><div className="border-b border-[#c5e4e8] p-5"><div className="text-base font-bold">Trading liability matrix</div><div className="text-sm text-[#315c72]">Open trades, stakes, payouts, and house exposure</div></div><div className="grid grid-cols-6 gap-3 border-b border-[#c5e4e8] px-5 py-4 text-xs font-bold uppercase text-[#315c72]"><span>Trade type</span><span>Open trades</span><span>Stakes</span><span>Payouts</span><span>House retained</span><span>Total exposure</span></div><div className="p-12 text-center text-[#315c72]">No open trade liabilities.</div></div><div className="space-y-5"><div className="rounded-[28px] border border-[#afdbe3] bg-white/55 p-5"><div className="text-sm uppercase text-[#315c72]">Liquidity status</div><div className="mt-3 text-2xl font-bold text-[#00b969]">Healthy</div><div className="mt-5 grid grid-cols-3 gap-2">{[["Deposits", money(s?.deposits_usd)], ["Earnings", money(s?.profit_usd)], ["Withdrawals", money(s?.withdrawals_usd)]].map(([k, v]) => <div key={k} className="rounded-2xl bg-[#e4f6f7] p-3"><div className="text-xs uppercase text-[#315c72]">{k}</div><div className="mt-2 text-sm font-bold">{v}</div></div>)}</div></div><div className="rounded-[28px] border border-[#afdbe3] bg-white/55 p-5"><div className="text-sm uppercase text-[#315c72]">Treasury controls</div><div className="mt-4 grid gap-3"><button onClick={() => syncMut.mutate()} disabled={syncMut.isPending} className="rounded-xl bg-[#bcebf7] px-4 py-3 text-sm font-semibold text-[#009fe3]">{syncMut.isPending ? "Syncing payouts…" : "Sync paid payouts"}</button><button onClick={() => reconcileMut.mutate()} disabled={reconcileMut.isPending} className="rounded-xl bg-[#b9f0df] px-4 py-3 text-sm font-semibold text-[#00a968]">{reconcileMut.isPending ? "Reconciling…" : "Run reconciliation"}</button></div></div></div></div>
@@ -280,6 +286,7 @@ function AdminTableShell({ title, children }: { title: string; children: React.R
 }
 
 function AdminDepositsTab() {
+  const { currency } = useAdminCurrency();
   const list = useServerFn(listAdminDeposits);
   const approve = useServerFn(approveAdminDeposit);
   const reject = useServerFn(rejectAdminDeposit);
@@ -297,7 +304,7 @@ function AdminDepositsTab() {
           const pending = !["completed", "success", "successful"].includes(String(row.status).toLowerCase());
           return <div key={row.id} className="grid grid-cols-[minmax(230px,2fr)_minmax(120px,1fr)_minmax(120px,1fr)_minmax(140px,1fr)_minmax(220px,1.3fr)] items-center gap-4 border-b border-[#c5e4e8] px-5 py-4 last:border-0">
             <div><div className="font-semibold">{row.user_name}</div><div className="text-sm text-[#315c72]">{row.phone ?? row.user_id} · {new Date(row.created_at).toLocaleString()}</div></div>
-            <div className="font-medium">KES {Number(row.amount ?? 0).toLocaleString()}</div><div className="text-[#315c72]">{row.meta?.receipt ?? "—"}</div>
+            <div className="font-medium">{formatAdminMoney(row.amount_usd ?? Number(row.amount ?? 0) / 130, currency)}</div><div className="text-[#315c72]">{row.meta?.receipt ?? "—"}</div>
             <StatusPill status={pending ? "Pending" : "Success"} />
             <div className="flex gap-2">{pending ? <><button onClick={() => approveMut.mutate(row.id)} disabled={approveMut.isPending || rejectMut.isPending} className="rounded-full bg-[#b9f0df] px-4 py-2 text-sm font-semibold text-[#00a968]">Approve</button><button onClick={() => rejectMut.mutate(row.id)} disabled={approveMut.isPending || rejectMut.isPending} className="rounded-full bg-[#f8d9dc] px-4 py-2 text-sm font-semibold text-[#e52e3b]">Reject</button></> : <span className="text-sm text-[#315c72]">Completed</span>}</div>
           </div>;
@@ -308,6 +315,7 @@ function AdminDepositsTab() {
 }
 
 function AdminWithdrawalsTab() {
+  const { currency } = useAdminCurrency();
   const list = useServerFn(listAdminWithdrawals);
   const approve = useServerFn(approveWithdrawalApprovalRequest);
   const paid = useServerFn(markAdminWithdrawalPaid);
@@ -320,7 +328,7 @@ function AdminWithdrawalsTab() {
     {isLoading && <div className="p-8 text-center text-[#315c72]">Loading withdrawals…</div>}
     {isError && <div className="p-8 text-center text-[#e52e3b]">Unable to load withdrawals: {error instanceof Error ? error.message : "Please retry"}</div>}
     {!isLoading && rows.length === 0 && <div className="p-8 text-center text-[#315c72]">No withdrawals found.</div>}
-    {rows.map((row) => { const status = String(row.status).toLowerCase(); const active = ["pending", "processing"].includes(status); return <div key={row.id} className="grid grid-cols-[minmax(230px,2fr)_minmax(120px,1fr)_minmax(120px,1fr)_minmax(140px,1fr)_minmax(220px,1.3fr)] items-center gap-4 border-b border-[#c5e4e8] px-5 py-4 last:border-0"><div><div className="font-semibold">{row.user_name}</div><div className="text-sm text-[#315c72]">{new Date(row.created_at).toLocaleString()}</div></div><div className="font-medium">KES {Number(row.amount ?? 0).toLocaleString()}</div><div className="text-[#315c72]">KES {Number(row.fee ?? 0).toLocaleString()}</div><div className="font-medium">KES {Number(row.payout ?? 0).toLocaleString()}</div><div className="flex flex-wrap items-center gap-2"><span className="text-sm text-[#315c72]">{row.phone ?? "—"}</span><StatusPill status={status === "completed" ? "Success" : status === "failed" ? "Failed" : "Pending"} /><button onClick={() => action.mutate({ id: row.id, type: "approve" })} disabled={!active || action.isPending} className="rounded-full bg-[#bcebf7] px-3 py-2 text-sm font-semibold text-[#009fe3]">Approve</button><button onClick={() => action.mutate({ id: row.id, type: "paid" })} disabled={!active || action.isPending} className="rounded-full bg-[#b9f0df] px-3 py-2 text-sm font-semibold text-[#00a968]">Mark paid</button><button onClick={() => action.mutate({ id: row.id, type: "reject" })} disabled={!active || action.isPending} className="rounded-full bg-[#f8d9dc] px-3 py-2 text-sm font-semibold text-[#e52e3b]">Reject</button></div></div>; })}
+    {rows.map((row) => { const status = String(row.status).toLowerCase(); const active = ["pending", "processing"].includes(status); return <div key={row.id} className="grid grid-cols-[minmax(230px,2fr)_minmax(120px,1fr)_minmax(120px,1fr)_minmax(140px,1fr)_minmax(220px,1.3fr)] items-center gap-4 border-b border-[#c5e4e8] px-5 py-4 last:border-0"><div><div className="font-semibold">{row.user_name}</div><div className="text-sm text-[#315c72]">{new Date(row.created_at).toLocaleString()}</div></div><div className="font-medium">{formatAdminMoney(row.amount_usd ?? Number(row.amount ?? 0) / 130, currency)}</div><div className="text-[#315c72]">{formatAdminMoney(Number(row.fee ?? 0) / 130, currency)}</div><div className="font-medium">{formatAdminMoney(Number(row.payout ?? 0) / 130, currency)}</div><div className="flex flex-wrap items-center gap-2"><span className="text-sm text-[#315c72]">{row.phone ?? "—"}</span><StatusPill status={status === "completed" ? "Success" : status === "failed" ? "Failed" : "Pending"} /><button onClick={() => action.mutate({ id: row.id, type: "approve" })} disabled={!active || action.isPending} className="rounded-full bg-[#bcebf7] px-3 py-2 text-sm font-semibold text-[#009fe3]">Approve</button><button onClick={() => action.mutate({ id: row.id, type: "paid" })} disabled={!active || action.isPending} className="rounded-full bg-[#b9f0df] px-3 py-2 text-sm font-semibold text-[#00a968]">Mark paid</button><button onClick={() => action.mutate({ id: row.id, type: "reject" })} disabled={!active || action.isPending} className="rounded-full bg-[#f8d9dc] px-3 py-2 text-sm font-semibold text-[#e52e3b]">Reject</button></div></div>; })}
   </AdminTableShell>;
 }
 
@@ -1037,6 +1045,7 @@ function SettingsTab() {
 }
 
 function AccountAdjustments() {
+  const { currency } = useAdminCurrency();
   const list = useServerFn(listAccountMetricAdjustments);
   const create = useServerFn(createAccountMetricAdjustment);
   const qc = useQueryClient();
@@ -1099,9 +1108,7 @@ function AccountAdjustments() {
           <div key={String(row.id)} className="flex items-center justify-between p-2 text-xs">
             <div className="font-semibold">{String(row.label)}</div>
             <div className="text-right tabular-nums text-muted-foreground">
-              D ${Number(row.deposits_usd ?? 0).toFixed(2)} · W $
-              {Number(row.withdrawals_usd ?? 0).toFixed(2)} · R $
-              {Number(row.retained_usd ?? 0).toFixed(2)}
+              D {formatAdminMoney(row.deposits_usd ?? 0, currency)} · W {formatAdminMoney(row.withdrawals_usd ?? 0, currency)} · R {formatAdminMoney(row.retained_usd ?? 0, currency)}
             </div>
           </div>
         ))}
@@ -1136,6 +1143,7 @@ function MetricInput({
 }
 
 function UsersTab() {
+  const { currency } = useAdminCurrency();
   const list = useServerFn(listClients);
   const promote = useServerFn(promoteUserRole);
   const resetBalances = useServerFn(resetUserBalances);
@@ -1212,13 +1220,13 @@ function UsersTab() {
         />
         <Stat
           icon={<DollarSign className="h-3.5 w-3.5" />}
-          label="Real $"
-          value={`$${totalReal.toFixed(0)}`}
+          label="Real balance"
+          value={formatAdminMoney(totalReal, currency)}
         />
         <Stat
           icon={<DollarSign className="h-3.5 w-3.5" />}
-          label="Demo $"
-          value={`$${totalDemo.toFixed(0)}`}
+          label="Demo balance"
+          value={formatAdminMoney(totalDemo, currency)}
         />
       </div>
 
@@ -1278,10 +1286,10 @@ function UsersTab() {
                 </button>
                 <div className="text-right ml-4">
                   <div className="font-bold tabular-nums text-bull text-xs">
-                    🇺🇸 ${Number(u.balance_usd).toFixed(2)}
+                    {formatAdminMoney(u.balance_usd, currency)}
                   </div>
                   <div className="font-bold tabular-nums text-primary text-[10px]">
-                    D ${Number(u.demo_balance_usd ?? 0).toFixed(2)}
+                    D {formatAdminMoney(u.demo_balance_usd ?? 0, currency)}
                   </div>
                 </div>
               </div>
@@ -1416,6 +1424,7 @@ function UsersTab() {
 }
 
 function ClientDetailsDrawer({ client, onClose }: { client: ClientRow; onClose: () => void }) {
+  const { currency } = useAdminCurrency();
   const [details, setDetails] = useState<{
     profile?: Record<string, unknown> | null;
     trades: Array<Record<string, unknown>>;
@@ -1508,11 +1517,11 @@ function ClientDetailsDrawer({ client, onClose }: { client: ClientRow; onClose: 
             />
             <Row
               label="Real balance"
-              value={`$${Number(details.profile?.balance_usd ?? client.balance_usd ?? 0).toFixed(2)}`}
+              value={formatAdminMoney(details.profile?.balance_usd ?? client.balance_usd ?? 0, currency)}
             />
             <Row
               label="Demo balance"
-              value={`$${Number(details.profile?.demo_balance_usd ?? client.demo_balance_usd ?? 0).toFixed(2)}`}
+              value={formatAdminMoney(details.profile?.demo_balance_usd ?? client.demo_balance_usd ?? 0, currency)}
             />
             <Row
               label="Joined"
@@ -1652,6 +1661,7 @@ function LabeledSelect({
 }
 
 function TradesTab() {
+  const { currency } = useAdminCurrency();
   const [trades, setTrades] = useState<Trade[]>([]);
   const [moduleFilter, setModuleFilter] = useState<string | undefined>(undefined);
   const [accountFilter, setAccountFilter] = useState<"all" | "real" | "demo">("all");
@@ -1684,12 +1694,12 @@ function TradesTab() {
         <Stat
           icon={<DollarSign className="h-3.5 w-3.5" />}
           label="Volume"
-          value={`$${trades.reduce((s, t) => s + Number(t.stake), 0).toFixed(0)}`}
+          value={formatAdminMoney(trades.reduce((s, t) => s + Number(t.stake), 0), currency)}
         />
         <Stat
           icon={<DollarSign className="h-3.5 w-3.5" />}
           label="House"
-          value={`$${houseRetained.toFixed(0)}`}
+          value={formatAdminMoney(houseRetained, currency)}
           bull
         />
       </div>
@@ -1724,7 +1734,7 @@ function TradesTab() {
               </div>
             </div>
             <div className="text-right">
-              <div className="font-bold tabular-nums text-xs">${Number(t.stake).toFixed(2)}</div>
+              <div className="font-bold tabular-nums text-xs">{formatAdminMoney(Number(t.stake), currency)}</div>
               <div
                 className={
                   "text-[10px] font-bold " +
@@ -1735,7 +1745,7 @@ function TradesTab() {
                       : "text-muted-foreground")
                 }
               >
-                {t.status} {t.status === "won" && `+$${Number(t.payout).toFixed(2)}`}
+                {t.status} {t.status === "won" && `+${formatAdminMoney(Number(t.payout), currency)}`}
               </div>
             </div>
           </div>
@@ -1749,6 +1759,7 @@ function TradesTab() {
 }
 
 function AgentsTab() {
+  const { currency } = useAdminCurrency();
   const agentsFn = useServerFn(listAgents);
   const create = useServerFn(createAgent);
   const adjustBalance = useServerFn(adjustAgentBalance);
@@ -1895,13 +1906,13 @@ function AgentsTab() {
           </div>
           <div className="grid grid-cols-4 gap-1 text-center text-[10px]">
             <Cell label="Clients" v={a.client_count} />
-            <Cell label="Deposits" v={`$${Number(a.total_deposits).toFixed(0)}`} bull />
-            <Cell label="Withdraws" v={`$${Number(a.total_withdrawals).toFixed(0)}`} bear />
-            <Cell label="House" v={`$${Number(a.house_retained).toFixed(0)}`} bull />
+            <Cell label="Deposits" v={formatAdminMoney(a.total_deposits, currency)} bull />
+            <Cell label="Withdraws" v={formatAdminMoney(a.total_withdrawals, currency)} bear />
+            <Cell label="House" v={formatAdminMoney(a.house_retained, currency)} bull />
           </div>
           <div className="grid grid-cols-2 gap-1 text-center text-[10px]">
-            <Cell label="Real balance" v={`$${Number(a.balance_usd ?? 0).toFixed(2)}`} />
-            <Cell label="Demo balance" v={`$${Number(a.demo_balance_usd ?? 0).toFixed(2)}`} />
+            <Cell label="Real balance" v={formatAdminMoney(a.balance_usd ?? 0, currency)} />
+            <Cell label="Demo balance" v={formatAdminMoney(a.demo_balance_usd ?? 0, currency)} />
           </div>
           <button
             onClick={() =>
@@ -2188,6 +2199,7 @@ function AdminsList() {
 }
 
 function LedgerReconciliationTab() {
+  const { currency } = useAdminCurrency();
   const reconcileAll = useServerFn(reconcileAllBalances);
   const auditBalance = useServerFn(auditUserBalance);
   const getStatus = useServerFn(getReconciliationStatus);

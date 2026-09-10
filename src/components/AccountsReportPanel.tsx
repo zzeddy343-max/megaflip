@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { CalendarDays, DollarSign, Search, TrendingUp, Users, Wallet } from "lucide-react";
 import { getAccountsReport } from "@/lib/admin.functions";
+import { formatAdminMoney, useAdminCurrency } from "@/components/AdminCurrency";
 
 type Scope = "admin" | "agent";
 type Mode = "current" | "all_time";
@@ -34,7 +35,7 @@ export function AccountsReportPanel({
   const [endDate, setEndDate] = useState(mode === "all_time" ? "" : today);
   const [clientId, setClientId] = useState("");
   const [view, setView] = useState<View>(initialView);
-  const [currency, setCurrency] = useState<"USD" | "KES">("USD");
+  const { currency, setCurrency } = useAdminCurrency();
 
   const { data, isLoading } = useQuery({
     queryKey: ["accounts-report", scope, mode, startDate, endDate, clientId],
@@ -60,10 +61,7 @@ export function AccountsReportPanel({
   }, [data, view]);
 
   const summary = data?.summary;
-  const money = (value: unknown) => {
-    const amount = Number(value ?? 0) * (currency === "KES" ? 130 : 1);
-    return `${currency === "KES" ? "KES" : "USD"} ${amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
-  };
+  const money = (value: unknown) => formatAdminMoney(value, currency);
   const houseBalance = Number(summary?.deposits_usd ?? 0) + Number(summary?.fees_usd ?? 0) - Number(summary?.withdrawals_usd ?? 0);
   const liability = Number(summary?.user_balances_usd ?? 0);
   const coverage = liability > 0 ? Math.max(0, Math.min(100, (houseBalance / liability) * 100)) : 0;
@@ -71,7 +69,6 @@ export function AccountsReportPanel({
   if (presentation === "dashboard") {
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-end gap-1"><span className="mr-2 text-xs text-[#315c72]">Display currency</span>{(["USD", "KES"] as const).map((item) => <button key={item} onClick={() => setCurrency(item)} className={`rounded-lg px-3 py-1.5 text-xs font-bold ${currency === item ? "bg-[#bcebf7] text-[#009fe3]" : "bg-white text-[#315c72]"}`}>{item}</button>)}</div>
         <DashboardGroup title="House">
           <DashboardCard label="House balance" value={money(houseBalance)} tone="gold" note="Deposits + fees - withdrawals paid" />
           <DashboardCard label="Coverage ratio" value={`${coverage.toFixed(1)}%`} tone="gold" note="House cash vs total client balances" />
@@ -102,6 +99,8 @@ export function AccountsReportPanel({
       </div>
     );
   }
+
+  const displayMoney = (value: unknown) => formatAdminMoney(value, currency);
 
   return (
     <div className="space-y-2">
@@ -167,46 +166,46 @@ export function AccountsReportPanel({
           <ReportStat
             icon={<DollarSign className="h-3.5 w-3.5" />}
             label="Deposits"
-            value={money(data?.summary.deposits_usd)}
+            value={displayMoney(data?.summary.deposits_usd)}
             bull
           />
           <ReportStat
             icon={<Wallet className="h-3.5 w-3.5" />}
             label="Withdrawals"
-            value={money(data?.summary.withdrawals_usd)}
+            value={displayMoney(data?.summary.withdrawals_usd)}
             bear
           />
           <ReportStat
             icon={<Wallet className="h-3.5 w-3.5" />}
             label="User Balances"
-            value={money(data?.summary.user_balances_usd)}
+            value={displayMoney(data?.summary.user_balances_usd)}
           />
           <ReportStat
             icon={<TrendingUp className="h-3.5 w-3.5" />}
             label="Stakes"
-            value={money(data?.summary.stakes_usd)}
+            value={displayMoney(data?.summary.stakes_usd)}
           />
           <ReportStat
             icon={<DollarSign className="h-3.5 w-3.5" />}
             label="Retained"
-            value={money(data?.summary.retained_usd)}
+            value={displayMoney(data?.summary.retained_usd)}
             bull
           />
           <ReportStat
             icon={<DollarSign className="h-3.5 w-3.5" />}
             label="Fees earned"
-            value={money(data?.summary.fees_usd)}
+            value={displayMoney(data?.summary.fees_usd)}
             bull
           />
           <ReportStat
             icon={<TrendingUp className="h-3.5 w-3.5" />}
             label="Net cash flow"
-            value={money(data?.summary.net_cashflow_usd)}
+            value={displayMoney(data?.summary.net_cashflow_usd)}
           />
           <ReportStat
             icon={<TrendingUp className="h-3.5 w-3.5" />}
             label="System profit"
-            value={money(data?.summary.profit_usd)}
+            value={displayMoney(data?.summary.profit_usd)}
             bull
           />
           <ReportStat
@@ -233,21 +232,21 @@ export function AccountsReportPanel({
                 key={String(row.id)}
                 title={`${row.module} - ${row.market}`}
                 meta={`${row.status} - ${date(String(row.created_at))}`}
-                value={`${money(row.stake)} stake / ${money(row.payout)} payout`}
+                value={`${displayMoney(row.stake)} stake / ${displayMoney(row.payout)} payout`}
               />
             ) : view === "clients" ? (
               <Row
                 key={String(row.client_id)}
                 title={String(row.name ?? "")}
-                meta={`${row.trades} trades - retained ${money(row.retained_usd)}`}
-                value={`${money(row.deposits_usd)} in / ${money(row.withdrawals_usd)} out`}
+                meta={`${row.trades} trades - retained ${displayMoney(row.retained_usd)}`}
+                value={`${displayMoney(row.deposits_usd)} in / ${displayMoney(row.withdrawals_usd)} out`}
               />
             ) : (
               <Row
                 key={String(row.id)}
                 title={`${row.kind} - ${row.method ?? "system"}`}
                 meta={`${row.status} - ${date(String(row.created_at))}`}
-                value={money(row.amount_usd)}
+                value={displayMoney(row.amount_usd)}
               />
             ),
           )}
@@ -333,10 +332,6 @@ function Row({ title, meta, value }: { title: string; meta: string; value: strin
       <div className="shrink-0 text-right text-xs font-bold tabular-nums">{value}</div>
     </div>
   );
-}
-
-function money(value: unknown) {
-  return `$${Number(value ?? 0).toFixed(2)}`;
 }
 
 function date(value: string) {
