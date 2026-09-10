@@ -240,6 +240,26 @@
   animation: plane-bob 1.6s ease-in-out infinite;
 }
 
+/* Admin console follows the same theme preference as the main application. */
+.admin-console.dark {
+  background: oklch(0.13 0.012 250) !important;
+  color: oklch(0.96 0.008 80) !important;
+}
+.admin-console.dark aside,
+.admin-console.dark header {
+  background: oklch(0.17 0.014 250) !important;
+  border-color: oklch(0.26 0.014 250) !important;
+}
+.admin-console.dark [class*="bg-white"] {
+  background: color-mix(in oklab, oklch(0.17 0.014 250) 92%, transparent) !important;
+}
+.admin-console.dark [class*="text-[#315c72]"] {
+  color: oklch(0.72 0.03 210) !important;
+}
+.admin-console.dark [class*="border-[#"] {
+  border-color: oklch(0.3 0.03 210) !important;
+}
+
 @keyframes digit-flash {
   0% {
     transform: scale(1);

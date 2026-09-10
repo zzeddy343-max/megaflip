@@ -79,6 +79,7 @@ import {
   updateSystemSettings,
 } from "@/lib/system-settings";
 import { LOGO_URL } from "@/lib/brand";
+import { applyTheme, getInitialTheme, type Theme } from "@/lib/theme";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({ meta: [{ title: "Admin — MEGAFLIP" }] }),
@@ -142,6 +143,8 @@ type AdminRow = {
 };
 
 function AdminPage() {
+  const [theme] = useState<Theme>(() => getInitialTheme());
+  useEffect(() => applyTheme(theme), [theme]);
   const [tab, setTab] = useState<
     | "accounts"
     | "users"
@@ -198,11 +201,11 @@ function AdminPage() {
     ["settings", "Red Packets", Gift, "red"],
     ["agents", "Teams", Network, "teams"],
     ["support", "Support", Headset, "support"],
-    ["trades", "Copy Trading", SlidersHorizontal, "copy"],
+    ["trades", "Trades", SlidersHorizontal, "trades"],
     ["admins", "Admin access", Shield, "admin-access"],
   ] as const;
   return (
-    <div className="light min-h-[100dvh] bg-[#effcfc] text-[#0b1930] lg:flex">
+    <div className={`admin-console ${theme} min-h-[100dvh] bg-[#effcfc] text-[#0b1930] lg:flex`}>
       <aside className="hidden w-[294px] shrink-0 border-r border-[#c3e4e9] bg-[#e7f8fa] lg:flex lg:flex-col">
         <div className="flex h-16 items-center gap-3 border-b border-[#c3e4e9] px-6">
           <img src={LOGO_URL} alt="MineHub" className="h-10 w-10 rounded-full bg-[#ffc81c] p-1" />
@@ -210,7 +213,7 @@ function AdminPage() {
         </div>
         <nav className="space-y-1 p-4">
           {nav.map(([key, label, Icon, short]) => (
-            <button key={label} type="button" onClick={() => setTab(key as typeof tab)} className={`flex w-full items-center gap-4 rounded-2xl px-4 py-3 text-left text-lg transition ${tab === key ? "bg-[#bcebf7] text-[#009fe3]" : "text-[#315c72] hover:bg-[#d8f1f5]"}`}>
+            <button key={label} type="button" onClick={() => setTab(key as typeof tab)} className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-base transition ${tab === key ? "bg-[#bcebf7] text-[#009fe3]" : "text-[#315c72] hover:bg-[#d8f1f5]"}`}>
               <Icon className="h-5 w-5" /> <span>{label}</span>
             </button>
           ))}
@@ -218,7 +221,7 @@ function AdminPage() {
       </aside>
       <main className="min-w-0 flex-1">
         <header className="flex h-16 items-center justify-between border-b border-[#c3e4e9] px-5 lg:px-8">
-          <h1 className="text-2xl font-bold">{nav.find(([key]) => key === tab)?.[1] ?? "Admin Console"}</h1>
+          <h1 className="text-xl font-bold">{nav.find(([key]) => key === tab)?.[1] ?? "Admin Console"}</h1>
           <Link to="/binary" className="flex items-center gap-2 text-[#315c72] hover:text-[#009fe3]"><ArrowLeft className="h-4 w-4" /> Client view</Link>
         </header>
         <div className="space-y-5 p-5 lg:p-8">
@@ -255,9 +258,14 @@ function TreasuryDashboard() {
   const s = data?.summary;
   const money = (v: unknown) => `KES ${(Number(v ?? 0) * 130).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
   return <div className="space-y-5">
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4"><DashboardCard label="Current treasury balance" value={money(Number(s?.deposits_usd ?? 0) - Number(s?.withdrawals_usd ?? 0) + Number(s?.fees_usd ?? 0))} tone="red" /><DashboardCard label="Locked profit runway" value="No daily drain" tone="green" /><DashboardCard label="Valid-signal liability" value={money(s?.stakes_usd)} tone="red" /><DashboardCard label="Total active clients" value={String(s?.clients ?? 0)} /></div>
-    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]"><div className="overflow-hidden rounded-[28px] border border-[#afdbe3] bg-white/55 shadow-[0_14px_30px_rgba(35,79,92,0.08)]"><div className="border-b border-[#c5e4e8] p-5"><div className="text-lg font-bold">Copy Trade Liability Matrix</div><div className="text-sm text-[#315c72]">Valid-signal payout exposure, house-side capital, and near-term closings</div></div><div className="grid grid-cols-7 gap-3 border-b border-[#c5e4e8] px-5 py-4 text-xs font-bold uppercase text-[#315c72]"><span>Copy trade type</span><span>Open trades</span><span>Valid signals</span><span>Daily locked accrual</span><span>Remaining profit</span><span>Closing payout</span><span>Total risk exposure</span></div><div className="p-12 text-center text-[#315c72]">No open copy-trade liabilities.</div></div><div className="space-y-5"><div className="rounded-[28px] border border-[#afdbe3] bg-white/55 p-5"><div className="text-sm uppercase text-[#315c72]">Liquidity health index</div><div className="mt-3 text-3xl font-bold text-[#00b969]">No outflow</div><div className="mt-5 grid grid-cols-3 gap-2">{[["Inflow", money(s?.deposits_usd)], ["Payouts", money(s?.profit_usd)], ["Withdrawals", money(s?.withdrawals_usd)]].map(([k, v]) => <div key={k} className="rounded-2xl bg-[#e4f6f7] p-3"><div className="text-xs uppercase text-[#315c72]">{k}</div><div className="mt-2 text-sm font-bold">{v}</div></div>)}</div></div><div className="rounded-[28px] border border-[#afdbe3] bg-white/55 p-5"><div className="text-sm uppercase text-[#315c72]">Treasury controls</div><div className="mt-4 grid gap-3"><button onClick={() => syncMut.mutate()} disabled={syncMut.isPending} className="rounded-xl bg-[#bcebf7] px-4 py-3 font-semibold text-[#009fe3]">{syncMut.isPending ? "Syncing payouts…" : "Sync paid payouts"}</button><button onClick={() => reconcileMut.mutate()} disabled={reconcileMut.isPending} className="rounded-xl bg-[#b9f0df] px-4 py-3 font-semibold text-[#00a968]">{reconcileMut.isPending ? "Reconciling…" : "Run reconciliation"}</button></div></div></div></div>
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4"><AdminDashboardCard label="Current treasury balance" value={money(Number(s?.deposits_usd ?? 0) - Number(s?.withdrawals_usd ?? 0) + Number(s?.fees_usd ?? 0))} tone="red" /><AdminDashboardCard label="Available balance" value={money(s?.user_balances_usd)} tone="green" /><AdminDashboardCard label="Trading liability" value={money(s?.stakes_usd)} tone="red" /><AdminDashboardCard label="Active clients" value={String(s?.clients ?? 0)} /></div>
+    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]"><div className="overflow-hidden rounded-[28px] border border-[#afdbe3] bg-white/55 shadow-[0_14px_30px_rgba(35,79,92,0.08)]"><div className="border-b border-[#c5e4e8] p-5"><div className="text-base font-bold">Trading liability matrix</div><div className="text-sm text-[#315c72]">Open trades, stakes, payouts, and house exposure</div></div><div className="grid grid-cols-6 gap-3 border-b border-[#c5e4e8] px-5 py-4 text-xs font-bold uppercase text-[#315c72]"><span>Trade type</span><span>Open trades</span><span>Stakes</span><span>Payouts</span><span>House retained</span><span>Total exposure</span></div><div className="p-12 text-center text-[#315c72]">No open trade liabilities.</div></div><div className="space-y-5"><div className="rounded-[28px] border border-[#afdbe3] bg-white/55 p-5"><div className="text-sm uppercase text-[#315c72]">Liquidity status</div><div className="mt-3 text-2xl font-bold text-[#00b969]">Healthy</div><div className="mt-5 grid grid-cols-3 gap-2">{[["Deposits", money(s?.deposits_usd)], ["Earnings", money(s?.profit_usd)], ["Withdrawals", money(s?.withdrawals_usd)]].map(([k, v]) => <div key={k} className="rounded-2xl bg-[#e4f6f7] p-3"><div className="text-xs uppercase text-[#315c72]">{k}</div><div className="mt-2 text-sm font-bold">{v}</div></div>)}</div></div><div className="rounded-[28px] border border-[#afdbe3] bg-white/55 p-5"><div className="text-sm uppercase text-[#315c72]">Treasury controls</div><div className="mt-4 grid gap-3"><button onClick={() => syncMut.mutate()} disabled={syncMut.isPending} className="rounded-xl bg-[#bcebf7] px-4 py-3 text-sm font-semibold text-[#009fe3]">{syncMut.isPending ? "Syncing payouts…" : "Sync paid payouts"}</button><button onClick={() => reconcileMut.mutate()} disabled={reconcileMut.isPending} className="rounded-xl bg-[#b9f0df] px-4 py-3 text-sm font-semibold text-[#00a968]">{reconcileMut.isPending ? "Reconciling…" : "Run reconciliation"}</button></div></div></div></div>
   </div>;
+}
+
+function AdminDashboardCard({ label, value, tone }: { label: string; value: string; tone?: "gold" | "green" | "red" }) {
+  const toneClass = tone === "gold" ? "text-[#f1bd1b]" : tone === "green" ? "text-[#00b969]" : tone === "red" ? "text-[#ec3038]" : "text-[#0b1930]";
+  return <div className="min-h-[126px] rounded-[24px] border border-[#afdbe3] bg-white/55 p-4 shadow-[0_12px_24px_rgba(35,79,92,0.08)]"><div className="text-xs uppercase text-[#315c72]">{label}</div><div className={`mt-3 text-2xl font-bold ${toneClass}`}>{value}</div></div>;
 }
 
 function AdminTableShell({ title, children }: { title: string; children: React.ReactNode }) {
@@ -276,13 +284,14 @@ function AdminDepositsTab() {
   const approve = useServerFn(approveAdminDeposit);
   const reject = useServerFn(rejectAdminDeposit);
   const qc = useQueryClient();
-  const { data: rows = [], isLoading } = useQuery({ queryKey: ["admin-deposits"], queryFn: () => list(), refetchInterval: 10000 });
+  const { data: rows = [], isLoading, isError, error } = useQuery({ queryKey: ["admin-deposits"], queryFn: () => list(), refetchInterval: 10000 });
   const approveMut = useMutation({ mutationFn: (id: string) => approve({ data: { transaction_id: id } }), onSuccess: () => { toast.success("Deposit approved"); qc.invalidateQueries({ queryKey: ["admin-deposits"] }); qc.invalidateQueries({ queryKey: ["accounts-report"] }); }, onError: (e) => toast.error(e instanceof Error ? e.message : "Deposit approval failed") });
   const rejectMut = useMutation({ mutationFn: (id: string) => reject({ data: { transaction_id: id } }), onSuccess: () => { toast.success("Deposit rejected"); qc.invalidateQueries({ queryKey: ["admin-deposits"] }); }, onError: (e) => toast.error(e instanceof Error ? e.message : "Deposit rejection failed") });
   return (
     <div className="space-y-5">
       <AdminTableShell title="Deposits">
         {isLoading && <div className="p-8 text-center text-[#315c72]">Loading deposits…</div>}
+        {isError && <div className="p-8 text-center text-[#e52e3b]">Unable to load deposits: {error instanceof Error ? error.message : "Please retry"}</div>}
         {!isLoading && rows.length === 0 && <div className="p-8 text-center text-[#315c72]">No deposits found.</div>}
         {rows.map((row) => {
           const pending = !["completed", "success", "successful"].includes(String(row.status).toLowerCase());
@@ -304,11 +313,12 @@ function AdminWithdrawalsTab() {
   const paid = useServerFn(markAdminWithdrawalPaid);
   const reject = useServerFn(rejectAdminWithdrawal);
   const qc = useQueryClient();
-  const { data: rows = [], isLoading } = useQuery({ queryKey: ["admin-withdrawals"], queryFn: () => list(), refetchInterval: 10000 });
+  const { data: rows = [], isLoading, isError, error } = useQuery({ queryKey: ["admin-withdrawals"], queryFn: () => list(), refetchInterval: 10000 });
   const refresh = () => { qc.invalidateQueries({ queryKey: ["admin-withdrawals"] }); qc.invalidateQueries({ queryKey: ["accounts-report"] }); qc.invalidateQueries({ queryKey: ["admin-clients"] }); };
   const action = useMutation({ mutationFn: async ({ id, type }: { id: string; type: "approve" | "paid" | "reject" }) => type === "approve" ? approve({ data: { transaction_id: id } }) : type === "paid" ? paid({ data: { transaction_id: id } }) : reject({ data: { transaction_id: id } }), onSuccess: (_, vars) => { toast.success(vars.type === "reject" ? "Withdrawal rejected" : vars.type === "paid" ? "Withdrawal marked paid" : "Withdrawal approved"); refresh(); }, onError: (e) => toast.error(e instanceof Error ? e.message : "Withdrawal action failed") });
   return <AdminTableShell title="Withdrawals">
     {isLoading && <div className="p-8 text-center text-[#315c72]">Loading withdrawals…</div>}
+    {isError && <div className="p-8 text-center text-[#e52e3b]">Unable to load withdrawals: {error instanceof Error ? error.message : "Please retry"}</div>}
     {!isLoading && rows.length === 0 && <div className="p-8 text-center text-[#315c72]">No withdrawals found.</div>}
     {rows.map((row) => { const status = String(row.status).toLowerCase(); const active = ["pending", "processing"].includes(status); return <div key={row.id} className="grid grid-cols-[minmax(230px,2fr)_minmax(120px,1fr)_minmax(120px,1fr)_minmax(140px,1fr)_minmax(220px,1.3fr)] items-center gap-4 border-b border-[#c5e4e8] px-5 py-4 last:border-0"><div><div className="font-semibold">{row.user_name}</div><div className="text-sm text-[#315c72]">{new Date(row.created_at).toLocaleString()}</div></div><div className="font-medium">KES {Number(row.amount ?? 0).toLocaleString()}</div><div className="text-[#315c72]">KES {Number(row.fee ?? 0).toLocaleString()}</div><div className="font-medium">KES {Number(row.payout ?? 0).toLocaleString()}</div><div className="flex flex-wrap items-center gap-2"><span className="text-sm text-[#315c72]">{row.phone ?? "—"}</span><StatusPill status={status === "completed" ? "Success" : status === "failed" ? "Failed" : "Pending"} /><button onClick={() => action.mutate({ id: row.id, type: "approve" })} disabled={!active || action.isPending} className="rounded-full bg-[#bcebf7] px-3 py-2 text-sm font-semibold text-[#009fe3]">Approve</button><button onClick={() => action.mutate({ id: row.id, type: "paid" })} disabled={!active || action.isPending} className="rounded-full bg-[#b9f0df] px-3 py-2 text-sm font-semibold text-[#00a968]">Mark paid</button><button onClick={() => action.mutate({ id: row.id, type: "reject" })} disabled={!active || action.isPending} className="rounded-full bg-[#f8d9dc] px-3 py-2 text-sm font-semibold text-[#e52e3b]">Reject</button></div></div>; })}
   </AdminTableShell>;

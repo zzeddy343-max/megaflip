@@ -954,16 +954,21 @@ export const listAdminDeposits = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin
       .from("transactions")
-      .select("id,user_id,amount,amount_usd,currency,status,method,meta,created_at,profiles:user_id(email,full_name,username,phone)")
+      .select("id,user_id,amount,amount_usd,currency,status,method,meta,created_at")
       .eq("kind", "deposit")
       .eq("account_type", "real")
       .order("created_at", { ascending: false })
       .limit(200);
     if (error) throw new Error(error.message);
-    return (data ?? []).map((row) => ({
+    const ids = (data ?? []).map((row) => row.user_id).filter(Boolean);
+    const { data: roles } = ids.length ? await supabaseAdmin.from("user_roles").select("user_id,role").in("user_id", ids) : { data: [] };
+    const internalIds = new Set((roles ?? []).filter((role) => role.role === "admin" || role.role === "agent").map((role) => role.user_id));
+    const { data: profiles } = ids.length ? await supabaseAdmin.from("profiles").select("id,email,full_name,username,phone").in("id", ids) : { data: [] };
+    const profileMap = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
+    return (data ?? []).filter((row) => !internalIds.has(row.user_id)).map((row) => ({
       ...row,
-      user_name: row.profiles?.full_name ?? row.profiles?.username ?? row.profiles?.email ?? "Client",
-      phone: row.profiles?.phone ?? row.meta?.phone ?? null,
+      user_name: profileMap.get(row.user_id)?.full_name ?? profileMap.get(row.user_id)?.username ?? profileMap.get(row.user_id)?.email ?? "Client",
+      phone: profileMap.get(row.user_id)?.phone ?? row.meta?.phone ?? null,
     }));
   });
 
@@ -1003,16 +1008,21 @@ export const listAdminWithdrawals = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin
       .from("transactions")
-      .select("id,user_id,amount,amount_usd,currency,status,method,meta,created_at,profiles:user_id(email,full_name,username,phone)")
+      .select("id,user_id,amount,amount_usd,currency,status,method,meta,created_at")
       .eq("kind", "withdraw")
       .eq("account_type", "real")
       .order("created_at", { ascending: false })
       .limit(200);
     if (error) throw new Error(error.message);
-    return (data ?? []).map((row) => ({
+    const ids = (data ?? []).map((row) => row.user_id).filter(Boolean);
+    const { data: roles } = ids.length ? await supabaseAdmin.from("user_roles").select("user_id,role").in("user_id", ids) : { data: [] };
+    const internalIds = new Set((roles ?? []).filter((role) => role.role === "admin" || role.role === "agent").map((role) => role.user_id));
+    const { data: profiles } = ids.length ? await supabaseAdmin.from("profiles").select("id,email,full_name,username,phone").in("id", ids) : { data: [] };
+    const profileMap = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
+    return (data ?? []).filter((row) => !internalIds.has(row.user_id)).map((row) => ({
       ...row,
-      user_name: row.profiles?.full_name ?? row.profiles?.username ?? row.profiles?.email ?? "Client",
-      phone: row.profiles?.phone ?? row.meta?.phone ?? null,
+      user_name: profileMap.get(row.user_id)?.full_name ?? profileMap.get(row.user_id)?.username ?? profileMap.get(row.user_id)?.email ?? "Client",
+      phone: profileMap.get(row.user_id)?.phone ?? row.meta?.phone ?? null,
       fee: Number(row.meta?.fee_amount ?? 0),
       payout: Number(row.meta?.net_amount ?? row.amount ?? 0),
     }));
