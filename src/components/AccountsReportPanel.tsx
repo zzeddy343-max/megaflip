@@ -110,6 +110,36 @@ export function AccountsReportPanel({
           <div className="mb-4 text-sm font-bold uppercase tracking-wide text-[#315c72]">Detailed account reporting</div>
           <div className="grid grid-cols-2 gap-3">{(["summary", "deposits", "withdrawals", "trades", "clients"] as const).map((item) => <button key={item} onClick={() => setView(item)} className={`rounded-xl px-3 py-2 text-sm font-bold capitalize ${view === item ? "bg-[#bcebf7] text-[#009fe3]" : "bg-white text-[#315c72]"}`}>{item}</button>)}</div>
         </div>
+        {view !== "summary" && (
+          <div className="divide-y divide-[#d7edf0] overflow-hidden rounded-2xl border border-[#afdbe3] bg-white/70">
+            {isLoading && <div className="p-6 text-center text-sm text-[#315c72]">Loading report...</div>}
+            {!isLoading && rows.length === 0 && <div className="p-6 text-center text-sm text-[#315c72]">No records match.</div>}
+            {!isLoading && (rows as ReportRow[]).map((row) =>
+              view === "trades" ? (
+                <Row
+                  key={String(row.id)}
+                  title={`${row.module} - ${row.market}`}
+                  meta={`${row.status} - ${date(String(row.created_at))}`}
+                  value={`${money(row.stake)} stake / ${money(row.payout)} payout`}
+                />
+              ) : view === "clients" ? (
+                <Row
+                  key={String(row.client_id)}
+                  title={String(row.name ?? "")}
+                  meta={`${row.trades} trades - retained ${money(row.retained_usd)}`}
+                  value={`${money(row.balance_usd)} balance`}
+                />
+              ) : (
+                <Row
+                  key={String(row.id)}
+                  title={`${row.kind} - ${row.method ?? "system"}`}
+                  meta={`${row.status} - ${date(String(row.created_at))}`}
+                  value={money(row.amount_usd)}
+                />
+              ),
+            )}
+          </div>
+        )}
       </div>
     );
   }
@@ -277,7 +307,7 @@ function DashboardGroup({ title, children }: { title: string; children: React.Re
 function DashboardCard({ label, value, note, tone, onClick }: { label: string; value: string; note?: string; tone?: "gold" | "green" | "red"; onClick?: () => void }) {
   const toneClass = tone === "gold" ? "text-[#f1bd1b]" : tone === "green" ? "text-[#00b969]" : tone === "red" ? "text-[#ec3038]" : "text-[#0b1930]";
   const content = <><div className="text-xs uppercase text-[#315c72]">{label}</div><div className={`mt-3 text-2xl font-bold ${toneClass}`}>{value}</div>{note && <div className="mt-2 text-xs leading-5 text-[#315c72]">{note}</div>}</>;
-  return onClick ? <button type="button" onClick={onClick} className="min-h-[126px] rounded-[22px] border border-[#afdbe3] bg-white/55 p-4 text-left shadow-[0_12px_24px_rgba(35,79,92,0.08)] transition hover:bg-white">{content}</button> : <div className="min-h-[126px] rounded-[22px] border border-[#afdbe3] bg-white/55 p-4 shadow-[0_12px_24px_rgba(35,79,92,0.08)]">{content}</div>;
+  return onClick ? <button type="button" onClick={onClick} aria-label={`View ${label}`} className="min-h-[126px] cursor-pointer rounded-[22px] border border-[#afdbe3] bg-white/55 p-4 text-left shadow-[0_12px_24px_rgba(35,79,92,0.08)] transition hover:bg-white hover:shadow-[0_16px_30px_rgba(35,79,92,0.14)] focus:outline-none focus:ring-2 focus:ring-[#009fe3]">{content}</button> : <div className="min-h-[126px] rounded-[22px] border border-[#afdbe3] bg-white/55 p-4 shadow-[0_12px_24px_rgba(35,79,92,0.08)]">{content}</div>;
 }
 
 function DateField({
