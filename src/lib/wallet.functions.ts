@@ -518,14 +518,19 @@ async function sendB2cPayment(
   }
 
   await recordPaymentRequest(transaction.id, "b2c", msisdn, payload, response);
-  await markTransaction(transaction.id, "processing", {
+  // Match the previously deployed payout flow: Daraja's acceptance response
+  // releases the withdrawal instead of leaving the reserved balance stuck.
+  // A later failure/timeout callback still transitions it to failed and refunds
+  // the reservation through apply_transaction.
+  await markTransaction(transaction.id, "completed", {
     daraja_request_sent: true,
     b2c_request_accepted: true,
+    completed_on_b2c_acceptance: true,
     conversation_id: response.ConversationID ?? null,
     originator_conversation_id: response.OriginatorConversationID ?? null,
     response_description: response.ResponseDescription ?? null,
   });
-  await markPaymentRequestStatus(transaction.id, "b2c", "processing", response);
+  await markPaymentRequestStatus(transaction.id, "b2c", "completed", response);
   return response;
 }
 
