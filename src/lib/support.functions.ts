@@ -259,8 +259,8 @@ export const getAdminNotifications = createServerFn({ method: "GET" })
       ...pendingTransactions.map((row) => ({
         id: `tx-${row.id}`,
         type: "transaction" as const,
-        title: "Withdrawal request",
-        detail: `${Number(row.amount_usd ?? 0).toFixed(2)} USD pending admin approval`,
+        title: "Withdrawal needs attention",
+        detail: `${Number(row.amount_usd ?? 0).toFixed(2)} USD withdrawal requires admin review.`,
         created_at: row.created_at,
         user_name: (row.profiles as { full_name?: string | null } | null)?.full_name ?? null,
       })),

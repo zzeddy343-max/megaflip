@@ -173,7 +173,14 @@ function AdminWorkspace() {
   >("accounts");
   const repairWithdrawals = useServerFn(failStaleMpesaWithdrawals);
   const reconcileB2c = useServerFn(reconcileSuccessfulB2cCallbacks);
+  const listApprovals = useServerFn(listWithdrawalApprovalRequests);
   const qc = useQueryClient();
+  const { data: approvalData } = useQuery({
+    queryKey: ["withdrawal-approval-requests"],
+    queryFn: () => listApprovals(),
+    refetchInterval: 10000,
+  });
+  const pendingWithdrawalCount = approvalData?.requests?.length ?? 0;
 
   const repairMut = useMutation({
     mutationFn: () => repairWithdrawals({ data: { older_than_minutes: 15 } }),
@@ -226,11 +233,17 @@ function AdminWorkspace() {
           <span className="text-xl font-bold">MineHub - Admin</span>
         </div>
         <nav className="space-y-1 p-4">
-          {nav.map(([key, label, Icon, short]) => (
-            <button key={label} type="button" onClick={() => setTab(key as typeof tab)} className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-base transition ${tab === key ? "bg-[#bcebf7] text-[#009fe3]" : "text-[#315c72] hover:bg-[#d8f1f5]"}`}>
-              <Icon className="h-5 w-5" /> <span>{label}</span>
-            </button>
-          ))}
+            {nav.map(([key, label, Icon, short]) => (
+              <button key={label} type="button" onClick={() => setTab(key as typeof tab)} className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-base transition ${tab === key ? "bg-[#bcebf7] text-[#009fe3]" : "text-[#315c72] hover:bg-[#d8f1f5]"}`}>
+                <Icon className="h-5 w-5" />
+                <span className="flex-1">{label}</span>
+                {short === "withdrawals" && pendingWithdrawalCount > 0 && (
+                  <span className="flex h-6 min-w-6 animate-pulse items-center justify-center rounded-full bg-[#e32635] px-1.5 text-xs font-extrabold text-white" aria-label={`${pendingWithdrawalCount} pending withdrawal requests`}>
+                    {pendingWithdrawalCount}
+                  </span>
+                )}
+              </button>
+            ))}
         </nav>
       </aside>
       <main className="min-w-0 flex-1">
@@ -240,7 +253,7 @@ function AdminWorkspace() {
         </header>
         <div className="space-y-5 p-5 lg:p-8">
           <div className="flex flex-wrap gap-2 lg:hidden">
-            {nav.map(([key, label]) => <button key={label} onClick={() => setTab(key as typeof tab)} className={`rounded-full px-3 py-2 text-xs font-bold ${tab === key ? "bg-[#bcebf7] text-[#009fe3]" : "bg-white text-[#315c72]"}`}>{label}</button>)}
+            {nav.map(([key, label, , short]) => <button key={label} onClick={() => setTab(key as typeof tab)} className={`relative rounded-full px-3 py-2 text-xs font-bold ${tab === key ? "bg-[#bcebf7] text-[#009fe3]" : "bg-white text-[#315c72]"}`}>{label}{short === "withdrawals" && pendingWithdrawalCount > 0 && <span className="ml-1.5 inline-flex h-5 min-w-5 animate-pulse items-center justify-center rounded-full bg-[#e32635] px-1 text-[10px] font-extrabold text-white">{pendingWithdrawalCount}</span>}</button>)}
           </div>
           <div className="flex flex-wrap justify-end gap-2">
             <button onClick={() => reconcileMut.mutate()} disabled={reconcileMut.isPending} className="rounded-xl bg-[#bcebf7] px-3 py-2 text-xs font-bold text-[#009fe3]"><RotateCcw className="mr-1 inline h-4 w-4" />{reconcileMut.isPending ? "Checking..." : "Sync paid M-Pesa"}</button>
@@ -405,7 +418,7 @@ function WithdrawalApprovalsTab() {
           <div>
             <div className="font-bold">Withdrawal requests</div>
             <div className="text-[11px] text-muted-foreground">
-              Above-deposit withdrawals wait here until an admin releases them.
+              Withdrawal requests needing attention appear here for review.
             </div>
           </div>
           <div className="rounded-lg border border-border bg-background px-2 py-1 text-xs font-bold">

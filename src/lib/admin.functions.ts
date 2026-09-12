@@ -111,7 +111,6 @@ function emptyAccountsReport() {
       deposits_usd: 0,
       withdrawals_usd: 0,
       fees_usd: 0,
-      house_balance_usd: 0,
       net_cashflow_usd: 0,
       profit_usd: 0,
       losses_usd: 0,
@@ -855,17 +854,8 @@ export const getAccountsReport = createServerFn({ method: "POST" })
     const completedTransactions = reportTransactions.filter((t) => t.status === "completed");
     const completedDeposits = completedTransactions.filter((t) => t.kind === "deposit");
     const completedWithdrawals = completedTransactions.filter((t) => t.kind === "withdraw");
-    // House cash is a cash-flow metric, not a trading P&L metric. Only real
-    // deposit/withdrawal fees belong here; trade stakes and payouts must never
-    // change the house-balance calculation.
-    const feeTransactions = completedTransactions.filter(
-      (t) => t.kind === "deposit" || t.kind === "withdraw",
-    );
-    const feeTotal = feeTransactions.reduce((sum, t) => sum + transactionFee(t), 0);
+    const feeTotal = completedTransactions.reduce((sum, t) => sum + transactionFee(t), 0);
     const depositFees = completedDeposits.reduce((sum, t) => sum + transactionFee(t), 0);
-    const completedWithdrawalsUsd = sumUsd(completedWithdrawals);
-    const houseBalanceUsd =
-      sumUsd(completedDeposits) + feeTotal - completedWithdrawalsUsd;
     const closedTrades = reportTrades.filter((t) => t.status !== "open");
     const houseRetained = closedTrades.reduce((sum, t) => {
       if (t.status === "lost") return sum + Number(t.stake ?? 0);
@@ -911,8 +901,7 @@ export const getAccountsReport = createServerFn({ method: "POST" })
         deposits_usd: sumUsd(completedDeposits) + manual.deposits_usd,
         withdrawals_usd: sumUsd(completedWithdrawals) + manual.withdrawals_usd,
         fees_usd: feeTotal,
-        house_balance_usd: houseBalanceUsd,
-        net_cashflow_usd: sumUsd(completedDeposits) + depositFees - completedWithdrawalsUsd,
+        net_cashflow_usd: sumUsd(completedDeposits) + depositFees - sumUsd(completedWithdrawals),
         profit_usd: houseRetained + feeTotal + manual.retained_usd,
         losses_usd: Math.max(0, -houseRetained),
         pending_deposits: deposits.filter((t) => t.status !== "completed").length,

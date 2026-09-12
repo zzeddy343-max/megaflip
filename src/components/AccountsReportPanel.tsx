@@ -68,12 +68,10 @@ export function AccountsReportPanel({
 
   const summary = data?.summary;
   const money = (value: unknown) => formatAdminMoney(value, currency);
-  const houseBalance = Number(
-    summary?.house_balance_usd ??
-      Number(summary?.deposits_usd ?? 0) +
-        Number(summary?.fees_usd ?? 0) -
-        Number(summary?.withdrawals_usd ?? 0),
-  );
+  const houseBalance =
+    Number(summary?.deposits_usd ?? 0) +
+    Number(summary?.fees_usd ?? 0) -
+    Number(summary?.withdrawals_usd ?? 0);
   const liability = Number(summary?.user_balances_usd ?? 0);
   const coverage = liability > 0 ? Math.max(0, Math.min(100, (houseBalance / liability) * 100)) : 0;
 
@@ -81,7 +79,7 @@ export function AccountsReportPanel({
     return (
       <div className="space-y-6">
         <DashboardGroup title="House">
-          <DashboardCard label="House balance" value={money(houseBalance)} tone="gold" note="Completed deposits + eligible fees - completed withdrawals; trading excluded" />
+          <DashboardCard label="House balance" value={money(houseBalance)} tone="gold" note="Deposits + fees - withdrawals paid" />
           <DashboardCard label="Coverage ratio" value={`${coverage.toFixed(1)}%`} tone="gold" note="House cash vs total client balances" />
           <DashboardCard
             label="Client balances"
