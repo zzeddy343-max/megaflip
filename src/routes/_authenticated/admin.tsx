@@ -45,6 +45,7 @@ import {
   adjustAgentBalance,
   setAgentWithdrawalsEnabled,
   listClients,
+  resetClientPassword,
   listWithdrawalApprovalRequests,
   listAdminDeposits,
   approveAdminDeposit,
@@ -1227,6 +1228,7 @@ function UsersTab() {
   const promote = useServerFn(promoteUserRole);
   const resetBalances = useServerFn(resetUserBalances);
   const moderate = useServerFn(moderateClientAccount);
+  const resetPassword = useServerFn(resetClientPassword);
   const [search, setSearch] = useState("");
   const [agentFilter, setAgentFilter] = useState<string | undefined>(undefined);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
@@ -1284,6 +1286,14 @@ function UsersTab() {
       qc.invalidateQueries({ queryKey: ["profile"] });
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Account action failed"),
+  });
+  const resetPasswordMut = useMutation({
+    mutationFn: (user_id: string) =>
+      resetPassword({ data: { user_id, security_password: promptPrivilegedPassword() } }),
+    onSuccess: (result) => {
+      toast.success(`Password reset. Temporary password: ${result.temporary_password}`);
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Password reset failed"),
   });
 
   const totalReal = userRows.reduce((s, u) => s + Number(u.balance_usd), 0);
@@ -1412,6 +1422,17 @@ function UsersTab() {
                     className="rounded border border-bull/40 px-1.5 py-0.5 text-[9px] font-bold text-bull disabled:opacity-50"
                   >
                     <ShieldPlus className="mr-0.5 inline h-2.5 w-2.5" /> Admin
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (window.confirm("Reset this user's password to their 07 phone number and require a new password at next login?")) {
+                        resetPasswordMut.mutate(u.id);
+                      }
+                    }}
+                    disabled={resetPasswordMut.isPending}
+                    className="rounded border border-amber-500/40 px-1.5 py-0.5 text-[9px] font-bold text-amber-500 disabled:opacity-50"
+                  >
+                    Reset password
                   </button>
                 </div>
                 <div className="flex flex-wrap gap-1">

@@ -111,6 +111,7 @@ function emptyAccountsReport() {
       deposits_usd: 0,
       withdrawals_usd: 0,
       fees_usd: 0,
+      house_balance_usd: 0,
       net_cashflow_usd: 0,
       profit_usd: 0,
       losses_usd: 0,
@@ -517,6 +518,58 @@ export const promoteUserRole = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const resetClientPassword = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ user_id: z.string().uuid(), security_password: z.string().min(1) }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.supabase, context.userId);
+    assertPrivilegedPassword(data.security_password);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .select("id,phone")
+      .eq("id", data.user_id)
+      .maybeSingle();
+    if (profileError) throw new Error(profileError.message);
+    if (!profile?.phone) throw new Error("This user has no phone number on their profile");
+
+    const temporaryPassword = temporaryPasswordFromPhone(profile.phone);
+    const { data: authUser, error: authUserError } = await supabaseAdmin.auth.admin.getUserById(data.user_id);
+    if (authUserError || !authUser.user) throw new Error(authUserError?.message ?? "User account not found");
+
+    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(data.user_id, {
+      password: temporaryPassword,
+      user_metadata: {
+        ...(authUser.user.user_metadata ?? {}),
+        must_change_password: true,
+        password_reset_at: new Date().toISOString(),
+      },
+    });
+    if (updateError) throw new Error(updateError.message);
+
+    const { error: auditError } = await supabaseAdmin.from("audit_events").insert({
+      actor_user_id: context.userId,
+      event_type: "client_password_reset",
+      entity_type: "user",
+      entity_id: data.user_id,
+      details: { method: "phone_temporary_password", must_change_password: true },
+    });
+    if (auditError) throw new Error(auditError.message);
+
+    return { ok: true, temporary_password: temporaryPassword };
+  });
+
+function temporaryPasswordFromPhone(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.startsWith("254") && digits.length === 12) return `0${digits.slice(3)}`;
+  if (digits.startsWith("0") && digits.length === 10) return digits;
+  if (digits.length === 9) return `0${digits}`;
+  throw new Error("The user's phone number is not a valid Kenyan mobile number");
+}
+
 export const demoteUserRole = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
@@ -802,8 +855,17 @@ export const getAccountsReport = createServerFn({ method: "POST" })
     const completedTransactions = reportTransactions.filter((t) => t.status === "completed");
     const completedDeposits = completedTransactions.filter((t) => t.kind === "deposit");
     const completedWithdrawals = completedTransactions.filter((t) => t.kind === "withdraw");
-    const feeTotal = completedTransactions.reduce((sum, t) => sum + transactionFee(t), 0);
+    // House cash is a cash-flow metric, not a trading P&L metric. Only real
+    // deposit/withdrawal fees belong here; trade stakes and payouts must never
+    // change the house-balance calculation.
+    const feeTransactions = completedTransactions.filter(
+      (t) => t.kind === "deposit" || t.kind === "withdraw",
+    );
+    const feeTotal = feeTransactions.reduce((sum, t) => sum + transactionFee(t), 0);
     const depositFees = completedDeposits.reduce((sum, t) => sum + transactionFee(t), 0);
+    const completedWithdrawalsUsd = sumUsd(completedWithdrawals);
+    const houseBalanceUsd =
+      sumUsd(completedDeposits) + feeTotal - completedWithdrawalsUsd;
     const closedTrades = reportTrades.filter((t) => t.status !== "open");
     const houseRetained = closedTrades.reduce((sum, t) => {
       if (t.status === "lost") return sum + Number(t.stake ?? 0);
@@ -849,7 +911,8 @@ export const getAccountsReport = createServerFn({ method: "POST" })
         deposits_usd: sumUsd(completedDeposits) + manual.deposits_usd,
         withdrawals_usd: sumUsd(completedWithdrawals) + manual.withdrawals_usd,
         fees_usd: feeTotal,
-        net_cashflow_usd: sumUsd(completedDeposits) + depositFees - sumUsd(completedWithdrawals),
+        house_balance_usd: houseBalanceUsd,
+        net_cashflow_usd: sumUsd(completedDeposits) + depositFees - completedWithdrawalsUsd,
         profit_usd: houseRetained + feeTotal + manual.retained_usd,
         losses_usd: Math.max(0, -houseRetained),
         pending_deposits: deposits.filter((t) => t.status !== "completed").length,

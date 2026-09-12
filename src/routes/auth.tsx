@@ -29,7 +29,9 @@ function AuthPage() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/binary" });
+      if (data.session) {
+        navigate({ to: data.session.user.user_metadata?.must_change_password ? "/change-password" : "/binary" });
+      }
     });
   }, [navigate]);
 
@@ -90,6 +92,10 @@ function AuthPage() {
             .from("profiles")
             .update({ account_state: "active", freeze_until: null })
             .eq("id", signInData.user.id);
+        }
+        if (signInData.user.user_metadata?.must_change_password) {
+          navigate({ to: "/change-password" });
+          return;
         }
       }
       navigate({ to: "/binary" });

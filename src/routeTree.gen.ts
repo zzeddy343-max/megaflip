@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ChangePasswordRouteImport } from './routes/change-password'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AdminSetupRouteImport } from './routes/admin-setup'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
@@ -30,6 +31,11 @@ import { Route as ApiDarajaStkCallbackRouteImport } from './routes/api/daraja/st
 import { Route as ApiDarajaB2cTimeoutRouteImport } from './routes/api/daraja/b2c-timeout'
 import { Route as ApiDarajaB2cResultRouteImport } from './routes/api/daraja/b2c-result'
 
+const ChangePasswordRoute = ChangePasswordRouteImport.update({
+  id: '/change-password',
+  path: '/change-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -134,6 +140,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin-setup': typeof AdminSetupRoute
   '/auth': typeof AuthRoute
+  '/change-password': typeof ChangePasswordRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/apps': typeof AuthenticatedAppsRoute
   '/aviator': typeof AuthenticatedAviatorRoute
@@ -155,6 +162,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin-setup': typeof AdminSetupRoute
   '/auth': typeof AuthRoute
+  '/change-password': typeof ChangePasswordRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/apps': typeof AuthenticatedAppsRoute
   '/aviator': typeof AuthenticatedAviatorRoute
@@ -178,6 +186,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/admin-setup': typeof AdminSetupRoute
   '/auth': typeof AuthRoute
+  '/change-password': typeof ChangePasswordRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/apps': typeof AuthenticatedAppsRoute
   '/_authenticated/aviator': typeof AuthenticatedAviatorRoute
@@ -201,6 +210,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin-setup'
     | '/auth'
+    | '/change-password'
     | '/admin'
     | '/apps'
     | '/aviator'
@@ -222,6 +232,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin-setup'
     | '/auth'
+    | '/change-password'
     | '/admin'
     | '/apps'
     | '/aviator'
@@ -244,6 +255,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/admin-setup'
     | '/auth'
+    | '/change-password'
     | '/_authenticated/admin'
     | '/_authenticated/apps'
     | '/_authenticated/aviator'
@@ -267,6 +279,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AdminSetupRoute: typeof AdminSetupRoute
   AuthRoute: typeof AuthRoute
+  ChangePasswordRoute: typeof ChangePasswordRoute
   ApiDarajaB2cResultRoute: typeof ApiDarajaB2cResultRoute
   ApiDarajaB2cTimeoutRoute: typeof ApiDarajaB2cTimeoutRoute
   ApiDarajaStkCallbackRoute: typeof ApiDarajaStkCallbackRoute
@@ -274,6 +287,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/change-password': {
+      id: '/change-password'
+      path: '/change-password'
+      fullPath: '/change-password'
+      preLoaderRoute: typeof ChangePasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -457,6 +477,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AdminSetupRoute: AdminSetupRoute,
   AuthRoute: AuthRoute,
+  ChangePasswordRoute: ChangePasswordRoute,
   ApiDarajaB2cResultRoute: ApiDarajaB2cResultRoute,
   ApiDarajaB2cTimeoutRoute: ApiDarajaB2cTimeoutRoute,
   ApiDarajaStkCallbackRoute: ApiDarajaStkCallbackRoute,
