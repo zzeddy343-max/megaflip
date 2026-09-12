@@ -1042,14 +1042,8 @@ export const markAdminWithdrawalPaid = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object({ transaction_id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     await assertAdmin(context.supabase, context.userId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await (supabaseAdmin as unknown as RpcAdminClient).rpc("apply_transaction", {
-      _transaction_id: data.transaction_id,
-      _status: "completed",
-      _meta: { marked_paid_by: context.userId, marked_paid_at: new Date().toISOString() },
-    });
-    if (error) throw new Error(error.message);
-    return { ok: true };
+    void data;
+    throw new Error("Withdrawals are marked paid only by the provider callback");
   });
 
 export const rejectAdminWithdrawal = createServerFn({ method: "POST" })

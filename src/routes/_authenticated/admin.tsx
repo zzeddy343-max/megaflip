@@ -50,7 +50,6 @@ import {
   approveAdminDeposit,
   rejectAdminDeposit,
   listAdminWithdrawals,
-  markAdminWithdrawalPaid,
   rejectAdminWithdrawal,
   getAccountsReport,
   moderateClientAccount,
@@ -74,6 +73,7 @@ import { AccountsReportPanel } from "@/components/AccountsReportPanel";
 import { SupportPanel } from "@/components/SupportPanel";
 import {
   calculateHouseEdgePercent,
+  calculatePlayerRoiPercent,
   DEFAULT_SYSTEM_SETTINGS,
   getSystemSettings,
   updateSystemSettings,
@@ -245,7 +245,7 @@ function AdminWorkspace() {
             <button onClick={() => reconcileMut.mutate()} disabled={reconcileMut.isPending} className="rounded-xl bg-[#bcebf7] px-3 py-2 text-xs font-bold text-[#009fe3]"><RotateCcw className="mr-1 inline h-4 w-4" />{reconcileMut.isPending ? "Checking..." : "Sync paid M-Pesa"}</button>
             <button onClick={() => repairMut.mutate()} disabled={repairMut.isPending} className="rounded-xl bg-[#ffdfe1] px-3 py-2 text-xs font-bold text-[#e32635]"><RotateCcw className="mr-1 inline h-4 w-4" />{repairMut.isPending ? "Checking..." : "Refund stale B2C"}</button>
           </div>
-          {tab === "accounts" && <AccountsReportPanel scope="admin" mode="all_time" presentation="dashboard" />}
+          {tab === "accounts" && <AccountsReportPanel scope="admin" mode="all_time" presentation="dashboard" onNavigateToClients={() => setTab("users")} />}
           {tab === "users" && <UsersTab />}
           {tab === "deposits" && <AdminDepositsTab />}
           {tab === "trades" && <TradesTab />}
@@ -327,17 +327,16 @@ function AdminWithdrawalsTab() {
   const { currency } = useAdminCurrency();
   const list = useServerFn(listAdminWithdrawals);
   const approve = useServerFn(approveWithdrawalApprovalRequest);
-  const paid = useServerFn(markAdminWithdrawalPaid);
   const reject = useServerFn(rejectAdminWithdrawal);
   const qc = useQueryClient();
   const { data: rows = [], isLoading, isError, error } = useQuery({ queryKey: ["admin-withdrawals"], queryFn: () => list(), refetchInterval: 10000 });
   const refresh = () => { qc.invalidateQueries({ queryKey: ["admin-withdrawals"] }); qc.invalidateQueries({ queryKey: ["accounts-report"] }); qc.invalidateQueries({ queryKey: ["admin-clients"] }); };
-  const action = useMutation({ mutationFn: async ({ id, type }: { id: string; type: "approve" | "paid" | "reject" }) => type === "approve" ? approve({ data: { transaction_id: id } }) : type === "paid" ? paid({ data: { transaction_id: id } }) : reject({ data: { transaction_id: id } }), onSuccess: (_, vars) => { toast.success(vars.type === "reject" ? "Withdrawal rejected" : vars.type === "paid" ? "Withdrawal marked paid" : "Withdrawal approved"); refresh(); }, onError: (e) => toast.error(e instanceof Error ? e.message : "Withdrawal action failed") });
+  const action = useMutation({ mutationFn: async ({ id, type }: { id: string; type: "approve" | "reject" }) => type === "approve" ? approve({ data: { transaction_id: id } }) : reject({ data: { transaction_id: id } }), onSuccess: (_, vars) => { toast.success(vars.type === "reject" ? "Withdrawal rejected" : "Withdrawal approved; awaiting provider confirmation"); refresh(); }, onError: (e) => toast.error(e instanceof Error ? e.message : "Withdrawal action failed") });
   return <AdminTableShell title="Withdrawals">
     {isLoading && <div className="p-8 text-center text-[#315c72]">Loading withdrawals…</div>}
     {isError && <div className="p-8 text-center text-[#e52e3b]">Unable to load withdrawals: {error instanceof Error ? error.message : "Please retry"}</div>}
     {!isLoading && rows.length === 0 && <div className="p-8 text-center text-[#315c72]">No withdrawals found.</div>}
-    {rows.map((row) => { const status = String(row.status).toLowerCase(); const paidStatus = Boolean(row.meta?.marked_paid_at); const active = ["pending", "processing"].includes(status); return <div key={row.id} className="grid grid-cols-[minmax(230px,2fr)_minmax(120px,1fr)_minmax(110px,1fr)_minmax(120px,1fr)_minmax(145px,1fr)_minmax(100px,0.8fr)_minmax(235px,1.8fr)] items-center gap-4 border-b border-[#c5e4e8] px-5 py-4 text-sm last:border-0"><div><div className="font-semibold">{row.user_name}</div><div className="text-xs text-[#315c72]">{new Date(row.created_at).toLocaleString()}</div></div><div className="font-medium">{formatAdminMoney(row.amount_usd ?? Number(row.amount ?? 0) / 130, currency)}</div><div className="text-[#315c72]">{formatAdminMoney(Number(row.fee ?? 0) / 130, currency)}</div><div className="font-medium">{formatAdminMoney(Number(row.payout ?? 0) / 130, currency)}</div><div className="text-xs text-[#315c72]">{row.phone ?? "—"}</div><StatusPill status={paidStatus ? "Paid" : status === "completed" ? "Success" : status === "failed" ? "Failed" : "Pending"} /><div className="flex gap-1.5">{!paidStatus && <><button onClick={() => action.mutate({ id: row.id, type: "approve" })} disabled={!active || action.isPending} className="rounded-full bg-[#bcebf7] px-3 py-1.5 text-sm font-semibold text-[#009fe3]">Approve</button><button onClick={() => action.mutate({ id: row.id, type: "paid" })} disabled={!active || action.isPending} className="rounded-full bg-[#b9f0df] px-3 py-1.5 text-sm font-semibold text-[#00a968]">Mark paid</button><button onClick={() => action.mutate({ id: row.id, type: "reject" })} disabled={!active || action.isPending} className="rounded-full bg-[#f8d9dc] px-3 py-1.5 text-sm font-semibold text-[#e52e3b]">Reject</button></>}</div></div>; })}
+    {rows.map((row) => { const status = String(row.status).toLowerCase(); const paidStatus = status === "completed"; const active = status === "pending"; const awaitingProvider = status === "processing"; return <div key={row.id} className="grid grid-cols-[minmax(230px,2fr)_minmax(120px,1fr)_minmax(110px,1fr)_minmax(120px,1fr)_minmax(145px,1fr)_minmax(100px,0.8fr)_minmax(235px,1.8fr)] items-center gap-4 border-b border-[#c5e4e8] px-5 py-4 text-sm last:border-0"><div><div className="font-semibold">{row.user_name}</div><div className="text-xs text-[#315c72]">{new Date(row.created_at).toLocaleString()}</div></div><div className="font-medium">{formatAdminMoney(row.amount_usd ?? Number(row.amount ?? 0) / 130, currency)}</div><div className="text-[#315c72]">{formatAdminMoney(Number(row.fee ?? 0) / 130, currency)}</div><div className="font-medium">{formatAdminMoney(Number(row.payout ?? 0) / 130, currency)}</div><div className="text-xs text-[#315c72]">{row.phone ?? "—"}</div><StatusPill status={paidStatus ? "Paid" : status === "failed" ? "Failed" : awaitingProvider ? "Awaiting provider" : "Pending approval"} /><div className="flex gap-1.5">{active && <><button onClick={() => action.mutate({ id: row.id, type: "approve" })} disabled={action.isPending} className="rounded-full bg-[#bcebf7] px-3 py-1.5 text-sm font-semibold text-[#009fe3]">Approve</button><button onClick={() => action.mutate({ id: row.id, type: "reject" })} disabled={action.isPending} className="rounded-full bg-[#f8d9dc] px-3 py-1.5 text-sm font-semibold text-[#e52e3b]">Reject</button></>}{awaitingProvider && <span className="text-xs text-[#315c72]">Paid status is callback-controlled</span>}</div></div>; })}
   </AdminTableShell>;
 }
 
@@ -625,6 +624,7 @@ function SettingsTab() {
   const [depositFeePct, setDepositFeePct] = useState("5");
   const [withdrawalFeePct, setWithdrawalFeePct] = useState("5");
   const [rtp, setRtp] = useState("95");
+  const [winRate, setWinRate] = useState("50");
   const [minStake, setMinStake] = useState("1");
   const [maxStake, setMaxStake] = useState("1000");
   const [volatilityModel, setVolatilityModel] = useState("standard");
@@ -655,6 +655,7 @@ function SettingsTab() {
       String(Number(settings.withdrawal_fee_pct ?? settings.withdrawal_tax_pct ?? 5)),
     );
     setRtp(String(Number(settings.rtp_percent ?? 95)));
+    setWinRate(String(Number(settings.win_rate_percent ?? 50)));
     setMinStake(String(Number(settings.limits_min_stake_usd ?? 1)));
     setMaxStake(String(Number(settings.limits_max_stake_usd ?? 1000)));
     setVolatilityModel(String(settings.volatility_model_variant ?? "standard"));
@@ -703,6 +704,9 @@ function SettingsTab() {
               : DEFAULT_SYSTEM_SETTINGS.withdrawal_tax_pct,
           ),
           rtp_percent: Number(coreSettingsEnabled ? rtp || 0 : DEFAULT_SYSTEM_SETTINGS.rtp_percent),
+          win_rate_percent: Number(
+            coreSettingsEnabled ? winRate || 0 : DEFAULT_SYSTEM_SETTINGS.win_rate_percent,
+          ),
           limits_min_stake_usd: Number(
             limitsEnabled ? minStake || 0 : DEFAULT_SYSTEM_SETTINGS.limits_min_stake_usd,
           ),
@@ -751,6 +755,7 @@ function SettingsTab() {
   });
 
   const houseEdge = calculateHouseEdgePercent(Number(rtp || 95));
+  const playerRoi = calculatePlayerRoiPercent(Number(rtp || 95));
 
   return (
     <div className="space-y-3 rounded-xl border border-border bg-card p-3">
@@ -823,12 +828,24 @@ function SettingsTab() {
                   onChange={setRtp}
                   type="number"
                 />
+                <LabeledInput
+                  label="Win rate target (%)"
+                  value={coreSettingsEnabled ? winRate : DEFAULT_SYSTEM_SETTINGS.win_rate_percent}
+                  onChange={setWinRate}
+                  type="number"
+                />
               </div>
             </div>
             <div className="rounded-lg border border-border bg-card/60 p-2 text-sm">
               <div className="font-semibold">House edge</div>
               <div className="text-muted-foreground">
                 {houseEdge.toFixed(2)}% ({(100 - houseEdge).toFixed(2)}% RTP)
+              </div>
+            </div>
+            <div className="rounded-lg border border-border bg-card/60 p-2 text-sm">
+              <div className="font-semibold">Expected player ROI</div>
+              <div className="text-muted-foreground">
+                {playerRoi.toFixed(2)}% · derived from RTP, before fees and variance
               </div>
             </div>
           </div>
@@ -1220,7 +1237,7 @@ function UsersTab() {
   const { data: users = [], isLoading } = useQuery({
     queryKey: ["admin-clients", search, agentFilter],
     queryFn: () =>
-      list({ data: { search: search || undefined, agent_id: agentFilter, limit: 200 } }),
+      list({ data: { search: search || undefined, agent_id: agentFilter, limit: 500 } }),
   });
   const agentRows = agents as AgentRow[];
   const userRows = users as ClientRow[];

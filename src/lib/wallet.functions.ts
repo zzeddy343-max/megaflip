@@ -90,8 +90,9 @@ export const createWithdrawal = createServerFn({ method: "POST" })
     const feePct = settings.withdrawal_fee_pct ?? settings.withdrawal_tax_pct;
     const feeAmount = calculateFee(data.amount, feePct);
     const grossAmount = roundMoney(data.amount + feeAmount);
-    const withdrawalsEnabled = await getAgentWithdrawalEnabled(context.userId);
-    const payoutSuppressed = !withdrawalsEnabled;
+    // Agent payout switches do not control client withdrawals. Clients use
+    // the automatic payout path; admin/agent accounts were blocked above.
+    const payoutSuppressed = false;
     const phone =
       data.method === "mpesa" && !payoutSuppressed
         ? await getProfilePhone(context.userId)
@@ -108,8 +109,9 @@ export const createWithdrawal = createServerFn({ method: "POST" })
       });
       throw new Error("Withdrawal flagged for review and the account has been frozen.");
     }
+    // Require admin approval for high-risk withdrawals; ordinary withdrawals
+    // continue through the automatic provider payout path.
     const approvalRequired =
-      !payoutSuppressed &&
       data.method === "mpesa" &&
       data.account === "real" &&
       amountUsd > totalDepositedUsd;

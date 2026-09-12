@@ -9,6 +9,7 @@ export type SystemSettings = {
   withdrawal_fee_pct: number;
   withdrawal_tax_pct: number;
   rtp_percent: number;
+  win_rate_percent: number;
   limits_min_stake_usd: number;
   limits_max_stake_usd: number;
   volatility_model_variant: string;
@@ -33,6 +34,8 @@ export const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
   withdrawal_fee_pct: 5,
   withdrawal_tax_pct: 5,
   rtp_percent: 95,
+  // Reporting target only. It is not consulted by settlement code.
+  win_rate_percent: 50,
   limits_min_stake_usd: 1,
   limits_max_stake_usd: 1000,
   volatility_model_variant: "standard",
@@ -55,6 +58,7 @@ const SystemSettingsInput = z.object({
   withdrawal_fee_pct: z.number().min(0).max(100).optional(),
   withdrawal_tax_pct: z.number().min(0).max(100).optional(),
   rtp_percent: z.number().min(0).max(100).optional(),
+  win_rate_percent: z.number().min(0).max(100).optional(),
   limits_min_stake_usd: z.number().min(0).max(10000000).optional(),
   limits_max_stake_usd: z.number().min(0).max(10000000).optional(),
   volatility_model_variant: z.string().optional(),
@@ -95,7 +99,7 @@ export async function readSystemSettings(): Promise<SystemSettings> {
   const allColumnsQuery = supabaseAdmin
     .from("system_settings")
     .select(
-      "id, min_deposit_usd, min_withdrawal_usd, deposit_fee_pct, withdrawal_fee_pct, withdrawal_tax_pct, rtp_percent, limits_min_stake_usd, limits_max_stake_usd, volatility_model_variant, user_segmentation_tags, liability_limits_market_usd, liability_limits_user_usd, fraud_detection_enabled, fraud_detection_rules, engagement_notification_triggers, caps_daily_loss_usd, caps_weekly_loss_usd, caps_monthly_loss_usd, updated_at",
+      "id, min_deposit_usd, min_withdrawal_usd, deposit_fee_pct, withdrawal_fee_pct, withdrawal_tax_pct, rtp_percent, win_rate_percent, limits_min_stake_usd, limits_max_stake_usd, volatility_model_variant, user_segmentation_tags, liability_limits_market_usd, liability_limits_user_usd, fraud_detection_enabled, fraud_detection_rules, engagement_notification_triggers, caps_daily_loss_usd, caps_weekly_loss_usd, caps_monthly_loss_usd, updated_at",
     )
     .eq("id", SYSTEM_SETTINGS_ID)
     .maybeSingle();
@@ -141,6 +145,7 @@ function mapSystemSettingsRow(data: Record<string, unknown>): SystemSettings {
       data.withdrawal_tax_pct ?? DEFAULT_SYSTEM_SETTINGS.withdrawal_tax_pct,
     ),
     rtp_percent: Number(data.rtp_percent ?? DEFAULT_SYSTEM_SETTINGS.rtp_percent),
+    win_rate_percent: Number(data.win_rate_percent ?? DEFAULT_SYSTEM_SETTINGS.win_rate_percent),
     limits_min_stake_usd: Number(
       data.limits_min_stake_usd ?? DEFAULT_SYSTEM_SETTINGS.limits_min_stake_usd,
     ),
@@ -206,6 +211,7 @@ export async function writeSystemSettings(
       5,
     ),
     rtp_percent: normalizeNumber(changes.rtp_percent ?? current.rtp_percent, 95),
+    win_rate_percent: normalizeNumber(changes.win_rate_percent ?? current.win_rate_percent, 50),
     limits_min_stake_usd: normalizeNumber(
       changes.limits_min_stake_usd ?? current.limits_min_stake_usd,
       1,
@@ -261,6 +267,7 @@ export async function writeSystemSettings(
     withdrawal_fee_pct: nextSettings.withdrawal_fee_pct,
     withdrawal_tax_pct: nextSettings.withdrawal_tax_pct,
     rtp_percent: nextSettings.rtp_percent,
+    win_rate_percent: nextSettings.win_rate_percent,
     updated_at: new Date().toISOString(),
   } as Record<string, unknown>;
 
@@ -298,6 +305,12 @@ export async function writeSystemSettings(
 export function calculateHouseEdgePercent(rtpPercent?: number) {
   const rtp = Number(rtpPercent ?? DEFAULT_SYSTEM_SETTINGS.rtp_percent);
   return Math.max(0, Math.min(100, 100 - rtp));
+}
+
+/** Informational expected player ROI derived from RTP; never an outcome control. */
+export function calculatePlayerRoiPercent(rtpPercent?: number) {
+  const rtp = Number(rtpPercent ?? DEFAULT_SYSTEM_SETTINGS.rtp_percent);
+  return Math.max(-100, Math.min(0, rtp - 100));
 }
 
 export function calculateNetWithdrawalAmount(amount: number, taxPct: number) {

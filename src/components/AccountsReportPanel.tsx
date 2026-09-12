@@ -22,12 +22,14 @@ export function AccountsReportPanel({
   title,
   initialView = "summary",
   presentation = "compact",
+  onNavigateToClients,
 }: {
   scope: Scope;
   mode?: Mode;
   title?: string;
   initialView?: View;
   presentation?: "compact" | "dashboard";
+  onNavigateToClients?: () => void;
 }) {
   const reportFn = useServerFn(getAccountsReport);
   const today = new Date().toISOString().slice(0, 10);
@@ -72,7 +74,12 @@ export function AccountsReportPanel({
         <DashboardGroup title="House">
           <DashboardCard label="House balance" value={money(houseBalance)} tone="gold" note="Deposits + fees - withdrawals paid" />
           <DashboardCard label="Coverage ratio" value={`${coverage.toFixed(1)}%`} tone="gold" note="House cash vs total client balances" />
-          <DashboardCard label="Client balances" value={money(liability)} note={`Across ${summary?.clients ?? 0} clients`} />
+          <DashboardCard
+            label="Client balances"
+            value={money(liability)}
+            note={`Across ${summary?.clients ?? 0} clients · open clients`}
+            onClick={onNavigateToClients}
+          />
           <DashboardCard label="Balance status" value={houseBalance >= 0 ? "Positive" : "Negative"} note="Current treasury less completed withdrawals" />
         </DashboardGroup>
         <DashboardGroup title="Trading exposure">
@@ -260,9 +267,10 @@ function DashboardGroup({ title, children }: { title: string; children: React.Re
   return <section className="space-y-3"><h2 className="text-base font-bold uppercase text-[#315c72]">{title}</h2><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">{children}</div></section>;
 }
 
-function DashboardCard({ label, value, note, tone }: { label: string; value: string; note?: string; tone?: "gold" | "green" | "red" }) {
+function DashboardCard({ label, value, note, tone, onClick }: { label: string; value: string; note?: string; tone?: "gold" | "green" | "red"; onClick?: () => void }) {
   const toneClass = tone === "gold" ? "text-[#f1bd1b]" : tone === "green" ? "text-[#00b969]" : tone === "red" ? "text-[#ec3038]" : "text-[#0b1930]";
-  return <div className="min-h-[126px] rounded-[22px] border border-[#afdbe3] bg-white/55 p-4 shadow-[0_12px_24px_rgba(35,79,92,0.08)]"><div className="text-xs uppercase text-[#315c72]">{label}</div><div className={`mt-3 text-2xl font-bold ${toneClass}`}>{value}</div>{note && <div className="mt-2 text-xs leading-5 text-[#315c72]">{note}</div>}</div>;
+  const content = <><div className="text-xs uppercase text-[#315c72]">{label}</div><div className={`mt-3 text-2xl font-bold ${toneClass}`}>{value}</div>{note && <div className="mt-2 text-xs leading-5 text-[#315c72]">{note}</div>}</>;
+  return onClick ? <button type="button" onClick={onClick} className="min-h-[126px] rounded-[22px] border border-[#afdbe3] bg-white/55 p-4 text-left shadow-[0_12px_24px_rgba(35,79,92,0.08)] transition hover:bg-white">{content}</button> : <div className="min-h-[126px] rounded-[22px] border border-[#afdbe3] bg-white/55 p-4 shadow-[0_12px_24px_rgba(35,79,92,0.08)]">{content}</div>;
 }
 
 function DateField({
