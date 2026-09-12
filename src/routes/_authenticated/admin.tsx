@@ -176,7 +176,7 @@ function AdminWorkspace() {
   const qc = useQueryClient();
 
   const repairMut = useMutation({
-    mutationFn: () => repairWithdrawals({ data: { older_than_minutes: 2 } }),
+    mutationFn: () => repairWithdrawals({ data: { older_than_minutes: 15 } }),
     onSuccess: (r) => {
       const count = Array.isArray(r.repaired) ? r.repaired.length : 0;
       toast.success(
@@ -244,7 +244,7 @@ function AdminWorkspace() {
           </div>
           <div className="flex flex-wrap justify-end gap-2">
             <button onClick={() => reconcileMut.mutate()} disabled={reconcileMut.isPending} className="rounded-xl bg-[#bcebf7] px-3 py-2 text-xs font-bold text-[#009fe3]"><RotateCcw className="mr-1 inline h-4 w-4" />{reconcileMut.isPending ? "Checking..." : "Sync paid M-Pesa"}</button>
-            <button onClick={() => repairMut.mutate()} disabled={repairMut.isPending} className="rounded-xl bg-[#ffdfe1] px-3 py-2 text-xs font-bold text-[#e32635]"><RotateCcw className="mr-1 inline h-4 w-4" />{repairMut.isPending ? "Checking..." : "Refund stale B2C"}</button>
+            <button onClick={() => repairMut.mutate()} disabled={repairMut.isPending} className="rounded-xl bg-[#ffdfe1] px-3 py-2 text-xs font-bold text-[#e32635]"><RotateCcw className="mr-1 inline h-4 w-4" />{repairMut.isPending ? "Checking..." : "Refund stale B2C (15m)"}</button>
           </div>
           {tab === "accounts" && <AccountsReportPanel scope="admin" mode="all_time" presentation="dashboard" />}
           {tab === "users" && <UsersTab />}

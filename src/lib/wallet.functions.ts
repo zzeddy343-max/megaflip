@@ -338,15 +338,6 @@ export async function releaseApprovedWithdrawalTransaction({
     throw new Error("This withdrawal does not require admin approval");
   }
 
-  if (!(await getAgentWithdrawalEnabled(transaction.user_id))) {
-    await markTransaction(transaction.id, "completed", {
-      approval_status: "suppressed_agent_withdrawals_disabled",
-      payout_suppressed: true,
-      payout_suppressed_reason: "agent_withdrawals_disabled",
-    });
-    return { ok: true, transaction_id: transaction.id, payout_suppressed: true };
-  }
-
   const phone =
     getStringValue(transaction.meta?.phone) ?? (await getProfilePhone(transaction.user_id));
   const payoutAmount = Number(transaction.meta?.net_amount ?? transaction.amount);
@@ -669,33 +660,6 @@ function validateMoney(
     throw new Error(`Minimum ${kind} is KSh ${minKsh} ($${minUsd})`);
   }
   if (requirePhone) normalizeKenyanPhone(phone);
-}
-
-async function getAgentWithdrawalEnabled(userId: string) {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data: ownAgent, error: ownError } = await supabaseAdmin
-    .from("agents")
-    .select("withdrawals_enabled")
-    .eq("user_id", userId)
-    .maybeSingle();
-  if (ownError) throw new Error(ownError.message);
-  if (ownAgent) return ownAgent.withdrawals_enabled !== false;
-
-  const { data: referral, error: referralError } = await supabaseAdmin
-    .from("referrals")
-    .select("agent_id")
-    .eq("client_id", userId)
-    .maybeSingle();
-  if (referralError) throw new Error(referralError.message);
-  if (!referral?.agent_id) return true;
-
-  const { data: agent, error: agentError } = await supabaseAdmin
-    .from("agents")
-    .select("withdrawals_enabled")
-    .eq("id", referral.agent_id)
-    .maybeSingle();
-  if (agentError) throw new Error(agentError.message);
-  return agent?.withdrawals_enabled !== false;
 }
 
 async function getProfilePhone(userId: string) {
