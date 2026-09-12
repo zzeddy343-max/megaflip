@@ -2,11 +2,24 @@ export function shouldControlledBinaryTradeWin(
   userId: string,
   accountType: "demo" | "real",
   settledTradeCount: number,
+  winRatePercent = 80,
 ) {
-  const block = Math.floor(settledTradeCount / 10);
-  const slot = settledTradeCount % 10;
-  const lossSlots = controlledLossSlots(`${userId}:${accountType}:${block}`);
-  return !lossSlots.has(slot);
+  const target = Math.max(0, Math.min(100, Number(winRatePercent)));
+  if (target <= 0) return false;
+  if (target >= 100) return true;
+
+  const block = Math.floor(settledTradeCount / 100);
+  const slot = settledTradeCount % 100;
+  const winners = new Set(
+    Array.from({ length: 100 }, (_, index) => ({
+      index,
+      rank: hashToRange(`${userId}:${accountType}:${block}:${index}`, 1_000_000),
+    }))
+      .sort((a, b) => a.rank - b.rank)
+      .slice(0, Math.round(target))
+      .map(({ index }) => index),
+  );
+  return winners.has(slot);
 }
 
 export type ControlledContractType = "even_odd" | "over_under" | "matches_differs" | "rise_fall";
@@ -72,13 +85,6 @@ export function pickDigitForOutcome({
   return safeCandidates[
     hashToRange(`${seed}:${shouldWin ? "win" : "loss"}:digit`, safeCandidates.length)
   ];
-}
-
-function controlledLossSlots(seed: string) {
-  const first = hashToRange(`${seed}:loss-a`, 10);
-  let second = hashToRange(`${seed}:loss-b`, 10);
-  if (second === first) second = (second + 3) % 10;
-  return new Set([first, second]);
 }
 
 function hashToRange(value: string, range: number) {

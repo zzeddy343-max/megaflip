@@ -34,7 +34,6 @@ export const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
   withdrawal_fee_pct: 5,
   withdrawal_tax_pct: 5,
   rtp_percent: 95,
-  // Reporting target only. It is not consulted by settlement code.
   win_rate_percent: 50,
   limits_min_stake_usd: 1,
   limits_max_stake_usd: 1000,
@@ -311,6 +310,14 @@ export function calculateHouseEdgePercent(rtpPercent?: number) {
 export function calculatePlayerRoiPercent(rtpPercent?: number) {
   const rtp = Number(rtpPercent ?? DEFAULT_SYSTEM_SETTINGS.rtp_percent);
   return Math.max(-100, Math.min(0, rtp - 100));
+}
+
+/** Return the gross winning payout needed to realize the configured RTP. */
+export function getControlledPayoutMultiplier(settings: SystemSettings) {
+  const rtp = Math.max(0, Math.min(100, Number(settings.rtp_percent ?? 95))) / 100;
+  const winRate = Math.max(0, Math.min(100, Number(settings.win_rate_percent ?? 50))) / 100;
+  if (winRate <= 0 || rtp <= 0) return 0;
+  return Number((rtp / winRate).toFixed(4));
 }
 
 export function calculateNetWithdrawalAmount(amount: number, taxPct: number) {

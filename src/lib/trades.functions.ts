@@ -3,6 +3,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import {
   applyVolatilityToPayout,
+  getControlledPayoutMultiplier,
   getEffectiveStakeLimits,
   readSystemSettings,
   type SystemSettings,
@@ -108,12 +109,16 @@ export const settleTrade = createServerFn({ method: "POST" })
       data.trade_id,
       data.won,
       data.exit_price ?? null,
+      settings.win_rate_percent,
     );
+    const settlementMultiplier = outcome.usesConfiguredControls
+      ? getControlledPayoutMultiplier(settings)
+      : (data.multiplier ?? null);
     const { data: result, error } = await supabase.rpc("settle_trade", {
       _trade_id: data.trade_id,
       _won: outcome.won,
       _exit_price: outcome.exitPrice,
-      _multiplier: data.multiplier ?? null,
+      _multiplier: settlementMultiplier,
     });
     if (error) {
       console.error("[Trades] settle_trade failed", {
@@ -129,7 +134,7 @@ export const settleTrade = createServerFn({ method: "POST" })
           data.trade_id,
           outcome.won,
           outcome.exitPrice,
-          data.multiplier ?? null,
+          settlementMultiplier,
         );
         return {
           ...fallback,
@@ -213,6 +218,7 @@ async function resolveControlledBinaryOutcome(
   tradeId: string,
   requestedWon: boolean,
   requestedExitPrice: number | null,
+  winRatePercent: number,
 ) {
   const { data: trade, error: tradeError } = await supabase
     .from("trades")
@@ -223,14 +229,19 @@ async function resolveControlledBinaryOutcome(
 
   if (tradeError) throw new Error(tradeError.message);
   if (!trade || trade.module !== "binary" || trade.status !== "open") {
-    return { won: requestedWon, controlled: false, exitPrice: requestedExitPrice };
+    return {
+      won: requestedWon,
+      controlled: false,
+      usesConfiguredControls: false,
+      exitPrice: requestedExitPrice,
+    };
   }
 
   const accountType = trade.account_type === "demo" ? "demo" : "real";
   const isAgentReal = accountType === "real" && (await userHasRole(supabase, userId, "agent"));
-  if (accountType !== "demo" && !isAgentReal) {
-    return { won: requestedWon, controlled: false, exitPrice: requestedExitPrice };
-  }
+  // Demo and agent-real accounts retain the existing hard-coded control. Only
+  // ordinary users' real-money binary trades use admin RTP/win-rate settings.
+  const usesConfiguredControls = accountType === "real" && !isAgentReal;
 
   const { count, error: countError } = await supabase
     .from("trades")
@@ -242,7 +253,7 @@ async function resolveControlledBinaryOutcome(
 
   if (countError) throw new Error(countError.message);
 
-  const won = shouldControlledBinaryTradeWin(userId, accountType, count ?? 0);
+  const won = shouldControlledBinaryTradeWin(userId, accountType, count ?? 0, usesConfiguredControls ? winRatePercent : 80);
   const meta = (trade.meta ?? {}) as Record<string, unknown>;
   const market = MARKETS[trade.market as MarketId];
   const contractType = normalizeControlledContractType(meta.contract_type);
@@ -251,6 +262,7 @@ async function resolveControlledBinaryOutcome(
   return {
     won,
     controlled: true,
+    usesConfiguredControls,
     exitPrice: buildControlledBinaryExitPrice({
       entryPrice: Number(trade.entry_price ?? 0),
       requestedExitPrice,
