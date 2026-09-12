@@ -99,7 +99,7 @@ function WalletPage() {
         .catch(() => {
           qc.invalidateQueries({ queryKey: ["profile"] });
         });
-    }, 5000);
+    }, 15000);
     return () => window.clearInterval(id);
   }, [loadHistory, qc, syncDeposits]);
 

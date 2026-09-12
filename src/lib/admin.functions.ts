@@ -827,6 +827,7 @@ export const getAccountsReport = createServerFn({ method: "POST" })
         client_id: id,
         name: profile?.full_name || profile?.username || profile?.email || id.slice(0, 8),
         email: profile?.email ?? null,
+        balance_usd: Number(profile?.balance_usd ?? 0),
         deposits_usd: sumUsd(
           clientTx.filter((t) => t.kind === "deposit" && t.status === "completed"),
         ),
@@ -843,6 +844,8 @@ export const getAccountsReport = createServerFn({ method: "POST" })
       clients: filteredClients,
       summary: {
         clients: filteredIds.length,
+        clients_with_balance: reportClients.filter((client) => Number(client.balance_usd ?? 0) > 0)
+          .length,
         deposits_usd: sumUsd(completedDeposits) + manual.deposits_usd,
         withdrawals_usd: sumUsd(completedWithdrawals) + manual.withdrawals_usd,
         fees_usd: feeTotal,
@@ -908,12 +911,7 @@ export const reconcileSuccessfulB2cCallbacks = createServerFn({ method: "POST" }
     );
     if (error) throw new Error(error.message);
 
-    const { data: acceptedRows, error: acceptedError } = await (
-      supabaseAdmin as unknown as RpcAdminClient
-    ).rpc("complete_accepted_b2c_withdrawals");
-    if (acceptedError) throw new Error(acceptedError.message);
-
-    return { ok: true, repaired: [...(callbackRows ?? []), ...(acceptedRows ?? [])] };
+    return { ok: true, repaired: callbackRows ?? [] };
   });
 
 export const listWithdrawalApprovalRequests = createServerFn({ method: "GET" })

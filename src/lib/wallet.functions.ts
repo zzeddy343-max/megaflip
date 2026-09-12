@@ -4,6 +4,7 @@ import { z } from "zod";
 import { readSystemSettings, type SystemSettings } from "@/lib/system-settings";
 
 const USD_TO_KSH = 130;
+const darajaTokenCache = new Map<DarajaMode, { token: string; expiresAt: number }>();
 
 const MoneyInput = z.object({
   method: z.enum(["mpesa"]),
@@ -101,7 +102,7 @@ export const createWithdrawal = createServerFn({ method: "POST" })
     const amountUsd = toUsd(grossAmount, "KSH");
     const totalDepositedUsd = await getCompletedRealDepositTotal(context.userId);
     const realTradeCount = await getRealTradeCount(context.userId);
-    if (amountUsd > totalDepositedUsd || (totalDepositedUsd === 0 && realTradeCount === 0)) {
+    if (totalDepositedUsd === 0 && realTradeCount === 0) {
       await freezeSuspiciousWithdrawal(context.userId, {
         requested_amount_usd: amountUsd,
         total_deposited_usd: totalDepositedUsd,
@@ -526,15 +527,14 @@ async function sendB2cPayment(
   }
 
   await recordPaymentRequest(transaction.id, "b2c", msisdn, payload, response);
-  await markTransaction(transaction.id, "completed", {
+  await markTransaction(transaction.id, "processing", {
     daraja_request_sent: true,
     b2c_request_accepted: true,
-    completed_on_b2c_acceptance: true,
     conversation_id: response.ConversationID ?? null,
     originator_conversation_id: response.OriginatorConversationID ?? null,
     response_description: response.ResponseDescription ?? null,
   });
-  await markPaymentRequestStatus(transaction.id, "b2c", "completed", response);
+  await markPaymentRequestStatus(transaction.id, "b2c", "processing", response);
   return response;
 }
 
@@ -549,6 +549,7 @@ async function darajaRequest(path: string, payload: Record<string, unknown>, mod
       "Content-Type": "application/json",
     },
     body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(15_000),
   });
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -559,15 +560,23 @@ async function darajaRequest(path: string, payload: Record<string, unknown>, mod
 
 async function getDarajaToken(mode: DarajaMode) {
   const env = getDarajaEnv(mode);
+  const cached = darajaTokenCache.get(mode);
+  if (cached && cached.expiresAt > Date.now() + 30_000) return cached.token;
   const credentials = Buffer.from(`${env.consumerKey}:${env.consumerSecret}`).toString("base64");
   const res = await fetch(`${env.baseUrl}/oauth/v1/generate?grant_type=client_credentials`, {
     headers: { Authorization: `Basic ${credentials}` },
+    signal: AbortSignal.timeout(10_000),
   });
   const json = await res.json().catch(() => ({}));
   if (!res.ok || !json.access_token) {
     throw new Error(formatDarajaError(mode, "oauth_token", res.status, json, env.baseUrl));
   }
-  return json.access_token as string;
+  const token = json.access_token as string;
+  darajaTokenCache.set(mode, {
+    token,
+    expiresAt: Date.now() + Math.max(60, Number(json.expires_in ?? 3600) - 60) * 1000,
+  });
+  return token;
 }
 
 async function adjustBalance(
@@ -600,11 +609,12 @@ async function markTransaction(
   meta: Record<string, unknown>,
 ) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  await supabaseAdmin.rpc("apply_transaction", {
+  const { error } = await supabaseAdmin.rpc("apply_transaction", {
     _transaction_id: transactionId,
     _status: status,
     _meta: meta,
   });
+  if (error) throw new Error(error.message);
 }
 
 async function recordPaymentRequest(

@@ -58,7 +58,11 @@ export function AccountsReportPanel({
     if (view === "deposits") return data?.deposits ?? [];
     if (view === "withdrawals") return data?.withdrawals ?? [];
     if (view === "trades") return data?.trades ?? [];
-    if (view === "clients") return data?.by_client ?? [];
+    if (view === "clients") {
+      return (data?.by_client ?? []).filter(
+        (row: Record<string, unknown>) => Number(row.balance_usd ?? 0) > 0,
+      );
+    }
     return [];
   }, [data, view]);
 
@@ -77,8 +81,11 @@ export function AccountsReportPanel({
           <DashboardCard
             label="Client balances"
             value={money(liability)}
-            note={`Across ${summary?.clients ?? 0} clients · open clients`}
-            onClick={onNavigateToClients}
+            note={`Across ${summary?.clients_with_balance ?? 0} funded clients · click to view`}
+            onClick={() => {
+              setView("clients");
+              onNavigateToClients?.();
+            }}
           />
           <DashboardCard label="Balance status" value={houseBalance >= 0 ? "Positive" : "Negative"} note="Current treasury less completed withdrawals" />
         </DashboardGroup>
@@ -246,7 +253,7 @@ export function AccountsReportPanel({
                 key={String(row.client_id)}
                 title={String(row.name ?? "")}
                 meta={`${row.trades} trades - retained ${displayMoney(row.retained_usd)}`}
-                value={`${displayMoney(row.deposits_usd)} in / ${displayMoney(row.withdrawals_usd)} out`}
+                value={`${displayMoney(row.balance_usd)} balance`}
               />
             ) : (
               <Row
